@@ -1,14 +1,15 @@
-import { useState } from "react";
-import { Link } from 'react-router-dom';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronRight, Hammer, BriefcaseBusiness, ArrowLeft, MapPin, LogOut, MessageCircle, Bell, Settings, Info, LogIn } from "lucide-react";
+import { ChevronDown, ChevronRight, Hammer, BriefcaseBusiness, ArrowLeft, MapPin, LogOut, MessageCircle, Bell, Settings, Info, LogIn, User } from "lucide-react";
 import { Button } from './ui/Button.jsx';
 import { Avatar } from './ui/Avatar.jsx';
+import { supabase } from '../lib/supabaseClient';
+import { useNotification } from '../contexts/NotificationContext';
 import Logo from "../assets/Lucid.png";
 
 // Notification Badge Component
 const NotificationBadge = ({ count = 0, className = "" }) => {
-  // Don't render anything if count is 0 or negative
   if (!count || count <= 0) return null;
 
   return (
@@ -26,7 +27,7 @@ const NotificationBadge = ({ count = 0, className = "" }) => {
   );
 };
 
-// Animation variants
+// Animation variants (same as before)
 const fadeInUp = {
   hidden: { opacity: 0, y: -10 },
   visible: { 
@@ -73,12 +74,88 @@ const staggerContainer = {
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showAreaSubmenu, setShowAreaSubmenu] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState(null);
+  const [userProfile, setUserProfile] = useState(null);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [messageCount, setMessageCount] = useState(0);
+  const [locations, setLocations] = useState([
+    "Spintex", "Osu", "North-Ridge", "Madina",
+    "Labadi", "Achimota", "Circle", "Tema"
+  ]);
   
-  // Notification counts - you can fetch these from your state/API
-  const [notificationCount] = useState(20);
-  const [messageCount] = useState(22);
-  
+  const { showNotification } = useNotification();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setIsLoggedIn(true);
+        setUser(session.user);
+        fetchUserProfile(session.user.id);
+        fetchNotificationCounts(session.user.id);
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setIsLoggedIn(true);
+        setUser(session.user);
+        fetchUserProfile(session.user.id);
+        fetchNotificationCounts(session.user.id);
+      } else {
+        setIsLoggedIn(false);
+        setUser(null);
+        setUserProfile(null);
+        setNotificationCount(0);
+        setMessageCount(0);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchUserProfile = async (userId) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (error) throw error;
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const fetchNotificationCounts = async (userId) => {
+    try {
+      // Fetch unread notifications count
+      const { count: notifCount, error: notifError } = await supabase
+        .from('notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_read', false);
+
+      if (!notifError) setNotificationCount(notifCount || 0);
+
+      // Fetch unread messages count
+      const { count: msgCount, error: msgError } = await supabase
+        .from('chat_messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('receiver_id', userId)
+        .eq('is_read', false);
+
+      if (!msgError) setMessageCount(msgCount || 0);
+    } catch (error) {
+      console.error('Error fetching counts:', error);
+    }
+  };
+
   const toggleMenu = () => {
     setIsOpen(!isOpen);
     setShowAreaSubmenu(false);
@@ -97,55 +174,61 @@ function Navbar() {
     setShowAreaSubmenu(false);
   };
 
-  // Calculate total notification count
-  const totalNotifications = notificationCount + messageCount;
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      showNotification('Logged out successfully', 'success');
+      navigate('/lucid/');
+      handleLinkClick();
+    } catch (error) {
+      showNotification(error.message, 'error');
+    }
+  };
 
-  // Sample locations
-  const locations = [
-    "Spintex", "Osu", "North-Ridge", "Madina",
-    "Labadi", "Achimota", "Circle", "Tema"
-  ];
+  const totalNotifications = notificationCount + messageCount;
 
   // Navigation configuration
   const navLinks = [
-    { to: "/lucid/signin", label: "Join as a worker", icon: BriefcaseBusiness},
-    { to: "/lucid/Service", label: "Services", icon: Hammer },
+    { to: "/lucid/become-provider", label: "Join as a worker", icon: BriefcaseBusiness},
+    { to: "/lucid/services", label: "Services", icon: Hammer },
     { to: "/lucid/about", label: "About", icon: Info },
   ];
 
   const userMenuLinks = [
-    { to: "/lucid/providerProfile", label: "My Profile" },
-    { to: "/lucid/provider_dashboard", label: "Account" },
-    { to: "/lucid/allmessages", label: "Messages", badge: messageCount },
-    { to: "/lucid/notification", label: "Notifications", badge: notificationCount },
+    { to: "/lucid/profile", label: "My Profile" },
+    { to: userProfile?.role === 'service_provider' ? "/lucid/provider-dashboard" : "/lucid/dashboard", label: "Dashboard" },
+    { to: "/lucid/messages", label: "Messages", badge: messageCount },
+    { to: "/lucid/notifications", label: "Notifications", badge: notificationCount },
   ];
 
   const mobileUserLinks = [
-    { to: "/lucid/allmessages", label: "Messages", icon: MessageCircle, badge: messageCount },
-    { to: "/lucid/notification", label: "Notifications", icon: Bell, badge: notificationCount },
-    { to: "/lucid/provider_dashboard", label: "Account", icon: Settings },
+    { to: "/lucid/messages", label: "Messages", icon: MessageCircle, badge: messageCount },
+    { to: "/lucid/notifications", label: "Notifications", icon: Bell, badge: notificationCount },
+    { to: userProfile?.role === 'service_provider' ? "/lucid/provider-dashboard" : "/lucid/dashboard", label: "Dashboard", icon: Settings },
+    { to: "/lucid/profile", label: "Profile", icon: User },
   ];
+
+  const getUserDisplayName = () => {
+    if (userProfile) {
+      return `${userProfile.first_name || ''} ${userProfile.last_name || ''}`.trim() || user?.email?.split('@')[0];
+    }
+    return user?.email?.split('@')[0] || 'User';
+  };
 
   return (
     <>
-      < nav 
-        className="navbar bg-white h-20 shadow-lg sticky top-0 z-30"
-      >
+      <nav className="navbar bg-white h-20 shadow-lg sticky top-0 z-30">
         {/* Logo */}
-        < div 
-          className="navbar-start ml-4 md:ml-12"
-          initial="hidden"
-          animate="visible"
-          variants={fadeInUp}
-        >
+        <div className="navbar-start ml-4 md:ml-12">
           <Link to="/lucid/" className="flex items-center">
-            < img
+            <img
               src={Logo}
               alt="Lucid Logo"
               className="h-5 w-20 object-cover"
             />
           </Link>
-        </ div>
+        </div>
 
         {/* Desktop Navigation */}
         <div className="navbar-end mr-4">
@@ -184,8 +267,9 @@ function Navbar() {
                     transition={{ delay: index * 0.03 }}
                   >
                     <Link 
-                      to="/lucid/selected_service" 
+                      to={`/lucid/services?location=${encodeURIComponent(location)}`} 
                       className="text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors"
+                      onClick={handleLinkClick}
                     >
                       {location}
                     </Link>
@@ -227,14 +311,17 @@ function Navbar() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                {/* Notification Badge - only shows if count > 0 */}
                 <NotificationBadge
                   count={totalNotifications}
                   className="top-1 right-20"
                 />
 
-                <Avatar name="Gabriel Gordon-Mensah" size="md" />
-                <span className="font-medium text-gray-800">Gabriel</span>
+                <Avatar 
+                  name={getUserDisplayName()} 
+                  size="md" 
+                  src={userProfile?.avatar_url}
+                />
+                <span className="font-medium text-gray-800">{getUserDisplayName().split(' ')[0]}</span>
                 <ChevronDown className="w-4 h-4 text-gray-600" />
               </motion.div>
 
@@ -253,19 +340,21 @@ function Navbar() {
                     <Link 
                       to={link.to} 
                       className="text-gray-700 hover:bg-orange-50 hover:text-orange-600 rounded-md transition-colors relative flex items-center justify-between"
+                      onClick={handleLinkClick}
                     >
                       <span>{link.label}</span>
-                      <NotificationBadge 
-                        count={link.badge} 
-                        className="relative top-0 right-0 w-4 h-4 p-2" 
-                      />
+                      {link.badge > 0 && (
+                        <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                          {link.badge > 99 ? '99+' : link.badge}
+                        </span>
+                      )}
                     </Link>
                   </motion.li>
                 ))}
 
                 <li className="border-t border-gray-200 mt-2 pt-2">
                   <button
-                    onClick={() => setIsLoggedIn(false)}
+                    onClick={handleLogout}
                     className="text-red-600 hover:bg-red-50 rounded-md transition-colors w-full text-left"
                   >
                     <LogOut className="w-4 h-4 inline mr-2" />
@@ -280,14 +369,15 @@ function Navbar() {
               initial="hidden"
               animate="visible"
             >
-              <Button 
-                onClick={() => setIsLoggedIn(true)}
-                variant="secondary" 
-                size="sm"
-                className="ml-4 hidden lg:block"
-              >
-                Sign In
-              </Button>
+              <Link to="/lucid/signin">
+                <Button 
+                  variant="secondary" 
+                  size="sm"
+                  className="ml-4 hidden lg:block"
+                >
+                  Sign In
+                </Button>
+              </Link>
             </motion.div>
           )}
 
@@ -302,8 +392,9 @@ function Navbar() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
           >
-            {/* Only show badge if logged in AND has notifications */}
-            {isLoggedIn && <NotificationBadge count={totalNotifications} />}
+            {isLoggedIn && totalNotifications > 0 && (
+              <NotificationBadge count={totalNotifications} />
+            )}
             <svg
               xmlns="http://www.w3.org/2000/svg"
               className="w-6 h-6"
@@ -319,14 +410,14 @@ function Navbar() {
             </svg>
           </motion.button>
         </div>
-      </ nav>
+      </nav>
 
-      {/* Overlay */}
+      {/* Overlay and Mobile Menu (same as before) */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             onClick={toggleMenu}
-            className="fixed inset-0 bg-black bg-opacity-0 z-40"
+            className="fixed inset-0 bg-black bg-opacity-50 z-40"
             variants={overlayVariants}
             initial="hidden"
             animate="visible"
@@ -365,11 +456,15 @@ function Navbar() {
                   transition={{ delay: 0.15 }}
                 >
                   <div className="flex items-center space-x-3">
-                    <Avatar name="Gabriel Gordon-Mensah" size="lg" />
+                    <Avatar 
+                      name={getUserDisplayName()} 
+                      size="lg"
+                      src={userProfile?.avatar_url}
+                    />
                     <div>
-                      <p className="font-semibold text-gray-900">Gabriel</p>
+                      <p className="font-semibold text-gray-900">{getUserDisplayName()}</p>
                       <Link 
-                        to="/providerProfile" 
+                        to="/lucid/profile" 
                         onClick={handleLinkClick} 
                         className="text-sm text-blue-600 hover:text-orange-600 transition-colors"
                       >
@@ -432,15 +527,14 @@ function Navbar() {
                             className="flex items-center justify-between text-gray-700 hover:text-orange-600 hover:bg-orange-50 p-3 rounded-lg transition-colors"
                           >
                             <div className="flex items-center space-x-3 relative">
-                              <div className="relative">
-                                <Icon className="w-5 h-5" />
-                                <NotificationBadge 
-                                  count={link.badge} 
-                                  className="-top-2 rounded-full left-2 w-3 h-3"
-                                />
-                              </div>
+                              <Icon className="w-5 h-5" />
                               <span className="font-medium">{link.label}</span>
                             </div>
+                            {link.badge > 0 && (
+                              <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                                {link.badge > 99 ? '99+' : link.badge}
+                              </span>
+                            )}
                           </Link>
                         </motion.div>
                       );
@@ -477,7 +571,7 @@ function Navbar() {
                         transition={{ delay: index * 0.05 }}
                       >
                         <Link
-                          to="/selected_service"
+                          to={`/lucid/services?location=${encodeURIComponent(location)}`}
                           onClick={handleLinkClick}
                           className="flex items-center space-x-3 text-gray-700 hover:text-orange-600 hover:bg-orange-50 p-3 rounded-lg transition-colors"
                         >
@@ -502,26 +596,18 @@ function Navbar() {
                     <Button  
                       variant="danger" 
                       fullWidth
-                      onClick={() => {
-                        setIsLoggedIn(false);
-                        handleLinkClick();
-                      }}
+                      onClick={handleLogout}
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogOut className="w-4 h-4 mr-2" />
                       Logout
                     </Button>
                   ) : (
-                    <Button 
-                      variant="secondary" 
-                      fullWidth
-                      onClick={() => {
-                        setIsLoggedIn(true);
-                        handleLinkClick();
-                      }}
-                    >
-                      <LogIn className="w-4 h-4" />
-                      Sign In
-                    </Button>
+                    <Link to="/lucid/signin" onClick={handleLinkClick}>
+                      <Button variant="secondary" fullWidth>
+                        <LogIn className="w-4 h-4 mr-2" />
+                        Sign In
+                      </Button>
+                    </Link>
                   )}
                 </motion.div>
               )}

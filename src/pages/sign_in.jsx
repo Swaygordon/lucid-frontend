@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
+import { useNotification } from '../contexts/NotificationContext';
+import { supabase } from '../lib/supabaseClient';
 import BackgroundImage from '../assets/background.png';
 
 const Signin = () => {
@@ -11,7 +13,148 @@ const Signin = () => {
     role: 'client'
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [resendingEmail, setResendingEmail] = useState(false);
+  const { showNotification } = useNotification();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Handle email confirmation from URL
+  useEffect(() => {
+    const handleEmailConfirmation = async () => {
+      // Check if this is a confirmation callback
+      const hashParams = new URLSearchParams(location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+
+      if (accessToken && type === 'signup') {
+        console.log('Email confirmation detected');
+        
+        try {
+          // Set the session from the confirmation
+          const { data, error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken
+          });
+
+          if (error) throw error;
+
+          if (data.session) {
+            showNotification('Email confirmed successfully! You can now sign in.', 'success');
+            
+            // Redirect to sign in page without hash
+            navigate('/lucid/signin', { replace: true });
+          }
+        } catch (error) {
+          console.error('Confirmation error:', error);
+          showNotification('Failed to confirm email. Please try again.', 'error');
+        }
+      }
+    };
+
+    handleEmailConfirmation();
+  }, [location, navigate, showNotification]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+
+      if (error) {
+        if (error.message === 'Invalid login credentials') {
+          // Check if user exists but email not confirmed
+          const { data: userData } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('email', formData.email)
+            .single();
+          
+          if (userData) {
+            showNotification('Email not confirmed. Please check your inbox and click the verification link.', 'warning');
+          } else {
+            showNotification('Invalid email or password. Please try again.', 'error');
+          }
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      if (data.user) {
+        // Check if email is confirmed
+        if (!data.user.email_confirmed_at) {
+          showNotification('Please verify your email before signing in. Check your inbox!', 'warning');
+          return;
+        }
+
+        // Fetch user profile to get role
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('role, first_name, last_name')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError) {
+          console.error('Profile fetch error:', profileError);
+        }
+
+        // Update last login (don't wait for it)
+        supabase
+          .from('profiles')
+          .update({ last_login: new Date().toISOString() })
+          .eq('id', data.user.id)
+          .then(() => {})
+          .catch(err => console.error('Failed to update last login:', err));
+
+        showNotification(`Welcome back, ${profile?.first_name || 'User'}!`, 'success');
+        
+        // Redirect based on role
+        if (profile?.role === 'service_provider') {
+          navigate('/lucid/provider-dashboard');
+        } else {
+          navigate('/lucid/');
+        }
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      showNotification(error.message || 'Login failed. Please try again.', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    if (!formData.email) {
+      showNotification('Please enter your email address first', 'warning');
+      return;
+    }
+
+    setResendingEmail(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: formData.email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/lucid/signin`
+        }
+      });
+
+      if (error) throw error;
+      
+      showNotification('Verification email resent! Please check your inbox.', 'success');
+    } catch (error) {
+      console.error('Resend error:', error);
+      showNotification(error.message || 'Failed to resend verification email', 'error');
+    } finally {
+      setResendingEmail(false);
+    }
+  };
 
   const handleChange = (e) => {
     setFormData(prev => ({
@@ -20,17 +163,32 @@ const Signin = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    navigate('/lucid/');
+  const handleGoogleSignin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/lucid/`
+        }
+      });
+      if (error) throw error;
+    } catch (error) {
+      showNotification(error.message, 'error');
+    }
   };
 
-  const handleGoogleSignin = () => {
-    navigate('/lucid/');
-  };
-
-  const handleFacebookSignin = () => {
-    navigate('/lucid/');
+  const handleFacebookSignin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/lucid/`
+        }
+      });
+      if (error) throw error;
+    } catch (error) {
+      showNotification(error.message, 'error');
+    }
   };
 
   const PasswordToggle = () => (
@@ -82,7 +240,7 @@ const Signin = () => {
                   endIcon={<PasswordToggle />}
                 />
 
-                {/* Account Type */}
+                {/* Account Type - For UI only */}
                 <div>
                   <label className="text-left block font-medium text-gray-700 mb-2">
                     Account Type <span className="text-red-500">*</span>
@@ -118,9 +276,22 @@ const Signin = () => {
                   variant="primary"
                   size="md"
                   fullWidth
+                  loading={loading}
                 >
                   Sign In
                 </Button>
+
+                {/* Resend confirmation link */}
+                <div className="text-center text-sm">
+                  <button
+                    type="button"
+                    onClick={handleResendConfirmation}
+                    disabled={resendingEmail}
+                    className="text-blue-600 hover:text-orange-600 transition-colors"
+                  >
+                    {resendingEmail ? 'Sending...' : "Didn't receive verification email? Click here"}
+                  </button>
+                </div>
 
                 {/* OR Divider */}
                 <div className="flex items-center my-6">

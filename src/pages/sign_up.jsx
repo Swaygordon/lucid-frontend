@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useNotification } from '../contexts/NotificationContext';
+import { supabase } from '../lib/supabaseClient';
 import BackgroundImage from '../assets/background.png';
 
 const Signup = () => {
@@ -13,7 +14,10 @@ const Signup = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    role: 'client'
+    role: 'client',
+    phoneNumber: '',
+    address: '',
+    city: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -28,12 +32,76 @@ const Signup = () => {
       return;
     }
 
+    if (formData.password.length < 8) {
+      showNotification('Password must be at least 8 characters long', 'error');
+      return;
+    }
+
     setLoading(true);
-    setTimeout(() => {
+    
+    try {
+      // Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            other_name: formData.otherName,
+            role: formData.role,
+            phone_number: formData.phoneNumber,
+            address: formData.address,
+            city: formData.city
+          },
+          emailRedirectTo: `${window.location.origin}/lucid/signin`
+        }
+      });
+      
+      if (authError) {
+        console.error('Auth error details:', authError);
+        
+        if (authError.message.includes('rate limit')) {
+          showNotification('Please wait a moment before trying again', 'error');
+        } else if (authError.message.includes('Database error')) {
+          // This often happens if the trigger fails, but the user might still be created
+          showNotification('Account created! Please check your email to verify.', 'success');
+          setTimeout(() => {
+            navigate('/lucid/signin');
+          }, 2000);
+          return;
+        } else {
+          throw authError;
+        }
+        return;
+      }
+      
+      if (!authData.user) {
+        throw new Error('Signup failed - no user returned');
+      }
+      
+      showNotification('Account created successfully! Please check your email to verify your account.', 'success');
+      
+      // Navigate to sign in page after 3 seconds
+      setTimeout(() => {
+        navigate('/lucid/signin');
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Signup error:', error);
+      
+      // Provide more helpful error messages
+      if (error.message.includes('Database error')) {
+        showNotification('Account may have been created. Please check your email for verification link.', 'info');
+        setTimeout(() => {
+          navigate('/lucid/signin');
+        }, 2000);
+      } else {
+        showNotification(error.message || 'Failed to create account. Please try again.', 'error');
+      }
+    } finally {
       setLoading(false);
-      showNotification('Account created successfully!', 'success');
-      navigate('/lucid/');
-    }, 2000);
+    }
   };
 
   const handleChange = (e) => {
@@ -41,6 +109,34 @@ const Signup = () => {
       ...prev,
       [e.target.name]: e.target.value
     }));
+  };
+
+  const handleGoogleSignup = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/lucid/`
+        }
+      });
+      if (error) throw error;
+    } catch (error) {
+      showNotification(error.message, 'error');
+    }
+  };
+
+  const handleFacebookSignup = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'facebook',
+        options: {
+          redirectTo: `${window.location.origin}/lucid/`
+        }
+      });
+      if (error) throw error;
+    } catch (error) {
+      showNotification(error.message, 'error');
+    }
   };
 
   const PasswordToggle = () => (
@@ -108,6 +204,32 @@ const Signup = () => {
                   required
                 />
 
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Phone Number"
+                    type="tel"
+                    name="phoneNumber"
+                    value={formData.phoneNumber}
+                    onChange={handleChange}
+                    placeholder="Phone number"
+                  />
+                  <Input
+                    label="City"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    placeholder="City"
+                  />
+                </div>
+
+                <Input
+                  label="Address"
+                  name="address"
+                  value={formData.address}
+                  onChange={handleChange}
+                  placeholder="Your address"
+                />
+
                 {/* Account Type */}
                 <div>
                   <label className="text-left block font-medium text-gray-700 mb-2">
@@ -145,13 +267,9 @@ const Signup = () => {
                     Your password must be:
                   </p>
                   <ul className="list-disc list-inside space-y-1 text-sm">
-                    <li>At least 8 to 16 characters long</li>
+                    <li>At least 8 characters long</li>
                     <li>Not contain your name or email</li>
-                    <li>
-                      Not be commonly used or easily guessed
-                      <br />
-                      or contain any variation of your name
-                    </li>
+                    <li>Not be commonly used or easily guessed</li>
                   </ul>
                   <p className="text-xs mt-6">
                     By clicking 'Sign Up', you agree to the Terms of
@@ -199,7 +317,12 @@ const Signup = () => {
                 </div>
 
                 {/* Social Login Buttons */}
-                <Button variant="outline" fullWidth>
+                <Button 
+                  variant="outline" 
+                  fullWidth
+                  onClick={handleGoogleSignup}
+                  type="button"
+                >
                   <svg
                     aria-label="Google logo"
                     width="17"
@@ -229,7 +352,12 @@ const Signup = () => {
                   </svg>
                   Sign up with Google
                 </Button>
-                <Button variant="outline" fullWidth>
+                <Button 
+                  variant="outline" 
+                  fullWidth
+                  onClick={handleFacebookSignup}
+                  type="button"
+                >
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="17"
