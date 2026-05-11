@@ -1,0 +1,25 @@
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* ── Page background: subtle dot grid ─────────────────────────────────────── */
+/* SVG data URL lets the browser cache this as a GPU image texture.           */
+/* radial-gradient() on body was recalculated by the CPU on every scroll frame */
+body {
+  background-color: #f1f5f9;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22'%3E%3Ccircle cx='1' cy='1' r='1' fill='%23cbd5e1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+}
+
+/* ── Animations ─────────────────────────────────────────────────────────────── */
+@keyframes pop {
+    0%   { transform: scale(0.5) translateY(20px); opacity: 0; }
+    100% { transform: scale(1)   translateY(0px);  opacity: 1; }
+}
+.animate-pop { animation: pop 0.25s ease-out forwards; }
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.animate-pulse-dot { animation: pulse-dot 1.8s ease-in-out infinite; }
