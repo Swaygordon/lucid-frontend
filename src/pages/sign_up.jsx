@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { PROFILE_SETUP_KEY } from './provider_profile_setup';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useNotification } from '../contexts/NotificationContext';
@@ -63,11 +64,21 @@ const Signup = () => {
       return;
     }
 
-    showNotification(
-      'Account created! Please check your email to confirm your address.',
-      'success'
-    );
-    setTimeout(() => navigate('/lucid/signin'), 3000);
+    if (formData.role === 'service_provider') {
+      // Mark profile as pending so the sitewide banner and sign-in redirect know to prompt setup
+      localStorage.setItem(PROFILE_SETUP_KEY, 'pending');
+      showNotification(
+        'Account created! Please confirm your email, then complete your profile setup.',
+        'success'
+      );
+      setTimeout(() => navigate('/lucid/account/profile/setup'), 3000);
+    } else {
+      showNotification(
+        'Account created! Please check your email to confirm your address.',
+        'success'
+      );
+      setTimeout(() => navigate('/lucid/signin'), 3000);
+    }
   };
 
   const handleGoogleSignup = async () => {

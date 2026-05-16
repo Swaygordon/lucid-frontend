@@ -50,7 +50,7 @@ const ProfileCardComponent = ({
 
   return (
     <motion.div 
-      className="relative bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 p-3 sm:p-4 md:p-6 w-full"
+      className="relative flex flex-col bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 p-3 sm:p-4 md:p-6 w-full h-full"
       whileHover={{ y: -2 }}
     >
 
@@ -96,7 +96,7 @@ const ProfileCardComponent = ({
         <span className="font-semibold">{rating.toFixed(1)}</span>
       </div>
 
-      <Link to="/lucid/providers/me">
+      <Link to="/lucid/providers/me" className="mt-auto">
         <motion.button
           onClick={onViewProfile}
           className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-hover transition"

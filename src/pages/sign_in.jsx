@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { PROFILE_SETUP_KEY } from './provider_profile_setup';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useNotification } from '../contexts/NotificationContext';
@@ -31,7 +32,7 @@ const Signin = () => {
             showNotification('Email confirmation failed. Please try signing in.', 'error');
           } else {
             showNotification('Email confirmed! You are now signed in.', 'success');
-            navigate('/lucid/');
+            navigate('/lucid/', { replace: true });
           }
         });
     }
@@ -92,9 +93,11 @@ const Signin = () => {
     showNotification(`Welcome back${profile?.first_name ? `, ${profile.first_name}` : ''}!`, 'success');
 
     if (profile?.role === 'service_provider') {
-      navigate('/lucid/dashboard');
+      // Send provider to complete setup if they haven't done it yet
+      const setupDone = localStorage.getItem(PROFILE_SETUP_KEY) === 'true';
+      navigate(setupDone ? '/lucid/account/profile' : '/lucid/account/profile/setup', { replace: true });
     } else {
-      navigate('/lucid/');
+      navigate('/lucid/', { replace: true });
     }
 
     setLoading(false);

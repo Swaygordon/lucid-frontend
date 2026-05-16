@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
 import {
-  ChevronDown, ChevronRight, Hammer, BriefcaseBusiness,
-  ArrowLeft, MapPin, LogOut, MessageCircle, Bell, LayoutDashboard, Info, LogIn,
+  ChevronDown, Hammer, BriefcaseBusiness,
+  LogOut, MessageCircle, Bell, LayoutDashboard, Info, LogIn,
 } from "lucide-react";
 import { Button } from './ui/Button.jsx';
 import { Avatar } from './ui/Avatar.jsx';
@@ -30,7 +30,6 @@ const NotificationBadge = ({ count = 0, className = "" }) => {
 
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const [showAreaSubmenu, setShowAreaSubmenu] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
@@ -99,11 +98,11 @@ function Navbar() {
     await supabase.auth.signOut();
     showNotification('Logged out successfully', 'success');
     handleLinkClick();
-    navigate('/lucid/');
+    navigate('/lucid/', { replace: true });
   };
 
-  const toggleMenu = () => { setIsOpen(!isOpen); setShowAreaSubmenu(false); };
-  const handleLinkClick = () => { setIsOpen(false); setShowAreaSubmenu(false); };
+  const toggleMenu = () => { setIsOpen(!isOpen); };
+  const handleLinkClick = () => { setIsOpen(false); };
 
   const getUserDisplayName = () => {
     if (userProfile?.first_name) return userProfile.first_name;
@@ -118,11 +117,6 @@ function Navbar() {
   const getDashboardPath = () => '/lucid/dashboard';
 
   const totalNotifications = notificationCount + messageCount;
-
-  const locations = [
-    "Spintex", "Osu", "North-Ridge", "Madina",
-    "Labadi", "Achimota", "Circle", "Tema"
-  ];
 
   const navLinks = [
     { to: "/lucid/become-provider", label: "Join as a worker", icon: BriefcaseBusiness },
@@ -158,34 +152,6 @@ function Navbar() {
         {/* Desktop Navigation */}
         <div className="navbar-end mr-4">
           <div className="hidden lg:flex items-center gap-2">
-            {/* Area Dropdown */}
-            <div className="dropdown dropdown-bottom">
-              <div
-                tabIndex={0}
-                role="button"
-                className="flex items-center gap-1 px-4 py-2 text-gray-700 hover:text-secondary transition-colors cursor-pointer rounded-lg hover:bg-secondary-50"
-              >
-                <MapPin className="w-4 h-4" />
-                <span className="font-medium">Area</span>
-                <ChevronDown className="w-4 h-4" />
-              </div>
-              <ul
-                tabIndex={0}
-                className="dropdown-content menu bg-white rounded-lg z-50 w-52 p-2 shadow-lg border border-gray-200 max-h-64 overflow-y-auto"
-              >
-                {locations.map((location, index) => (
-                  <li key={index}>
-                    <Link
-                      to="/lucid/services"
-                      className="text-gray-700 hover:bg-secondary-50 hover:text-secondary rounded-md transition-colors"
-                    >
-                      {location}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
             {/* Navigation Links */}
             {navLinks.map((link, index) => (
               <Link
@@ -281,18 +247,18 @@ function Navbar() {
 
       {/* Mobile Drawer — always mounted, toggled via CSS translate (GPU compositor thread) */}
       <div
-        className={`fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50 transition-transform duration-200 ease-out ${
+        className={`fixed top-0 left-0 h-dvh w-72 bg-white shadow-2xl z-50 transition-transform duration-200 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="p-6 h-full flex flex-col">
+        <div className="p-6 h-dvh flex flex-col">
           {/* Logo */}
           <div className="mb-6">
             <img src={Logo} alt="Lucid Logo" className="h-5 w-28 object-cover m-1" />
           </div>
 
           {/* User Profile (Mobile) */}
-          {isLoggedIn && !showAreaSubmenu && (
+          {isLoggedIn && (
             <div className="mb-6 pb-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
                 {userProfile?.avatar_url ? (
@@ -318,99 +284,58 @@ function Navbar() {
 
           {/* Menu Items */}
           <nav className="space-y-1 flex-1 overflow-y-auto">
-            {!showAreaSubmenu ? (
-              <>
-                <button
-                  onClick={() => setShowAreaSubmenu(true)}
-                  className="w-full flex items-center justify-between text-gray-700 hover:text-secondary hover:bg-secondary-50 p-3 rounded-lg transition-colors"
+            {navLinks.map((link, index) => {
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={index}
+                  to={link.to}
+                  onClick={handleLinkClick}
+                  className="flex items-center space-x-3 text-gray-700 hover:text-secondary hover:bg-secondary-50 p-3 rounded-lg transition-colors"
                 >
-                  <div className="flex items-center space-x-3">
-                    <MapPin className="w-5 h-5" />
-                    <span className="font-medium">Area</span>
-                  </div>
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+                  <Icon className="w-5 h-5" />
+                  <span className="font-medium">{link.label}</span>
+                </Link>
+              );
+            })}
 
-                {navLinks.map((link, index) => {
-                  const Icon = link.icon;
-                  return (
-                    <Link
-                      key={index}
-                      to={link.to}
-                      onClick={handleLinkClick}
-                      className="flex items-center space-x-3 text-gray-700 hover:text-secondary hover:bg-secondary-50 p-3 rounded-lg transition-colors"
-                    >
+            {isLoggedIn && mobileUserLinks.map((link, index) => {
+              const Icon = link.icon;
+              return (
+                <Link
+                  key={index}
+                  to={link.to}
+                  onClick={handleLinkClick}
+                  className="flex items-center justify-between text-gray-700 hover:text-secondary hover:bg-secondary-50 p-3 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center space-x-3 relative">
+                    <div className="relative">
                       <Icon className="w-5 h-5" />
-                      <span className="font-medium">{link.label}</span>
-                    </Link>
-                  );
-                })}
-
-                {isLoggedIn && mobileUserLinks.map((link, index) => {
-                  const Icon = link.icon;
-                  return (
-                    <Link
-                      key={index}
-                      to={link.to}
-                      onClick={handleLinkClick}
-                      className="flex items-center justify-between text-gray-700 hover:text-secondary hover:bg-secondary-50 p-3 rounded-lg transition-colors"
-                    >
-                      <div className="flex items-center space-x-3 relative">
-                        <div className="relative">
-                          <Icon className="w-5 h-5" />
-                          <NotificationBadge count={link.badge} className="-top-2 rounded-full left-2 w-3 h-3" />
-                        </div>
-                        <span className="font-medium">{link.label}</span>
-                      </div>
-                    </Link>
-                  );
-                })}
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setShowAreaSubmenu(false)}
-                  className="w-full flex items-center space-x-3 text-gray-700 hover:text-secondary hover:bg-secondary-50 p-3 rounded-lg transition-colors mb-4"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                  <span className="font-medium">Back</span>
-                </button>
-                <div className="px-3 py-2 mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">Select Area</h3>
-                </div>
-                {locations.map((location, index) => (
-                  <Link
-                    key={index}
-                    to="/lucid/services"
-                    onClick={handleLinkClick}
-                    className="flex items-center space-x-3 text-gray-700 hover:text-secondary hover:bg-secondary-50 p-3 rounded-lg transition-colors"
-                  >
-                    <MapPin className="w-5 h-5 text-primary" />
-                    <span className="font-medium">{location}</span>
-                  </Link>
-                ))}
-              </>
-            )}
+                      <NotificationBadge count={link.badge} className="-top-2 rounded-full left-2 w-3 h-3" />
+                    </div>
+                    <span className="font-medium">{link.label}</span>
+                  </div>
+                </Link>
+              );
+            })}
           </nav>
 
           {/* Auth Button */}
-          {!showAreaSubmenu && (
-            <div className="mt-4 pt-4 border-t border-gray-200">
-              {isLoggedIn ? (
-                <Button variant="danger" fullWidth onClick={handleLogout}>
-                  <LogOut className="w-4 h-4" />
-                  Logout
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            {isLoggedIn ? (
+              <Button variant="danger" fullWidth onClick={handleLogout}>
+                <LogOut className="w-4 h-4" />
+                Logout
+              </Button>
+            ) : (
+              <Link to="/lucid/signin" onClick={handleLinkClick}>
+                <Button variant="secondary" fullWidth>
+                  <LogIn className="w-4 h-4" />
+                  Sign In
                 </Button>
-              ) : (
-                <Link to="/lucid/signin" onClick={handleLinkClick}>
-                  <Button variant="secondary" fullWidth>
-                    <LogIn className="w-4 h-4" />
-                    Sign In
-                  </Button>
-                </Link>
-              )}
-            </div>
-          )}
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     </>
