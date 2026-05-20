@@ -1,6 +1,7 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
+import { supabase } from '../lib/supabaseClient';
 import {
   CheckCircle, Users, User, Clock, SquarePlus, Minus, Plus,
   ChevronDown, ChevronUp, MapPin, Award, Languages, Camera, Trash2, ImageIcon, X
@@ -11,14 +12,11 @@ import { motion } from 'framer-motion';
 import profileImg from '../assets/profile.svg';
 import { Button, Input } from '../components/ui';
 
-// ─── Profile setup completion helper ─────────────────────────────────────────
-// Key shared with ProfileSetupBanner and sign_in so they all read the same flag.
 export const PROFILE_SETUP_KEY = 'lucid_provider_profile_complete';
-export const markProfileComplete = () =>
-  localStorage.setItem(PROFILE_SETUP_KEY, 'true');
+export const markProfileComplete = () => localStorage.setItem(PROFILE_SETUP_KEY, 'true');
 
 // ============================================
-// CUSTOM HOOK — same form logic as edit.jsx
+// CUSTOM HOOK
 // ============================================
 const useProfileForm = () => {
   const [profile, setProfile] = useState({
@@ -40,13 +38,13 @@ const useProfileForm = () => {
     weekdaysTime: { start: '09:00', end: '17:00' },
     weekendTime: { start: '10:00', end: '16:00' },
     customDays: {
-      sunday:    { selected: false, start: '09:00', end: '17:00' },
-      monday:    { selected: false, start: '09:00', end: '17:00' },
-      tuesday:   { selected: false, start: '09:00', end: '17:00' },
+      sunday: { selected: false, start: '09:00', end: '17:00' },
+      monday: { selected: false, start: '09:00', end: '17:00' },
+      tuesday: { selected: false, start: '09:00', end: '17:00' },
       wednesday: { selected: false, start: '09:00', end: '17:00' },
-      thursday:  { selected: false, start: '09:00', end: '17:00' },
-      friday:    { selected: false, start: '09:00', end: '17:00' },
-      saturday:  { selected: false, start: '09:00', end: '17:00' },
+      thursday: { selected: false, start: '09:00', end: '17:00' },
+      friday: { selected: false, start: '09:00', end: '17:00' },
+      saturday: { selected: false, start: '09:00', end: '17:00' },
     },
   });
 
@@ -116,7 +114,7 @@ const useProfileForm = () => {
 };
 
 // ============================================
-// SHARED SUB-COMPONENTS (same as edit.jsx)
+// SUB-COMPONENTS
 // ============================================
 
 const InputField = memo(({ label, ...props }) => (
@@ -361,47 +359,164 @@ const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustom
 // ============================================
 const ProviderProfileSetup = () => {
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const { showNotification } = useNotification();
   const formMethods = useProfileForm();
   const navigate = useNavigate();
 
-  const [avatarUrl, setAvatarUrl]     = useState(null);
-  const [heroUrl, setHeroUrl]         = useState(null);
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [heroUrl, setHeroUrl] = useState(null);
   const [uploadTarget, setUploadTarget] = useState(null);
 
-  const openUpload  = (target) => setUploadTarget(target);
-  const closeUpload = () => setUploadTarget(null);
+  useEffect(() => {
+    loadProviderProfile();
+  }, []);
 
-  const handleUpload = () => {
-    if (uploadTarget === 'avatar') setAvatarUrl(profileImg);
-    else if (uploadTarget === 'hero')
-      setHeroUrl('https://images.unsplash.com/photo-1504148455328-c376907d081c?w=1200&auto=format');
-    closeUpload();
-    showNotification('Image updated', 'success');
+  const loadProviderProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('provider_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (data) {
+        formMethods.handleInputChange('firstName', data.first_name || '');
+        formMethods.handleInputChange('lastName', data.last_name || '');
+        formMethods.handleInputChange('otherName', data.other_name || '');
+        formMethods.handleInputChange('occupation', data.occupation || '');
+        formMethods.handleInputChange('location', data.location || '');
+        formMethods.handleInputChange('description', data.description || '');
+        formMethods.handleInputChange('categories', data.categories || []);
+        formMethods.handleInputChange('skills', data.skills || []);
+        formMethods.handleInputChange('certifications', data.certifications || []);
+        formMethods.handleInputChange('languages', data.languages || []);
+        formMethods.handleInputChange('workExperience', data.work_experience || 0);
+        formMethods.handleInputChange('employees', data.employees || 1);
+        formMethods.handleInputChange('paymentMethods', data.payment_methods || []);
+        formMethods.handleInputChange('selectedDays', data.selected_days || { weekdays: false, weekend: false, custom: false });
+        formMethods.handleInputChange('weekdaysTime', data.weekdays_time || { start: '09:00', end: '17:00' });
+        formMethods.handleInputChange('weekendTime', data.weekend_time || { start: '10:00', end: '16:00' });
+        formMethods.handleInputChange('customDays', data.custom_days || {});
+        
+        setAvatarUrl(data.avatar_url);
+        setHeroUrl(data.hero_url);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    } finally {
+      setLoadingData(false);
+    }
   };
 
-  // Skip — account exists but profile not yet complete. Banner will remind them.
+  const uploadImage = async (file, path) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `${path}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const profileData = {
+        user_id: user.id,
+        first_name: formMethods.profile.firstName,
+        last_name: formMethods.profile.lastName,
+        other_name: formMethods.profile.otherName,
+        occupation: formMethods.profile.occupation,
+        location: formMethods.profile.location,
+        description: formMethods.profile.description,
+        categories: formMethods.profile.categories,
+        skills: formMethods.profile.skills,
+        certifications: formMethods.profile.certifications,
+        languages: formMethods.profile.languages,
+        work_experience: formMethods.profile.workExperience,
+        employees: formMethods.profile.employees,
+        payment_methods: formMethods.profile.paymentMethods,
+        selected_days: formMethods.profile.selectedDays,
+        weekdays_time: formMethods.profile.weekdaysTime,
+        weekend_time: formMethods.profile.weekendTime,
+        custom_days: formMethods.profile.customDays,
+        avatar_url: avatarUrl,
+        hero_url: heroUrl,
+        is_profile_complete: true,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('provider_profiles')
+        .upsert(profileData, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
+      markProfileComplete();
+      showNotification('Profile saved successfully!', 'success');
+      navigate('/lucid/account/profile', { replace: true });
+    } catch (error) {
+      console.error('Save error:', error);
+      showNotification(error.message || 'Failed to save profile', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleSkip = () => {
     showNotification('You can complete your profile anytime from your account.', 'info');
     setTimeout(() => navigate('/lucid/', { replace: true }), 800);
   };
 
-  // Save — marks setup complete and clears the sitewide banner.
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+  const openUpload = (target) => setUploadTarget(target);
+  const closeUpload = () => setUploadTarget(null);
+
+  const handleUploadComplete = async (file) => {
     try {
-      // [API] PUT /users/me/profile — replace with real Supabase upsert
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      markProfileComplete();
-      showNotification('Profile saved! Welcome to Lucid.', 'success');
-      navigate('/lucid/account/profile', { replace: true });
-    } catch {
-      showNotification('Failed to save profile. Please try again.', 'error');
-    } finally {
-      setLoading(false);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Not authenticated');
+
+      const url = await uploadImage(file, `providers/${user.id}`);
+      
+      if (uploadTarget === 'avatar') {
+        setAvatarUrl(url);
+      } else if (uploadTarget === 'hero') {
+        setHeroUrl(url);
+      }
+      
+      showNotification('Image uploaded successfully!', 'success');
+    } catch (error) {
+      showNotification('Failed to upload image', 'error');
     }
+    closeUpload();
   };
+
+  if (loadingData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen pb-32">
@@ -410,22 +525,7 @@ const ProviderProfileSetup = () => {
         .animate-fade-in { animation: fade-in 0.5s ease-out; }
       `}</style>
 
-      {/* ── Onboarding Header ── */}
-      <div className="bg-white border-b border-gray-200 px-4 py-5 text-center">
-        <p className="text-sm text-blue-600 font-semibold tracking-wide uppercase mb-1">Step 2 of 2</p>
-        <h1 className="text-2xl font-bold text-gray-900">Set Up Your Provider Profile</h1>
-        <p className="text-gray-500 text-sm mt-1 max-w-md mx-auto">
-          Help clients find and trust you. You can always update this later.
-        </p>
-        <button
-          onClick={handleSkip}
-          className="mt-3 text-sm text-gray-400 hover:text-gray-600 underline underline-offset-2 transition-colors"
-        >
-          Skip for now
-        </button>
-      </div>
-
-      {/* ── Hero Background ── */}
+      {/* Hero Background */}
       <div className="relative w-full h-44 md:h-56 overflow-hidden">
         {heroUrl ? (
           <img src={heroUrl} alt="Profile banner" className="w-full h-full object-cover" />
@@ -450,7 +550,7 @@ const ProviderProfileSetup = () => {
         </div>
       </div>
 
-      {/* ── Profile Picture ── */}
+      {/* Profile Picture */}
       <div className="flex justify-center -mt-14 mb-6 relative z-10">
         <div className="flex flex-col items-center gap-3">
           <div className="relative group">
@@ -489,15 +589,15 @@ const ProviderProfileSetup = () => {
 
       <div className="max-w-7xl mx-auto px-5">
         <div className="flex flex-col gap-6">
-
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <InputField label="First Name" value={formMethods.profile.firstName} onChange={(e) => formMethods.handleInputChange('firstName', e.target.value)} placeholder="First name" />
-            <InputField label="Last Name"  value={formMethods.profile.lastName}  onChange={(e) => formMethods.handleInputChange('lastName',  e.target.value)} placeholder="Last name" />
+            <InputField label="First Name" value={formMethods.profile.firstName} onChange={(e) => formMethods.handleInputChange('firstName', e.target.value)} placeholder="First name" required />
+            <InputField label="Last Name" value={formMethods.profile.lastName} onChange={(e) => formMethods.handleInputChange('lastName', e.target.value)} placeholder="Last name" required />
           </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <InputField label="Other Name"  value={formMethods.profile.otherName}  onChange={(e) => formMethods.handleInputChange('otherName',  e.target.value)} placeholder="Other/Middle name" />
-            <InputField label="Occupation"  value={formMethods.profile.occupation} onChange={(e) => formMethods.handleInputChange('occupation', e.target.value)} placeholder="e.g., Electrician" />
+            <InputField label="Other Name" value={formMethods.profile.otherName} onChange={(e) => formMethods.handleInputChange('otherName', e.target.value)} placeholder="Other/Middle name" />
+            <InputField label="Occupation" value={formMethods.profile.occupation} onChange={(e) => formMethods.handleInputChange('occupation', e.target.value)} placeholder="e.g., Electrician" />
           </div>
 
           <div className="animate-fade-in">
@@ -508,25 +608,25 @@ const ProviderProfileSetup = () => {
             <InputField value={formMethods.profile.location} onChange={(e) => formMethods.handleInputChange('location', e.target.value)} placeholder="e.g., Achimota, Accra" />
           </div>
 
+          <div>
+            <label className="block mb-2 text-lg font-bold text-gray-900">Description</label>
+            <textarea
+              placeholder="Write a brief description about yourself..."
+              value={formMethods.profile.description}
+              onChange={(e) => formMethods.handleInputChange('description', e.target.value)}
+              className="w-full px-3 py-3 border-2 border-gray-300 rounded-md text-sm resize-y min-h-[120px] bg-white text-gray-900 focus:outline-none focus:border-blue-600"
+              rows="4"
+            />
+          </div>
+
           <CategoryChipSelector
             selectedCategories={formMethods.profile.categories}
             onChange={(cats) => formMethods.handleInputChange('categories', cats)}
           />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-5">
-            {/* LEFT */}
+            {/* LEFT COLUMN */}
             <div className="space-y-8">
-              <div>
-                <label className="block mb-2 text-lg font-bold text-gray-900">Description</label>
-                <textarea
-                  placeholder="Write a brief description about yourself..."
-                  value={formMethods.profile.description}
-                  onChange={(e) => formMethods.handleInputChange('description', e.target.value)}
-                  className="w-full px-3 py-3 border-2 border-gray-300 rounded-md text-sm resize-y min-h-[120px] bg-white text-gray-900 focus:outline-none focus:border-blue-600"
-                  rows="4"
-                />
-              </div>
-
               <div>
                 <h3 className="text-gray-900 mb-4 text-lg font-bold">Overview</h3>
                 <div className="mb-5 pb-4 border-b border-gray-200">
@@ -556,7 +656,7 @@ const ProviderProfileSetup = () => {
               </div>
             </div>
 
-            {/* RIGHT */}
+            {/* RIGHT COLUMN */}
             <div className="space-y-8">
               <ArrayInputSection title="Skills & Tags" items={formMethods.profile.skills} onAdd={(item) => formMethods.handleArrayAdd('skills', item)} onRemove={(index) => formMethods.handleArrayRemove('skills', index)} placeholder="Add a skill (e.g., Plumbing)" />
               <ArrayInputSection title="Certifications" items={formMethods.profile.certifications} onAdd={(item) => formMethods.handleArrayAdd('certifications', item)} onRemove={(index) => formMethods.handleArrayRemove('certifications', index)} icon={Award} placeholder="Add a certification" />
@@ -575,7 +675,6 @@ const ProviderProfileSetup = () => {
             </div>
           </div>
 
-          {/* Working Hours */}
           <WorkingHoursSection
             profile={formMethods.profile}
             onDaySelect={formMethods.handleDaySelection}
@@ -584,7 +683,7 @@ const ProviderProfileSetup = () => {
             onToggleCustom={formMethods.toggleCustomDays}
           />
 
-          {/* Actions */}
+          {/* Action Buttons */}
           <div className="flex gap-4 justify-center mt-8 pt-8 border-t border-gray-200">
             <Button fullWidth variant="danger" size="md" onClick={handleSkip}>Skip for now</Button>
             <Button fullWidth size="md" onClick={handleSave} loading={loading}>Complete Profile Setup</Button>
@@ -595,12 +694,8 @@ const ProviderProfileSetup = () => {
       <ImageUploadModal
         isOpen={uploadTarget !== null}
         onClose={closeUpload}
-        onUpload={handleUpload}
-        title={
-          uploadTarget === 'avatar'    ? 'Add Profile Picture' :
-          uploadTarget === 'hero'      ? 'Add Banner Image' :
-          'Upload Portfolio Image'
-        }
+        onUpload={handleUploadComplete}
+        title={uploadTarget === 'avatar' ? 'Add Profile Picture' : 'Add Banner Image'}
       />
     </div>
   );

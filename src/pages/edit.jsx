@@ -1,7 +1,7 @@
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, memo, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
-import { useNavigateBack } from "../hooks/useNavigateBack.js";
 import { useNotification } from '../contexts/NotificationContext';
+import { supabase } from '../lib/supabaseClient';
 import {
   CheckCircle, Users, User, Clock, SquarePlus, Minus, Plus,
   ChevronDown, ChevronUp, MapPin, Award, Languages, Camera, Trash2, ImageIcon, X
@@ -9,31 +9,27 @@ import {
 import { ALL_CATEGORIES } from '../data/categories';
 import { ImageUploadModal } from "../components/shared";
 import { motion } from "framer-motion";
-import profileImg from "../assets/profile.svg";
 import { Button, Input } from '../components/ui';
-
-
 
 // ============================================
 // CUSTOM HOOKS
 // ============================================
 const useProfileForm = () => {
-  // [MOCK] Pre-fill from GET /users/:id/profile — replace useState defaults with fetched data on mount
   const [profile, setProfile] = useState({
-    firstName: 'Cyprian',
-    lastName: 'Amponsah',
+    firstName: '',
+    lastName: '',
     otherName: '',
-    occupation: 'Electrician',
-    location: 'Achimota, Accra',
-    description: 'Professional electrician with over 8 years of experience installing and maintaining electrical systems. I specialise in residential and commercial wiring, troubleshooting, and safety compliance.',
-    categories: ['Home Repairs & Maintenance', 'Skilled Trades'],
-    skills: ['Electrical Installation', 'Circuit Troubleshooting', 'Safety Compliance'],
-    certifications: ['Certified Electrician', 'OSHA Safety Trainer'],
-    languages: ['English', 'Twi', 'Ga'],
-    workExperience: 8,
-    paymentMethods: ['mobile', 'bank'],
-    employees: 14,
-    selectedDays: { weekdays: true, weekend: false, custom: false },
+    occupation: '',
+    location: '',
+    description: '',
+    categories: [],
+    skills: [],
+    certifications: [],
+    languages: [],
+    workExperience: 0,
+    paymentMethods: [],
+    employees: 1,
+    selectedDays: { weekdays: false, weekend: false, custom: false },
     showCustomDays: false,
     weekdaysTime: { start: '09:00', end: '17:00' },
     weekendTime: { start: '10:00', end: '16:00' },
@@ -121,6 +117,29 @@ const useProfileForm = () => {
     }));
   }, []);
 
+  const setProfileData = useCallback((data) => {
+    setProfile({
+      firstName: data.first_name || '',
+      lastName: data.last_name || '',
+      otherName: data.other_name || '',
+      occupation: data.occupation || '',
+      location: data.location || '',
+      description: data.description || '',
+      categories: data.categories || [],
+      skills: data.skills || [],
+      certifications: data.certifications || [],
+      languages: data.languages || [],
+      workExperience: data.work_experience || 0,
+      paymentMethods: data.payment_methods || [],
+      employees: data.employees || 1,
+      selectedDays: data.selected_days || { weekdays: false, weekend: false, custom: false },
+      weekdaysTime: data.weekdays_time || { start: '09:00', end: '17:00' },
+      weekendTime: data.weekend_time || { start: '10:00', end: '16:00' },
+      customDays: data.custom_days || {},
+      showCustomDays: false
+    });
+  }, []);
+
   return {
     profile,
     handleInputChange,
@@ -131,51 +150,18 @@ const useProfileForm = () => {
     handleDaySelection,
     toggleCustomDays,
     handlePaymentToggle,
+    setProfileData
   };
 };
 
-// Profile Avatar with Edit
-const ProfileAvatar = memo(({ hasImage }) => (
-  <motion.div 
-    className="relative bottom-2 transform -translate-x-1/2 group"
-    initial={{ scale: 0, rotate: -180 }}
-    animate={{ scale: 1, rotate: 0 }}
-    transition={{ duration: 0.5, type: "spring" }}
-  >
-    <div className="w-24 h-24 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full border-4 border-blue-600 bg-gray-200 flex items-center justify-center overflow-hidden relative">
-      {hasImage ? (
-        <img
-          src={profileImg}
-          alt="profile picture"
-          className="w-full h-full object-cover"
-        />
-      ) : (
-        <User size={48} className="text-gray-400" />
-      )}
-      <motion.div 
-        className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center rounded-full cursor-pointer"
-        whileHover={{ backgroundColor: "rgba(0, 0, 0, 0.5)" }}
-      >
-        
-          <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-      </motion.div>
-    </div>
-  </motion.div>
-));
-
-
 // ============================================
-// REUSABLE COMPONENTS
+// REUSABLE COMPONENTS (same as before)
 // ============================================
 
 const InputField = memo(({ label, ...props }) => (
   <div className="flex flex-col">
     <label className="mb-2 font-medium text-gray-700">{label}</label>
-    <Input
-      type="text"
-      {...props}
-    />
+    <Input type="text" {...props} />
   </div>
 ));
 
@@ -243,7 +229,6 @@ const TimeInput = memo(({ label, value, onChange }) => (
   </div>
 ));
 
-// NEW: Array Input Component (for Skills, Certifications, Languages)
 const ArrayInputSection = memo(({ title, items, onAdd, onRemove, icon: Icon, placeholder }) => {
   const [newItem, setNewItem] = useState('');
 
@@ -297,9 +282,6 @@ const ArrayInputSection = memo(({ title, items, onAdd, onRemove, icon: Icon, pla
   );
 });
 
-// ============================================
-// CATEGORY CHIP SELECTOR
-// ============================================
 const CategoryChipSelector = memo(({ selectedCategories, onChange }) => {
   const toggle = (name) => {
     const next = selectedCategories.includes(name)
@@ -338,9 +320,6 @@ const CategoryChipSelector = memo(({ selectedCategories, onChange }) => {
   );
 });
 
-// ============================================
-// WORKING HOURS SECTION (Same as before)
-// ============================================
 const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustomDayChange, onToggleCustom }) => {
   const daysOfWeek = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayLabels = {
@@ -486,58 +465,151 @@ const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustom
 });
 
 // ============================================
-// MAIN COMPONENT
+// MAIN COMPONENT - UPDATED WITH SUPABASE
 // ============================================
 const EditProfile = () => {
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(true);
   const { showNotification } = useNotification();
   const formMethods = useProfileForm();
   const navigate = useNavigate();
 
-  // Image simulation state
-  const [avatarUrl, setAvatarUrl] = useState(profileImg); // mock: has picture set
-  const [heroUrl, setHeroUrl] = useState(null);           // null = default gradient
-  const [uploadTarget, setUploadTarget] = useState(null); // 'avatar' | 'hero' | 'portfolio'
+  const [avatarUrl, setAvatarUrl] = useState(null);
+  const [heroUrl, setHeroUrl] = useState(null);
+  const [uploadTarget, setUploadTarget] = useState(null);
 
-  const openUpload = (target) => setUploadTarget(target);
-  const closeUpload = () => setUploadTarget(null);
+  // Load existing provider profile
+  useEffect(() => {
+    loadProviderProfile();
+  }, []);
 
-  // Simulate an upload — in production replace with real Storage URL
-  const handleUpload = () => {
-    if (uploadTarget === 'avatar') {
-      setAvatarUrl(profileImg); // already set; real impl would use returned URL
-    } else if (uploadTarget === 'hero') {
-      // Simulate a banner being set with a placeholder image
-      setHeroUrl('https://images.unsplash.com/photo-1504148455328-c376907d081c?w=1200&auto=format');
+  const loadProviderProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        navigate('/lucid/signin');
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('provider_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      if (data) {
+        formMethods.setProfileData(data);
+        setAvatarUrl(data.avatar_url);
+        setHeroUrl(data.hero_url);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      showNotification('Failed to load profile', 'error');
+    } finally {
+      setLoadingData(false);
     }
-    closeUpload();
-    showNotification('Image updated', 'success');
   };
 
-  const handleCancel = useCallback(() => {
-    showNotification('Changes discarded', 'info');
-    setTimeout(() => {
-      if (window.history.length > 2) {
-        navigate(-1);
-      } else {
-        navigate('/lucid/account/profile');
-      }
-    }, 600);
-  }, [showNotification, navigate]);
+  const uploadImage = async (file, type) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${fileExt}`;
+    const filePath = `providers/${type}/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const profileData = {
+        user_id: user.id,
+        first_name: formMethods.profile.firstName,
+        last_name: formMethods.profile.lastName,
+        other_name: formMethods.profile.otherName,
+        occupation: formMethods.profile.occupation,
+        location: formMethods.profile.location,
+        description: formMethods.profile.description,
+        categories: formMethods.profile.categories,
+        skills: formMethods.profile.skills,
+        certifications: formMethods.profile.certifications,
+        languages: formMethods.profile.languages,
+        work_experience: formMethods.profile.workExperience,
+        employees: formMethods.profile.employees,
+        payment_methods: formMethods.profile.paymentMethods,
+        selected_days: formMethods.profile.selectedDays,
+        weekdays_time: formMethods.profile.weekdaysTime,
+        weekend_time: formMethods.profile.weekendTime,
+        custom_days: formMethods.profile.customDays,
+        avatar_url: avatarUrl,
+        hero_url: heroUrl,
+        total_completed_jobs: formMethods.profile.totalCompletedJobs || 0,
+        rating_average: formMethods.profile.ratingAverage || 0,
+        is_profile_complete: true,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase
+        .from('provider_profiles')
+        .upsert(profileData, { onConflict: 'user_id' });
+
+      if (error) throw error;
+
       showNotification('Profile saved successfully!', 'success');
-      navigate('/lucid/account/profile', { replace: true });
-    } catch {
-      showNotification('Failed to save profile', 'error');
+      navigate('/lucid/account/profile');
+    } catch (error) {
+      console.error('Save error:', error);
+      showNotification(error.message || 'Failed to save profile', 'error');
     } finally {
       setLoading(false);
     }
   };
+
+  const handleCancel = () => {
+    navigate('/lucid/account/profile');
+  };
+
+  const openUpload = (target) => setUploadTarget(target);
+  const closeUpload = () => setUploadTarget(null);
+
+  const handleUploadComplete = async (file) => {
+    try {
+      const url = await uploadImage(file, uploadTarget);
+      if (uploadTarget === 'avatar') {
+        setAvatarUrl(url);
+      } else if (uploadTarget === 'hero') {
+        setHeroUrl(url);
+      }
+      showNotification('Image uploaded successfully!', 'success');
+    } catch (error) {
+      showNotification('Failed to upload image', 'error');
+    }
+    closeUpload();
+  };
+
+  if (loadingData) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-gray-50 min-h-screen pb-32">
@@ -547,14 +619,13 @@ const EditProfile = () => {
         .hover\\:scale-102:hover { transform: scale(1.02); }
       `}</style>
 
-      {/* ── Hero Background Section ── */}
+      {/* Hero Background Section */}
       <div className="relative w-full h-44 md:h-56 overflow-hidden">
         {heroUrl ? (
           <img src={heroUrl} alt="Profile banner" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-blue-600 to-blue-400" />
         )}
-        {/* Overlay controls */}
         <div className="absolute inset-0 bg-black/30 flex items-center justify-center gap-3">
           <button
             onClick={() => openUpload('hero')}
@@ -575,7 +646,7 @@ const EditProfile = () => {
         </div>
       </div>
 
-      {/* ── Profile Picture ── */}
+      {/* Profile Picture */}
       <div className="flex justify-center -mt-14 mb-6 relative z-10">
         <div className="flex flex-col items-center gap-3">
           <div className="relative group">
@@ -586,7 +657,6 @@ const EditProfile = () => {
                 <User size={48} className="text-gray-400" />
               )}
             </div>
-            {/* Hover overlay */}
             <div
               onClick={() => openUpload('avatar')}
               className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity"
@@ -615,7 +685,6 @@ const EditProfile = () => {
 
       <div className="max-w-7xl mx-auto px-5">
         <div className="flex flex-col gap-6">
-
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <InputField
@@ -664,8 +733,6 @@ const EditProfile = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-5">
             {/* LEFT COLUMN */}
             <div className="space-y-8">
-
-              {/* Description */}
               <div>
                 <label className="block mb-2 text-lg font-bold text-gray-900">Description</label>
                 <textarea
@@ -677,18 +744,8 @@ const EditProfile = () => {
                 />
               </div>
 
-              {/* Overview */}
               <div>
                 <h3 className="text-gray-900 mb-4 text-lg font-bold">Overview</h3>
-
-                <div className="mb-5 pb-4 border-b border-gray-200">
-                  <div className="flex justify-between items-center mb-2 font-medium text-gray-900">
-                    <span>Verification Status</span>
-                    <CheckCircle size={20} className="text-blue-600" />
-                  </div>
-                  <span className="text-gray-600 text-sm">Verified</span>
-                </div>
-
                 <div className="mb-5 pb-4 border-b border-gray-200">
                   <CounterInput
                     label="Number of Employees"
@@ -698,7 +755,6 @@ const EditProfile = () => {
                     min={1}
                   />
                 </div>
-
                 <div className="mb-5">
                   <CounterInput
                     label="Work Experience (years)"
@@ -710,7 +766,6 @@ const EditProfile = () => {
                 </div>
               </div>
 
-              {/* Payment Methods */}
               <div>
                 <h3 className="text-gray-900 mb-1 text-base font-semibold">Payment Methods</h3>
                 <p className="text-gray-500 text-sm mb-4">Select all that apply</p>
@@ -740,7 +795,7 @@ const EditProfile = () => {
                 items={formMethods.profile.skills}
                 onAdd={(item) => formMethods.handleArrayAdd('skills', item)}
                 onRemove={(index) => formMethods.handleArrayRemove('skills', index)}
-                placeholder="Add a skill (e.g., React Development)"
+                placeholder="Add a skill (e.g., Plumbing)"
               />
 
               <ArrayInputSection
@@ -787,7 +842,7 @@ const EditProfile = () => {
           {/* Action Buttons */}
           <div className="flex gap-4 justify-center mt-8 pt-8 border-t border-gray-200">
             <Button fullWidth variant='danger' size="md" onClick={handleCancel}>Cancel</Button>
-            <Button fullWidth size="md" onClick={handleSave} loading={loading}>Save</Button>
+            <Button fullWidth size="md" onClick={handleSave} loading={loading}>Save Changes</Button>
           </div>
         </div>
       </div>
@@ -796,15 +851,14 @@ const EditProfile = () => {
       <ImageUploadModal
         isOpen={uploadTarget !== null}
         onClose={closeUpload}
-        onUpload={handleUpload}
+        onUpload={handleUploadComplete}
         title={
-          uploadTarget === 'avatar'    ? 'Change Profile Picture' :
-          uploadTarget === 'hero'      ? 'Change Banner Image' :
+          uploadTarget === 'avatar' ? 'Change Profile Picture' :
+          uploadTarget === 'hero' ? 'Change Banner Image' :
           'Upload Portfolio Image'
         }
       />
     </div>
-    
   );
 };
 

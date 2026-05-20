@@ -27,12 +27,12 @@ const NotificationBadge = ({ count = 0, className = "" }) => {
   );
 };
 
-
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [userProfile, setUserProfile] = useState(null);
+  const [providerProfile, setProviderProfile] = useState(null);
   const [notificationCount, setNotificationCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const { showNotification } = useNotification();
@@ -45,6 +45,7 @@ function Navbar() {
         setIsLoggedIn(true);
         setUser(session.user);
         fetchUserProfile(session.user.id);
+        fetchProviderProfile(session.user.id);
         fetchNotificationCounts(session.user.id);
       }
     });
@@ -55,11 +56,13 @@ function Navbar() {
         setIsLoggedIn(true);
         setUser(session.user);
         fetchUserProfile(session.user.id);
+        fetchProviderProfile(session.user.id);
         fetchNotificationCounts(session.user.id);
       } else {
         setIsLoggedIn(false);
         setUser(null);
         setUserProfile(null);
+        setProviderProfile(null);
         setNotificationCount(0);
         setMessageCount(0);
       }
@@ -75,6 +78,15 @@ function Navbar() {
       .eq('id', userId)
       .single();
     if (data) setUserProfile(data);
+  };
+
+  const fetchProviderProfile = async (userId) => {
+    const { data } = await supabase
+      .from('provider_profiles')
+      .select('avatar_url, first_name, last_name')
+      .eq('user_id', userId)
+      .single();
+    if (data) setProviderProfile(data);
   };
 
   const fetchNotificationCounts = async (userId) => {
@@ -105,16 +117,34 @@ function Navbar() {
   const handleLinkClick = () => { setIsOpen(false); };
 
   const getUserDisplayName = () => {
+    if (providerProfile?.first_name) return providerProfile.first_name;
     if (userProfile?.first_name) return userProfile.first_name;
     return user?.email?.split('@')[0] || 'User';
   };
 
   const getFullName = () => {
-    if (!userProfile) return 'User';
-    return [userProfile.first_name, userProfile.last_name].filter(Boolean).join(' ') || 'User';
+    if (providerProfile?.first_name || providerProfile?.last_name) {
+      return [providerProfile.first_name, providerProfile.last_name].filter(Boolean).join(' ') || 'User';
+    }
+    if (userProfile?.first_name || userProfile?.last_name) {
+      return [userProfile.first_name, userProfile.last_name].filter(Boolean).join(' ') || 'User';
+    }
+    return 'User';
   };
 
-  const getDashboardPath = () => '/lucid/dashboard';
+  const getAvatarUrl = () => {
+    // Priority: provider_profile avatar > profile avatar > null
+    if (providerProfile?.avatar_url) return providerProfile.avatar_url;
+    if (userProfile?.avatar_url) return userProfile.avatar_url;
+    return null;
+  };
+
+  const getDashboardPath = () => {
+    if (userProfile?.role === 'service_provider') {
+      return '/lucid/account/profile';
+    }
+    return '/lucid/dashboard';
+  };
 
   const totalNotifications = notificationCount + messageCount;
 
@@ -173,9 +203,9 @@ function Navbar() {
                 className="relative flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-2 rounded-lg transition-colors"
               >
                 <NotificationBadge count={totalNotifications} className="top-1 right-20" />
-                {userProfile?.avatar_url ? (
+                {getAvatarUrl() ? (
                   <img
-                    src={userProfile.avatar_url}
+                    src={getAvatarUrl()}
                     alt={getFullName()}
                     className="w-9 h-9 rounded-full object-cover"
                   />
@@ -237,7 +267,7 @@ function Navbar() {
         </div>
       </nav>
 
-      {/* Overlay — always mounted, toggled via opacity + pointer-events (CSS, no JS animation) */}
+      {/* Overlay */}
       <div
         onClick={toggleMenu}
         className={`fixed inset-0 bg-black z-40 transition-opacity duration-200 ${
@@ -245,7 +275,7 @@ function Navbar() {
         }`}
       />
 
-      {/* Mobile Drawer — always mounted, toggled via CSS translate (GPU compositor thread) */}
+      {/* Mobile Drawer */}
       <div
         className={`fixed top-0 left-0 h-dvh w-72 bg-white shadow-2xl z-50 transition-transform duration-200 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -261,8 +291,8 @@ function Navbar() {
           {isLoggedIn && (
             <div className="mb-6 pb-6 border-b border-gray-200">
               <div className="flex items-center space-x-3">
-                {userProfile?.avatar_url ? (
-                  <img src={userProfile.avatar_url} alt={getFullName()} className="w-12 h-12 rounded-full object-cover" />
+                {getAvatarUrl() ? (
+                  <img src={getAvatarUrl()} alt={getFullName()} className="w-12 h-12 rounded-full object-cover" />
                 ) : (
                   <Avatar name={getFullName()} size="lg" />
                 )}
