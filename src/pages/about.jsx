@@ -20,8 +20,8 @@ const vp = { once: true, margin: '-60px' };
 const SectionHeading = ({ label, title, sub }) => (
   <motion.div initial="hidden" whileInView="visible" viewport={vp} variants={fadeUp} className="text-center mb-16">
     {label && <p className="text-blue-600 font-semibold text-sm uppercase tracking-widest mb-3">{label}</p>}
-    <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">{title}</h2>
-    {sub && <p className="text-gray-500 text-lg max-w-2xl mx-auto">{sub}</p>}
+    <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-slate-100 mb-4">{title}</h2>
+    {sub && <p className="text-gray-500 dark:text-slate-400 text-lg max-w-2xl mx-auto">{sub}</p>}
   </motion.div>
 );
 
@@ -112,7 +112,7 @@ const TIMELINE = [
 
 // ── Component ─────────────────────────────────────────────────────────────────
 const About = () => (
-  <div className="min-h-screen overflow-hidden">
+  <div className="min-h-screen overflow-hidden dark:bg-[#0f1117]">
 
     {/* Hero */}
     <section className="relative bg-gradient-to-br from-blue-700 via-blue-800 to-indigo-900 text-white overflow-hidden">
@@ -171,14 +171,14 @@ const About = () => (
       </div>
 
       <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 1440 80" className="w-full h-auto fill-gray-50">
+        <svg viewBox="0 0 1440 80" className="w-full h-auto fill-gray-50 dark:fill-[#0f1117]">
           <path d="M0,40L80,45C160,50,320,60,480,55C640,50,800,30,960,25C1120,20,1280,35,1360,42L1440,48L1440,80L0,80Z" />
         </svg>
       </div>
     </section>
 
     {/* Stats */}
-    <section className="py-20 bg-gray-50">
+    <section className="py-20 bg-gray-50 dark:bg-[#0f1117]">
       <div className="max-w-5xl mx-auto px-4">
         <motion.div className="grid grid-cols-2 md:grid-cols-4 gap-8"
           initial="hidden" whileInView="visible" viewport={vp} variants={stagger}
@@ -187,13 +187,13 @@ const About = () => (
             const Icon = s.icon;
             return (
               <motion.div key={i} variants={scaleIn} whileHover={{ y: -4 }}
-                className="flex flex-col items-center gap-3 bg-white rounded-2xl p-6 shadow-md border border-gray-100"
+                className="flex flex-col items-center gap-3 bg-white dark:bg-[#1a1f2e] rounded-2xl p-6 shadow-md border border-gray-100 dark:border-[#1e293b]"
               >
                 <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md">
                   <Icon className="w-7 h-7 text-white" />
                 </div>
-                <p className="text-4xl font-extrabold text-gray-900">{s.number}</p>
-                <p className="text-gray-500 font-medium text-sm text-center">{s.label}</p>
+                <p className="text-4xl font-extrabold text-gray-900 dark:text-slate-100">{s.number}</p>
+                <p className="text-gray-500 dark:text-slate-400 font-medium text-sm text-center">{s.label}</p>
               </motion.div>
             );
           })}
@@ -202,21 +202,21 @@ const About = () => (
     </section>
 
     {/* Our Story */}
-    <section className="py-24 bg-white">
+    <section className="py-24 bg-white dark:bg-[#1a1f2e]">
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-16 items-center">
           <motion.div initial="hidden" whileInView="visible" viewport={vp} variants={fadeUp} className="space-y-6">
             <p className="text-blue-600 font-semibold text-sm uppercase tracking-widest">Our story</p>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900">Why we built Lucid</h2>
-            <p className="text-gray-600 text-lg leading-relaxed">
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 dark:text-slate-100">Why we built Lucid</h2>
+            <p className="text-gray-600 dark:text-slate-400 text-lg leading-relaxed">
               Finding a reliable plumber, electrician, or cleaner in Accra meant asking around, hoping for referrals, and praying the person who showed up was trustworthy. Skilled tradespeople had the opposite problem — inconsistent work and no way to build a reputation.
             </p>
-            <p className="text-gray-600 text-lg leading-relaxed">
+            <p className="text-gray-600 dark:text-slate-400 text-lg leading-relaxed">
               Lucid bridges that gap. We built a two-sided marketplace where quality providers can grow a real business and clients can get help they can actually trust — backed by verified profiles, structured payments, and a review system that keeps everyone accountable.
             </p>
             <div className="flex flex-wrap gap-4 pt-2">
               {['Verified Workers', 'Structured Booking', 'Secure Payments', 'Honest Reviews'].map(t => (
-                <div key={t} className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-full">
+                <div key={t} className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-4 py-2 rounded-full">
                   <CheckCircle className="w-4 h-4" />
                   <span className="text-sm font-semibold">{t}</span>
                 </div>
@@ -236,13 +236,13 @@ const About = () => (
                 { label: 'Jobs This Month',    value: '4,200+',  color: 'from-emerald-500 to-green-700' },
               ].map((card, i) => (
                 <motion.div key={i} whileHover={{ y: -4 }}
-                  className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 flex flex-col gap-2"
+                  className="bg-white dark:bg-[#252b3b] rounded-2xl p-6 shadow-lg border border-gray-100 dark:border-[#1e293b] flex flex-col gap-2"
                 >
                   <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center mb-1`}>
                     <Zap className="w-5 h-5 text-white" />
                   </div>
-                  <p className="text-2xl font-extrabold text-gray-900">{card.value}</p>
-                  <p className="text-gray-500 text-xs font-medium">{card.label}</p>
+                  <p className="text-2xl font-extrabold text-gray-900 dark:text-slate-100">{card.value}</p>
+                  <p className="text-gray-500 dark:text-slate-400 text-xs font-medium">{card.label}</p>
                 </motion.div>
               ))}
             </div>
@@ -252,7 +252,7 @@ const About = () => (
     </section>
 
     {/* Platform Features */}
-    <section className="py-24 bg-gray-50">
+    <section className="py-24 bg-gray-50 dark:bg-[#0f1117]">
       <div className="max-w-7xl mx-auto px-4">
         <SectionHeading
           label="Platform features"
@@ -265,14 +265,14 @@ const About = () => (
         >
           {FEATURES.map((f, i) => (
             <motion.div key={i} variants={scaleIn} whileHover={{ y: -6 }}
-              className="bg-white rounded-2xl p-7 shadow-md border border-gray-100 flex flex-col gap-5"
+              className="bg-white dark:bg-[#1a1f2e] rounded-2xl p-7 shadow-md border border-gray-100 dark:border-[#1e293b] flex flex-col gap-5"
             >
               <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${f.color} flex items-center justify-center shadow-md flex-shrink-0`}>
                 <f.icon className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="font-bold text-gray-900 text-xl mb-3">{f.title}</h3>
-                <p className="text-gray-500 leading-relaxed text-sm">{f.desc}</p>
+                <h3 className="font-bold text-gray-900 dark:text-slate-100 text-xl mb-3">{f.title}</h3>
+                <p className="text-gray-500 dark:text-slate-400 leading-relaxed text-sm">{f.desc}</p>
               </div>
             </motion.div>
           ))}
@@ -281,7 +281,7 @@ const About = () => (
     </section>
 
     {/* Core Values */}
-    <section className="py-24 bg-white">
+    <section className="py-24 bg-white dark:bg-[#1a1f2e]">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeading label="What drives us" title="Our Core Values" sub="These principles guide every product decision we make at Lucid." />
         <motion.div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8"
@@ -289,14 +289,14 @@ const About = () => (
         >
           {VALUES.map((v, i) => (
             <motion.div key={i} variants={scaleIn} whileHover={{ y: -6 }}
-              className="bg-white rounded-2xl p-8 shadow-md border border-gray-100 flex flex-col gap-5"
+              className="bg-white dark:bg-[#252b3b] rounded-2xl p-8 shadow-md border border-gray-100 dark:border-[#1e293b] flex flex-col gap-5"
             >
               <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${v.color} flex items-center justify-center shadow-md`}>
                 <v.icon className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{v.title}</h3>
-                <p className="text-gray-500 text-sm leading-relaxed">{v.desc}</p>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">{v.title}</h3>
+                <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed">{v.desc}</p>
               </div>
             </motion.div>
           ))}
@@ -305,7 +305,7 @@ const About = () => (
     </section>
 
     {/* Timeline */}
-    <section className="py-24 bg-gray-50">
+    <section className="py-24 bg-gray-50 dark:bg-[#0f1117]">
       <div className="max-w-4xl mx-auto px-4">
         <SectionHeading label="Our journey" title="From Accra to West Africa" sub="A platform built incrementally, shaped by real feedback from providers and clients." />
 
@@ -324,13 +324,13 @@ const About = () => (
                 </div>
                 <div className={`ml-24 md:ml-0 ${isEven ? 'md:mr-[52%]' : 'md:ml-[52%]'}`}>
                   <motion.div whileHover={{ y: -3 }}
-                    className="bg-white rounded-2xl p-6 shadow-md border-l-4 border-blue-600"
+                    className="bg-white dark:bg-[#1a1f2e] rounded-2xl p-6 shadow-md border-l-4 border-blue-600"
                   >
                     <span className="inline-block bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-bold mb-3">
                       {item.year}
                     </span>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
-                    <p className="text-gray-500 text-sm leading-relaxed">{item.desc}</p>
+                    <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">{item.title}</h3>
+                    <p className="text-gray-500 dark:text-slate-400 text-sm leading-relaxed">{item.desc}</p>
                   </motion.div>
                 </div>
               </motion.div>

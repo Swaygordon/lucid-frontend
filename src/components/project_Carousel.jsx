@@ -34,16 +34,16 @@ export default function ProjectCarousel({ projects }) {
   // Don't show navigation if there's only one project
   if (projects.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow p-6 mt-8">
-        <h2 className="text-xl font-bold mb-6 text-gray-900">Projects</h2>
-        <p className="text-gray-500 text-center py-8">No projects to display</p>
+      <div className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 mt-8">
+        <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-slate-100">Projects</h2>
+        <p className="text-gray-500 dark:text-slate-400 text-center py-8">No projects to display</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6 mt-8">
-      <h2 className="text-xl font-bold mb-6 text-gray-900">Projects</h2>
+    <div className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 mt-8">
+      <h2 className="text-xl font-bold mb-6 text-gray-900 dark:text-slate-100">Projects</h2>
       <div 
         className="relative"
         onMouseEnter={() => setIsAutoPlaying(false)}
@@ -54,10 +54,10 @@ export default function ProjectCarousel({ projects }) {
           {projects.length > 1 && (
             <button
               onClick={prevProject}
-              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 hover:scale-110"
+              className="p-2 rounded-full bg-gray-100 dark:bg-[#252b3b] hover:bg-gray-200 dark:hover:bg-[#2d3748] transition-all duration-300 hover:scale-110"
               aria-label="Previous project"
             >
-              <ChevronLeft className="w-6 h-6 text-gray-900" />
+              <ChevronLeft className="w-6 h-6 text-gray-900 dark:text-slate-100" />
             </button>
           )}
           
@@ -83,10 +83,10 @@ export default function ProjectCarousel({ projects }) {
           {projects.length > 1 && (
             <button
               onClick={nextProject}
-              className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 transition-all duration-300 hover:scale-110"
+              className="p-2 rounded-full bg-gray-100 dark:bg-[#252b3b] hover:bg-gray-200 dark:hover:bg-[#2d3748] transition-all duration-300 hover:scale-110"
               aria-label="Next project"
             >
-              <ChevronRight className="w-6 h-6 text-gray-900" />
+              <ChevronRight className="w-6 h-6 text-gray-900 dark:text-slate-100" />
             </button>
           )}
         </div>
@@ -99,9 +99,9 @@ export default function ProjectCarousel({ projects }) {
                 key={index}
                 onClick={() => setCurrentProject(index)}
                 className={`transition-all duration-300 rounded-full ${
-                  index === currentProject 
-                    ? "bg-blue-600 w-8 h-2.5" 
-                    : "bg-gray-300 hover:bg-gray-400 w-2.5 h-2.5"
+                  index === currentProject
+                    ? "bg-blue-600 w-8 h-2.5"
+                    : "bg-gray-300 dark:bg-slate-600 hover:bg-gray-400 dark:hover:bg-slate-500 w-2.5 h-2.5"
                 }`}
                 aria-label={`Go to project ${index + 1}`}
               />

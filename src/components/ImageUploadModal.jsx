@@ -27,7 +27,7 @@ const ImageUploadModal = ({
         onClick={onClose}
         >
           <motion.div
-          className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-8 relative"
+          className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow-xl max-w-2xl w-full p-8 relative"
           initial={{ scale: 0.9, y: 50 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 50 }}
@@ -36,17 +36,17 @@ const ImageUploadModal = ({
             {/* Close */}
             <motion.button
                onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-full transition-colors"
             whileHover={{ scale: 1.1, rotate: 90 }}
             whileTap={{ scale: 0.9 }}
             >
-              <X className="w-6 h-6 text-gray-600" />
+              <X className="w-6 h-6 text-gray-600 dark:text-slate-400" />
                         </motion.button>
 
             {/* Title */}
            
             <motion.h2 
-                        className="text-2xl font-bold text-gray-900 mb-6"
+                        className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6"
                         initial={{ opacity: 0, y: -20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.1 }}
@@ -61,7 +61,7 @@ const ImageUploadModal = ({
                         onDragOver={onDrag}
                         onDrop={onDrop}
                         className={`border-4 border-dashed rounded-lg p-12 text-center transition-colors ${
-                          dragActive ? 'border-blue-600 bg-blue-50' : 'border-blue-600'
+                          dragActive ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-blue-600'
                         }`}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
@@ -94,7 +94,7 @@ const ImageUploadModal = ({
 />
                                 </label>
                 
-                                <p className="text-gray-600 text-lg mb-2">Drop an image here</p>
+                                <p className="text-gray-600 dark:text-slate-400 text-lg mb-2">Drop an image here</p>
                                 
                                 {selectedFile && !isUploading && (
                                   <motion.p 
@@ -130,7 +130,7 @@ const ImageUploadModal = ({
                   {/* Progress */}
                   <div className="w-full max-w-md mx-auto">
                                     <div className="flex items-center space-x-4">
-                                      <div className="flex-1 bg-gray-300 rounded-full h-3 overflow-hidden">
+                                      <div className="flex-1 bg-gray-300 dark:bg-[#252b3b] rounded-full h-3 overflow-hidden">
                                         <motion.div
                                           className="bg-blue-600 h-3 rounded-full"
                                           initial={{ width: 0 }}
@@ -138,14 +138,14 @@ const ImageUploadModal = ({
                                           transition={{ duration: 0.3 }}
                                         />
                                       </div>
-                                      <span className="text-xl font-semibold text-gray-700 min-w-[3rem]">
+                                      <span className="text-xl font-semibold text-gray-700 dark:text-slate-300 min-w-[3rem]">
                                         {uploadProgress}%
                                       </span>
                                     </div>
                                   </div>
                 </>
               )}
-              <p className="text-sm text-gray-500 mt-6">
+              <p className="text-sm text-gray-500 dark:text-slate-500 mt-6">
   <span className="text-red-500">*</span> Files supported {accept}
 </p>
                         </motion.div>
@@ -164,7 +164,7 @@ const ImageUploadModal = ({
                   className={`px-12 py-3 rounded-lg font-semibold transition-colors ${
                     selectedFile && !isUploading
                       ? 'bg-blue-600 text-white hover:bg-blue-700'
-                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-300 dark:bg-[#252b3b] text-gray-500 dark:text-slate-500 cursor-not-allowed'
                   }`}
                   whileHover={selectedFile && !isUploading ? { scale: 1.05 } : {}}
                   whileTap={selectedFile && !isUploading ? { scale: 0.95 } : {}}
@@ -176,8 +176,8 @@ const ImageUploadModal = ({
                   disabled={isUploading}
                   className={`px-12 py-3 rounded-lg font-semibold border-2 transition-colors ${
                     isUploading
-                      ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-                      : 'border-blue-600 text-blue-600 hover:bg-blue-50'
+                      ? 'border-gray-300 dark:border-[#2d3748] text-gray-400 dark:text-slate-500 cursor-not-allowed'
+                      : 'border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
                   }`}
                   whileHover={!isUploading ? { scale: 1.05 } : {}}
                   whileTap={!isUploading ? { scale: 0.95 } : {}}

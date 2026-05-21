@@ -160,8 +160,8 @@ export const Button = ({
   const variants = {
     primary: 'bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-lg',
     secondary: 'bg-orange-600 hover:bg-orange-700 text-white shadow-md hover:shadow-lg',
-    outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50',
-    ghost: 'text-blue-600 hover:bg-blue-50',
+    outline: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20',
+    ghost: 'text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20',
     danger: 'bg-red-600 hover:bg-red-700 text-white shadow-md hover:shadow-lg',
   };
 
@@ -208,7 +208,7 @@ export const Input = ({
   return (
     <div className="flex flex-col gap-2">
       {label && (
-        <label className="font-medium text-gray-700">
+        <label className="font-medium text-gray-700 dark:text-slate-300">
           {label}
           {required && <span className="text-red-500 ml-1">*</span>}
         </label>
@@ -218,8 +218,10 @@ export const Input = ({
           px-4 py-3 border-2 rounded-lg text-base
           transition-all duration-200
           focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100
-          disabled:bg-gray-100 disabled:cursor-not-allowed
-          ${error ? 'border-red-500' : 'border-gray-300'}
+          disabled:bg-gray-100 dark:disabled:bg-[#252b3b] disabled:cursor-not-allowed
+          bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-200
+          placeholder:text-gray-400 dark:placeholder:text-slate-500
+          ${error ? 'border-red-500' : 'border-gray-300 dark:border-[#2d3748]'}
           ${className}
         `}
         {...props}
@@ -243,7 +245,7 @@ export const Card = ({
   return (
     <div
       className={`
-        bg-white rounded-xl p-6 shadow-md
+        bg-white dark:bg-[#1a1f2e] rounded-xl p-6 shadow-md
         ${hoverable ? 'hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer' : ''}
         ${className}
       `}
@@ -277,18 +279,18 @@ export const Modal = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className={`bg-white rounded-xl shadow-2xl ${sizes[size]} w-full p-8 relative animate-scale-in max-h-[90vh] overflow-y-auto`}>
+      <div className={`bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl ${sizes[size]} w-full p-8 relative animate-scale-in max-h-[90vh] overflow-y-auto`}>
         {showCloseButton && (
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-full transition-colors"
           >
-            <X className="w-6 h-6 text-gray-600" />
+            <X className="w-6 h-6 text-gray-600 dark:text-slate-400" />
           </button>
         )}
-        
+
         {title && (
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">{title}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">{title}</h2>
         )}
         
         {children}
@@ -357,7 +359,7 @@ const DesignSystemDemo = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] p-8">
       <div className="max-w-6xl mx-auto space-y-12">
         
         {/* Header */}

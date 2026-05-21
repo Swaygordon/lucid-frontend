@@ -7,6 +7,7 @@ export { ReviewModal } from './ReviewModal.jsx';
 export { ReviewThread } from './ReviewThread.jsx';
 export { ReceiptModal } from './ReceiptModal.jsx';
 export { ProfileCard } from './ProfileCard.jsx';
+export { ConfirmActionModal } from './ConfirmActionModal.jsx';
 export {
   QuotePriceModal,
   AdjustPriceModal,

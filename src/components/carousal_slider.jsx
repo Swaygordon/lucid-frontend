@@ -59,7 +59,7 @@ const slides = [
     description:
       "Experience the next generation of workforce management. Smart matching, instant connections, and seamless collaboration.",
     image: futurework,
-    buttonText: "Learn More",
+    buttonText: "About Lucid",
     gradient: "from-indigo-600 via-violet-700 to-purple-800",
     category1:"/about",
   },

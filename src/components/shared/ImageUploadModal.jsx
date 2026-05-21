@@ -85,7 +85,7 @@ export const ImageUploadModal = ({
         onDragOver={handleDrag}
         onDrop={handleDrop}
         className={`border-4 border-dashed rounded-lg p-12 text-center transition-colors ${
-          dragActive ? 'border-blue-600 bg-blue-50' : 'border-blue-600'
+          dragActive ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/20' : 'border-blue-600'
         }`}
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -117,7 +117,7 @@ export const ImageUploadModal = ({
               />
             </label>
 
-            <p className="text-gray-600 text-lg mb-2">Drop a file here</p>
+            <p className="text-gray-600 dark:text-slate-400 text-lg mb-2">Drop a file here</p>
             
             {selectedFile && !isUploading && (
               <motion.p 
@@ -136,7 +136,7 @@ export const ImageUploadModal = ({
             animate={{ opacity: 1 }}
           >
             <div className="flex items-center space-x-4">
-              <div className="flex-1 bg-gray-300 rounded-full h-3 overflow-hidden">
+              <div className="flex-1 bg-gray-300 dark:bg-[#252b3b] rounded-full h-3 overflow-hidden">
                 <motion.div
                   className="bg-blue-600 h-3 rounded-full"
                   initial={{ width: 0 }}
@@ -144,14 +144,14 @@ export const ImageUploadModal = ({
                   transition={{ duration: 0.3 }}
                 />
               </div>
-              <span className="text-xl font-semibold text-gray-700 min-w-[3rem]">
+              <span className="text-xl font-semibold text-gray-700 dark:text-slate-300 min-w-[3rem]">
                 {uploadProgress}%
               </span>
             </div>
           </motion.div>
         )}
         
-        <p className="text-sm text-gray-500 mt-6">
+        <p className="text-sm text-gray-500 dark:text-slate-500 mt-6">
           <span className="text-red-500">*</span> Files supported {accept}
         </p>
       </motion.div>
@@ -168,7 +168,7 @@ export const ImageUploadModal = ({
           className={`px-12 py-3 rounded-lg font-semibold transition-colors ${
             selectedFile && !isUploading
               ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-gray-300 dark:bg-[#252b3b] text-gray-500 dark:text-slate-500 cursor-not-allowed'
           }`}
           whileHover={selectedFile && !isUploading ? { scale: 1.05 } : {}}
           whileTap={selectedFile && !isUploading ? { scale: 0.95 } : {}}
@@ -180,8 +180,8 @@ export const ImageUploadModal = ({
           disabled={isUploading}
           className={`px-12 py-3 rounded-lg font-semibold border-2 transition-colors ${
             isUploading
-              ? 'border-gray-300 text-gray-400 cursor-not-allowed'
-              : 'border-blue-600 text-blue-600 hover:bg-blue-50'
+              ? 'border-gray-300 dark:border-[#2d3748] text-gray-400 dark:text-slate-500 cursor-not-allowed'
+              : 'border-blue-600 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20'
           }`}
           whileHover={!isUploading ? { scale: 1.05 } : {}}
           whileTap={!isUploading ? { scale: 0.95 } : {}}

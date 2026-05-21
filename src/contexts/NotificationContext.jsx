@@ -46,7 +46,6 @@ export const NotificationProvider = ({ children }) => {
 const ToastContainer = ({ toasts, onDismiss }) => (
   <div
     aria-live="polite"
-    aria-label="Notifications"
     className="fixed bottom-6 right-6 z-50 flex flex-col-reverse gap-3 items-end pointer-events-none"
   >
     <AnimatePresence initial={false}>

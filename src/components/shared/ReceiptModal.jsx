@@ -23,9 +23,10 @@ const ReceiptModalComponent = ({ booking, onClose, userType = 'provider' }) => {
     });
   };
 
-  // [DB] receiptNumber should be a persistent ID stored in the payments or receipts table,
-  // not generated on the fly. Use: booking.paymentData?.receiptNumber or GET /receipts/:bookingId
-  const receiptNumber = `${booking.bookingReference}-RCP-${new Date().getFullYear()}`;
+  // [DB] receiptNumber should be a persistent ID stored in the payments or receipts table.
+  // Use booking.bookingReference when backend is wired; fall back to booking.id for mock data.
+  const ref = booking.bookingReference || booking.id || 'N/A';
+  const receiptNumber = `${ref}-RCP-${new Date().getFullYear()}`;
   
   const provider = booking.provider || {};
   const client = booking.client || {};
@@ -44,17 +45,33 @@ const ReceiptModalComponent = ({ booking, onClose, userType = 'provider' }) => {
   // Client's total payment (just the service charge, no additional fees)
   const totalPaid = serviceCharge.toFixed(2);
 
-  // [API] GET /receipts/:bookingId?format=pdf  — backend returns a pre-rendered PDF blob.
-  // Option A (server-rendered): backend uses puppeteer/wkhtmltopdf, returns blob — simplest.
-  // Option B (client-rendered): install html2pdf.js, pass receiptRef.current to html2pdf().save()
-  const handleDownload = () => {
-    alert('PDF download would trigger here. Integrate html2pdf.js library.');
-    console.log('Downloading receipt as PDF...');
+  const openReceiptWindow = (autoPrint = false) => {
+    const el = receiptRef.current;
+    if (!el) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Receipt — ${receiptNumber}</title>
+  <script src="https://cdn.tailwindcss.com"><\/script>
+  <style>
+    body { background: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    @media print { .no-print { display: none !important; } }
+  </style>
+</head>
+<body class="bg-white">${el.outerHTML}</body>
+</html>`);
+    win.document.close();
+    if (autoPrint) {
+      win.addEventListener('load', () => setTimeout(() => win.print(), 400));
+    }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handleDownload = () => openReceiptWindow(true);
+
+  const handlePrint = () => openReceiptWindow(true);
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -72,20 +89,24 @@ const ReceiptModalComponent = ({ booking, onClose, userType = 'provider' }) => {
     }
   };
 
-  // [API] POST /receipts/:bookingId/email  { to: userEmail }
-  // Backend sends a formatted HTML email with the receipt (via SendGrid/Mailgun/SMTP).
-  // Current mailto: workaround opens the user's local email client — not reliable on mobile.
+  // [API] POST /receipts/:bookingId/email — backend sends HTML email with PDF attachment.
+  // mailto: cannot attach files; as a workaround we open the receipt in a new tab so
+  // the user can save it as PDF, then pre-fill the mail client with instructions.
   const handleEmail = () => {
-    const subject = encodeURIComponent(`Receipt - ${booking.title}`);
+    openReceiptWindow(false); // open receipt tab for user to save as PDF
+    const subject = encodeURIComponent(`Service Receipt — ${booking.title}`);
     const body = encodeURIComponent(
-      `Please find attached your service receipt.\n\n` +
       `Receipt #: ${receiptNumber}\n` +
       `Service: ${booking.title}\n` +
       `Date: ${booking.date}\n` +
       `Amount Paid: GH₵${totalPaid}\n\n` +
+      `To attach the receipt:\n` +
+      `  1. Go to the receipt tab that just opened\n` +
+      `  2. File → Print → Save as PDF\n` +
+      `  3. Attach the saved file to this email\n\n` +
       `Thank you for using Lucid Services!`
     );
-    window.location.href = `mailto:?subject=${subject}&body=${body}`;
+    setTimeout(() => window.open(`mailto:?subject=${subject}&body=${body}`), 300);
   };
 
   return (
@@ -101,299 +122,190 @@ const ReceiptModalComponent = ({ booking, onClose, userType = 'provider' }) => {
           initial={{ scale: 0.9, y: 50 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 50 }}
-          className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Action Bar - Hidden when printing */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10 print:hidden">
-            <h2 className="text-xl font-bold text-gray-900">Service Receipt</h2>
+          <div className="sticky top-0 bg-white dark:bg-[#1a1f2e] border-b border-gray-200 dark:border-[#1e293b] p-4 flex items-center justify-between z-10 print:hidden">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Service Receipt</h2>
             <div className="flex items-center gap-2">
-              <button onClick={handleDownload} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Download PDF">
-                <Download className="w-5 h-5 text-gray-700" />
+              <button onClick={handleDownload} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors" title="Download PDF">
+                <Download className="w-5 h-5 text-gray-700 dark:text-slate-300" />
               </button>
-              <button onClick={handlePrint} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Print">
-                <Printer className="w-5 h-5 text-gray-700" />
+              <button onClick={handlePrint} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors" title="Print">
+                <Printer className="w-5 h-5 text-gray-700 dark:text-slate-300" />
               </button>
-              <button onClick={handleShare} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Share">
-                <Share2 className="w-5 h-5 text-gray-700" />
+              <button onClick={handleShare} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors" title="Share">
+                <Share2 className="w-5 h-5 text-gray-700 dark:text-slate-300" />
               </button>
-              <button onClick={handleEmail} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" title="Email">
-                <Mail className="w-5 h-5 text-gray-700" />
+              <button onClick={handleEmail} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors" title="Email">
+                <Mail className="w-5 h-5 text-gray-700 dark:text-slate-300" />
               </button>
-              <div className="w-px h-6 bg-gray-300 mx-2" />
-              <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-                <X className="w-5 h-5 text-gray-700" />
+              <div className="w-px h-6 bg-gray-300 dark:bg-[#1e293b] mx-2" />
+              <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
+                <X className="w-5 h-5 text-gray-700 dark:text-slate-300" />
               </button>
             </div>
           </div>
 
           {/* Receipt Content */}
-          <div ref={receiptRef} className="p-8 print:p-12">
+          <div ref={receiptRef} className="p-8">
             {/* Header */}
-            <div className="text-center mb-8 pb-8 border-b-2 border-gray-300">
-              <h1 className="text-4xl font-bold text-blue-600 mb-2">LUCID SERVICES</h1>
-              <p className="text-lg text-gray-600 font-semibold">Professional Service Receipt</p>
+            <div className="text-center mb-6 pb-5 border-b-2 border-gray-300 dark:border-[#1e293b]">
+              <h1 className="text-2xl font-bold text-blue-600">LUCID SERVICES</h1>
+              <p className="text-sm text-gray-500 dark:text-slate-400 font-semibold mt-1">Professional Service Receipt</p>
             </div>
 
-            {/* Receipt Details */}
-            <div className="grid grid-cols-2 gap-4 mb-8 text-sm">
+            {/* Receipt meta: 4 fields in one row */}
+            <div className="grid grid-cols-4 gap-4 mb-6 text-xs">
               <div>
-                <p className="text-gray-600 font-semibold">Receipt Number</p>
-                <p className="text-gray-900 font-bold">{receiptNumber}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-gray-600 font-semibold">Issue Date</p>
-                <p className="text-gray-900 font-bold">{formatDate(new Date())}</p>
+                <p className="text-gray-500 dark:text-slate-400 font-semibold mb-1">Receipt No.</p>
+                <p className="text-gray-900 dark:text-slate-100 font-bold">{receiptNumber}</p>
               </div>
               <div>
-                <p className="text-gray-600 font-semibold">Booking Reference</p>
-                <p className="text-gray-900">{booking.bookingReference}</p>
+                <p className="text-gray-500 dark:text-slate-400 font-semibold mb-1">Reference</p>
+                <p className="text-gray-900 dark:text-slate-100">{ref}</p>
+              </div>
+              <div>
+                <p className="text-gray-500 dark:text-slate-400 font-semibold mb-1">Issue Date</p>
+                <p className="text-gray-900 dark:text-slate-100 font-bold">{formatDate(new Date())}</p>
               </div>
               <div className="text-right">
-                <p className="text-gray-600 font-semibold">Status</p>
+                <p className="text-gray-500 dark:text-slate-400 font-semibold mb-1">Status</p>
                 <div className="flex items-center justify-end gap-1">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
+                  <CheckCircle className="w-3 h-3 text-green-600" />
                   <span className="text-green-600 font-bold">PAID</span>
                 </div>
               </div>
             </div>
 
-            {/* Parties Information */}
-            <div className="grid md:grid-cols-2 gap-8 mb-8 pb-8 border-b border-gray-200">
-              {/* Service Provider */}
-              <div className="bg-blue-50 p-6 rounded-lg">
-                <h3 className="font-bold text-gray-900 mb-4 text-lg">Service Provider</h3>
-                <div className="space-y-2 text-sm">
+            {/* Parties */}
+            <div className="grid grid-cols-2 gap-5 mb-6 pb-6 border-b border-gray-200 dark:border-[#1e293b]">
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                <p className="font-bold text-gray-900 dark:text-slate-100 mb-3 text-sm">Service Provider</p>
+                <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2">
-                    <User className="w-4 h-4 text-blue-600 mt-0.5" />
+                    <User className="w-3 h-3 text-blue-600 mt-0.5 flex-shrink-0" />
                     <div>
-                      <p className="font-semibold text-gray-900">{provider.name}</p>
-                      <p className="text-gray-600">{provider.profession}</p>
+                      <p className="font-semibold text-gray-900 dark:text-slate-100">{provider.name}</p>
+                      <p className="text-gray-500 dark:text-slate-400">{provider.profession}</p>
                     </div>
                   </div>
-                  {provider.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-blue-600" />
-                      <p className="text-gray-700">{provider.phone}</p>
-                    </div>
-                  )}
-                  {provider.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-blue-600" />
-                      <p className="text-gray-700">{provider.email}</p>
-                    </div>
-                  )}
+                  {provider.phone && <div className="flex items-center gap-2"><Phone className="w-3 h-3 text-blue-600 flex-shrink-0" /><p className="text-gray-700 dark:text-slate-300">{provider.phone}</p></div>}
+                  {provider.email && <div className="flex items-center gap-2"><Mail className="w-3 h-3 text-blue-600 flex-shrink-0" /><p className="text-gray-700 dark:text-slate-300">{provider.email}</p></div>}
                 </div>
               </div>
-
-              {/* Client */}
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <h3 className="font-bold text-gray-900 mb-4 text-lg">Billed To</h3>
-                <div className="space-y-2 text-sm">
+              <div className="bg-gray-50 dark:bg-[#252b3b] p-4 rounded-lg">
+                <p className="font-bold text-gray-900 dark:text-slate-100 mb-3 text-sm">Billed To</p>
+                <div className="space-y-2 text-xs">
                   <div className="flex items-start gap-2">
-                    <User className="w-4 h-4 text-gray-600 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-gray-900">{client.name}</p>
-                    </div>
+                    <User className="w-3 h-3 text-gray-500 dark:text-slate-400 mt-0.5 flex-shrink-0" />
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{client.name}</p>
                   </div>
-                  {client.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-gray-600" />
-                      <p className="text-gray-700">{client.phone}</p>
-                    </div>
-                  )}
-                  {client.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-gray-600" />
-                      <p className="text-gray-700">{client.email}</p>
-                    </div>
-                  )}
-                  {location.address && (
-                    <div className="flex items-start gap-2">
-                      <MapPin className="w-4 h-4 text-gray-600 mt-0.5" />
-                      <div>
-                        <p className="text-gray-700">{location.address}</p>
-                        <p className="text-gray-700">{location.area}, {location.city}</p>
-                      </div>
-                    </div>
-                  )}
+                  {client.phone && <div className="flex items-center gap-2"><Phone className="w-3 h-3 text-gray-400 dark:text-slate-500 flex-shrink-0" /><p className="text-gray-700 dark:text-slate-300">{client.phone}</p></div>}
+                  {client.email && <div className="flex items-center gap-2"><Mail className="w-3 h-3 text-gray-400 dark:text-slate-500 flex-shrink-0" /><p className="text-gray-700 dark:text-slate-300">{client.email}</p></div>}
+                  {location.address && <div className="flex items-start gap-2"><MapPin className="w-3 h-3 text-gray-400 dark:text-slate-500 mt-0.5 flex-shrink-0" /><p className="text-gray-700 dark:text-slate-300">{location.address}, {location.area}, {location.city}</p></div>}
                 </div>
               </div>
             </div>
 
             {/* Service Details */}
-            <div className="mb-8 pb-8 border-b border-gray-200">
-              <h3 className="font-bold text-gray-900 mb-4 text-lg">Service Details</h3>
-              <div className="bg-gray-50 p-6 rounded-lg space-y-3">
-                <div>
-                  <p className="text-gray-600 text-sm font-semibold mb-1">Service</p>
-                  <p className="text-gray-900 font-bold text-lg">{booking.title}</p>
+            <div className="mb-6 pb-6 border-b border-gray-200 dark:border-[#1e293b]">
+              <p className="font-bold text-gray-900 dark:text-slate-100 mb-3 text-sm">Service Details</p>
+              <div className="bg-gray-50 dark:bg-[#252b3b] p-4 rounded-lg">
+                <div className="mb-3">
+                  <p className="text-gray-500 dark:text-slate-400 text-xs mb-0.5">Service</p>
+                  <p className="text-gray-900 dark:text-slate-100 font-bold">{booking.title}</p>
                 </div>
-                <div>
-                  <p className="text-gray-600 text-sm font-semibold mb-1">Description</p>
-                  <p className="text-gray-700">{booking.description}</p>
-                </div>
-                <div className="grid grid-cols-3 gap-4 text-sm pt-3 border-t border-gray-200">
+                {booking.description && <p className="text-gray-600 dark:text-slate-400 text-xs mb-4">{booking.description}</p>}
+                <div className="grid grid-cols-3 gap-4 text-xs pt-3 border-t border-gray-200 dark:border-[#1e293b]">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-blue-600" />
-                    <div>
-                      <p className="text-gray-600 text-xs">Date</p>
-                      <p className="text-gray-900 font-semibold">{booking.date}</p>
-                    </div>
+                    <Calendar className="w-3 h-3 text-blue-600 flex-shrink-0" />
+                    <div><p className="text-gray-500 dark:text-slate-400 mb-0.5">Date</p><p className="font-semibold text-gray-900 dark:text-slate-100">{booking.date}</p></div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-blue-600" />
-                    <div>
-                      <p className="text-gray-600 text-xs">Time</p>
-                      <p className="text-gray-900 font-semibold">{booking.time}</p>
-                    </div>
+                    <Clock className="w-3 h-3 text-blue-600 flex-shrink-0" />
+                    <div><p className="text-gray-500 dark:text-slate-400 mb-0.5">Time</p><p className="font-semibold text-gray-900 dark:text-slate-100">{booking.time}</p></div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-blue-600" />
-                    <div>
-                      <p className="text-gray-600 text-xs">Duration</p>
-                      <p className="text-gray-900 font-semibold">{booking.duration}</p>
-                    </div>
+                    <Clock className="w-3 h-3 text-blue-600 flex-shrink-0" />
+                    <div><p className="text-gray-500 dark:text-slate-400 mb-0.5">Duration</p><p className="font-semibold text-gray-900 dark:text-slate-100">{booking.duration || '—'}</p></div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* ✅ CORRECTED Payment Breakdown */}
-            <div className="mb-8">
-              <h3 className="font-bold text-gray-900 mb-4 text-lg">Payment Details</h3>
-              <div className="bg-gray-50 p-6 rounded-lg">
-                <table className="w-full text-sm">
-                  <tbody className="divide-y divide-gray-200">
-                    {/* Client's Payment */}
+            {/* Payment Details */}
+            <div className="mb-6">
+              <p className="font-bold text-gray-900 dark:text-slate-100 mb-3 text-sm">Payment Details</p>
+              <div className="bg-gray-50 dark:bg-[#252b3b] p-4 rounded-lg">
+                <table className="w-full text-xs mb-4">
+                  <tbody className="divide-y divide-gray-200 dark:divide-[#1e293b]">
                     <tr>
-                      <td className="py-3 text-gray-700 font-semibold">Service Charge (Client Paid)</td>
-                      <td className="py-3 text-right font-bold text-gray-900 text-lg">
-                        GH₵ {totalPaid}
-                      </td>
+                      <td className="py-2.5 text-gray-700 dark:text-slate-300 font-semibold">Service Charge (Client Paid)</td>
+                      <td className="py-2.5 text-right font-bold text-gray-900 dark:text-slate-100 text-sm">GH₵ {totalPaid}</td>
                     </tr>
-                    
-                    {/* Platform Fee Deduction */}
-                    <tr className="bg-orange-50">
-                      <td className="py-3 text-orange-700">
-                        <span className="flex items-center gap-2">
-                          Platform Service Fee (18%)
-                          <span className="text-xs bg-orange-100 px-2 py-0.5 rounded">Deducted</span>
-                        </span>
+                    <tr>
+                      <td className="py-2.5 text-orange-700 dark:text-orange-400">
+                        Platform Fee (18%) <span className="bg-orange-100 dark:bg-orange-900/20 px-1.5 py-0.5 rounded text-xs">Deducted</span>
                       </td>
-                      <td className="py-3 text-right font-semibold text-orange-700">
-                        - GH₵ {platformFee}
-                      </td>
+                      <td className="py-2.5 text-right font-semibold text-orange-700 dark:text-orange-400">− GH₵ {platformFee}</td>
                     </tr>
-                    
-                    {/* Provider Receives */}
-                    <tr className="border-t-2 border-gray-300 bg-green-50">
-                      <td className="py-4 text-green-900 font-bold text-base">
-                        Provider Receives (82%)
-                      </td>
-                      <td className="py-4 text-right font-bold text-green-600 text-xl">
-                        GH₵ {providerReceives}
-                      </td>
+                    <tr className="bg-green-50 dark:bg-green-900/20">
+                      <td className="py-2.5 text-green-900 dark:text-green-300 font-bold">Provider Receives (82%)</td>
+                      <td className="py-2.5 text-right font-bold text-green-600 dark:text-green-400 text-sm">GH₵ {providerReceives}</td>
                     </tr>
                   </tbody>
                 </table>
-
-                {/* Payment Info */}
-                <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-3 gap-4 pt-4 border-t border-gray-200 dark:border-[#1e293b] text-xs">
                   <div>
-                    <p className="text-gray-600 font-semibold mb-1">Payment Method</p>
-                    <p className="text-gray-900">
-                      {booking.paymentData?.paymentMethod || booking.paymentMethod || 'Mobile Money'}
-                    </p>
+                    <p className="text-gray-500 dark:text-slate-400 font-semibold mb-1">Payment Method</p>
+                    <p className="text-gray-900 dark:text-slate-100">{booking.paymentData?.paymentMethod || booking.paymentMethod || 'Mobile Money'}</p>
                   </div>
                   <div>
-                    <p className="text-gray-600 font-semibold mb-1">Payment Date</p>
-                    <p className="text-gray-900">
-                      {booking.paymentData?.paidAt 
-                        ? formatDate(booking.paymentData.paidAt) 
-                        : booking.date}
-                    </p>
+                    <p className="text-gray-500 dark:text-slate-400 font-semibold mb-1">Payment Date</p>
+                    <p className="text-gray-900 dark:text-slate-100">{booking.paymentData?.paidAt ? formatDate(booking.paymentData.paidAt) : booking.date}</p>
                   </div>
-                  <div className="col-span-2">
-                    <p className="text-gray-600 font-semibold mb-1">Transaction ID</p>
-                    {/* [DB] transactionId must come from the payment gateway response stored in payments.gateway_reference.
-                       Never generate it on the frontend — it's the authoritative payment proof. */}
-                  <p className="text-gray-900 font-mono text-xs">
-                      {booking.paymentData?.transactionId ||
-                       `TXN-${booking.bookingReference}-${new Date().getTime().toString().slice(-6)}`}
-                    </p>
-                  </div>
-                </div>
-
-                {/* ✅ NEW: Payment Distribution Note */}
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
-                    <p className="text-xs text-blue-900 font-semibold mb-2">Payment Distribution:</p>
-                    <div className="grid grid-cols-2 gap-3 text-xs text-blue-800">
-                      <div>
-                        <p className="text-blue-600 mb-1">Client Paid:</p>
-                        <p className="font-bold">GH₵ {totalPaid}</p>
-                      </div>
-                      <div>
-                        <p className="text-blue-600 mb-1">Provider Receives:</p>
-                        <p className="font-bold">GH₵ {providerReceives}</p>
-                      </div>
-                    </div>
+                  <div>
+                    {/* [DB] transactionId from payment gateway — never generate client-side */}
+                    <p className="text-gray-500 dark:text-slate-400 font-semibold mb-1">Transaction ID</p>
+                    <p className="text-gray-900 dark:text-slate-100 font-mono break-all">{booking.paymentData?.transactionId || `TXN-${ref}-${new Date().getTime().toString().slice(-6)}`}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Rating & Review (if available) */}
+            {/* Rating */}
             {booking.rating && (
-              <div className="mb-8 pb-8 border-b border-gray-200">
-                <h3 className="font-bold text-gray-900 mb-4 text-lg">Client Feedback</h3>
-                <div className="bg-green-50 p-6 rounded-lg">
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-gray-700 font-semibold">Rating:</span>
-                    <div className="flex">
-                      {[...Array(5)].map((_, i) => (
-                        <Star
-                          key={i}
-                          className={`w-4 h-4 ${
-                            i < booking.rating
-                              ? 'fill-blue-600 text-blue-600'
-                              : 'text-gray-300'
-                          }`}
-                        />
-                      ))}
-                    </div>
-                    <span className="font-bold text-gray-900">({booking.rating}.0)</span>
+              <div className="mb-6 pb-5 border-b border-gray-200 dark:border-[#1e293b]">
+                <p className="font-bold text-gray-900 dark:text-slate-100 mb-2 text-sm">Client Feedback</p>
+                <div className="flex items-center gap-3 text-xs">
+                  <div className="flex gap-0.5">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className={`w-3.5 h-3.5 ${i < booking.rating ? 'fill-blue-600 text-blue-600' : 'text-gray-300 dark:text-slate-600'}`} />
+                    ))}
                   </div>
-                  {booking.review && (
-                    <div>
-                      <p className="text-gray-700 italic">"{booking.review}"</p>
-                    </div>
-                  )}
+                  <span className="font-bold text-gray-900 dark:text-slate-100">{booking.rating}.0</span>
+                  {booking.review && <span className="text-gray-600 dark:text-slate-400 italic">"{booking.review}"</span>}
                 </div>
               </div>
             )}
 
             {/* Additional Notes */}
             {booking.additionalNotes && (
-              <div className="mb-8">
-                <h3 className="font-bold text-gray-900 mb-3 text-lg">Notes</h3>
-                <div className="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-400">
-                  <p className="text-gray-700 text-sm">{booking.additionalNotes}</p>
+              <div className="mb-6">
+                <p className="font-bold text-gray-900 dark:text-slate-100 mb-2 text-sm">Notes</p>
+                <div className="bg-yellow-50 dark:bg-amber-900/20 p-4 rounded-lg border-l-4 border-yellow-400 dark:border-amber-600">
+                  <p className="text-gray-700 dark:text-slate-300 text-xs">{booking.additionalNotes}</p>
                 </div>
               </div>
             )}
 
             {/* Footer */}
-            <div className="text-center pt-8 border-t-2 border-gray-300">
-              <p className="text-gray-600 mb-2">Thank you for using Lucid Services</p>
-              <div className="text-sm text-gray-500 space-y-1">
-                <p>Questions? Contact us at support@lucidservices.com</p>
-                <p className="font-semibold">www.lucidservices.com</p>
-                <p className="text-xs mt-4 pt-4 border-t border-gray-200">
-                  This is an official receipt generated by Lucid Services platform
-                </p>
-              </div>
+            <div className="text-center pt-5 border-t-2 border-gray-300 dark:border-[#1e293b]">
+              <p className="text-gray-600 dark:text-slate-400 text-xs mb-2">Thank you for using Lucid Services</p>
+              <p className="text-gray-500 dark:text-slate-500 text-xs">support@lucidservices.com · <span className="font-semibold">www.lucidservices.com</span></p>
+              <p className="text-gray-400 dark:text-slate-600 text-xs mt-3">Official receipt generated by Lucid Services platform</p>
             </div>
           </div>
         </motion.div>

@@ -10,10 +10,10 @@ const ReviewThreadComponent = ({ item, depth = 0, onReply }) => {
   return (
     <div className={`pl-${depth * 4}`}>
       {/* Review Card */}
-      <div className="border rounded-lg p-4 bg-white">
+      <div className="border dark:border-[#1e293b] rounded-lg p-4 bg-white dark:bg-[#1a1f2e]">
         <div className="flex justify-between items-start">
           <div>
-            <p className="font-semibold text-gray-900">
+            <p className="font-semibold text-gray-900 dark:text-slate-100">
               {item.author.name}
               {item.verified && (
                 <span className="ml-2 text-xs text-green-600">(Verified)</span>
@@ -29,7 +29,7 @@ const ReviewThreadComponent = ({ item, depth = 0, onReply }) => {
                     className={`w-4 h-4 ${
                       i < item.rating
                         ? "fill-blue-600 text-blue-600"
-                        : "text-gray-300"
+                        : "text-gray-300 dark:text-slate-600"
                     }`}
                   />
                 ))}
@@ -46,9 +46,9 @@ const ReviewThreadComponent = ({ item, depth = 0, onReply }) => {
           </button>
         </div>
 
-        <p className="mt-2 text-gray-700">{item.reviewText}</p>
+        <p className="mt-2 text-gray-700 dark:text-slate-300">{item.reviewText}</p>
 
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">
           {new Date(item.createdAt).toLocaleString()}
         </p>
 
@@ -81,7 +81,7 @@ const ReviewThreadComponent = ({ item, depth = 0, onReply }) => {
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.25 }}
-            className="mt-3 space-y-3 pl-6 border-l"
+            className="mt-3 space-y-3 pl-6 border-l dark:border-[#1e293b]"
           >
             {item.replies.map(reply => (
               <ReviewThread

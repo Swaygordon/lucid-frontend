@@ -142,17 +142,17 @@ const HelpSupport = () => {
         initial="hidden"
         animate="visible"
         variants={fadeIn}
-        className="border-b border-gray-200 last:border-0"
+        className="border-b border-gray-200 dark:border-[#1e293b] last:border-0"
       >
         <button
           onClick={() => setExpandedFaq(isExpanded ? null : index)}
-          className="w-full flex items-center justify-between py-4 text-left hover:bg-gray-50 transition-colors px-4 rounded-lg"
+          className="w-full flex items-center justify-between py-4 text-left hover:bg-gray-50 dark:hover:bg-[#252b3b] transition-colors px-4 rounded-lg"
         >
-          <span className="font-semibold text-gray-900 pr-4">{faq.question}</span>
+          <span className="font-semibold text-gray-900 dark:text-slate-200 pr-4">{faq.question}</span>
           {isExpanded ? (
-            <ChevronUp className="w-5 h-5 text-gray-600 flex-shrink-0" />
+            <ChevronUp className="w-5 h-5 text-gray-600 dark:text-slate-400 flex-shrink-0" />
           ) : (
-            <ChevronDown className="w-5 h-5 text-gray-600 flex-shrink-0" />
+            <ChevronDown className="w-5 h-5 text-gray-600 dark:text-slate-400 flex-shrink-0" />
           )}
         </button>
         <AnimatePresence>
@@ -164,7 +164,7 @@ const HelpSupport = () => {
               transition={{ duration: 0.3 }}
               className="overflow-hidden"
             >
-              <p className="text-gray-600 pb-4 px-4">{faq.answer}</p>
+              <p className="text-gray-600 dark:text-slate-400 pb-4 px-4">{faq.answer}</p>
             </motion.div>
           )}
         </AnimatePresence>
@@ -173,24 +173,24 @@ const HelpSupport = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">
       {/* Header */}
-      <motion.header 
+      <motion.header
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white shadow-sm sticky top-0 z-30"
+        className="bg-white dark:bg-[#1a1f2e] shadow-sm dark:border-b dark:border-[#1e293b] sticky top-0 z-30"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-4">
             <button
               onClick={handleBackClick}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-6 h-6 text-gray-700" />
+              <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />
             </button>
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Help & Support</h1>
-              <p className="text-gray-600 mt-1">Find answers and get assistance</p>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Help & Support</h1>
+              <p className="text-gray-600 dark:text-slate-400 mt-1">Find answers and get assistance</p>
             </div>
           </div>
         </div>
@@ -211,26 +211,26 @@ const HelpSupport = () => {
             <div className="p-4 bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
               <MessageCircle className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Live Chat</h3>
-            <p className="text-gray-600 text-sm mb-4">Get instant help from our support team</p>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Live Chat</h3>
+            <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Get instant help from our support team</p>
             <Button variant="outline" size="sm" fullWidth>Start Chat</Button>
           </Card>
 
           <Card hoverable className="text-center">
-            <div className="p-4 bg-green-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-              <Phone className="w-8 h-8 text-green-600" />
+            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <Phone className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Call Us</h3>
-            <p className="text-gray-600 text-sm mb-4">Mon-Fri: 8am - 6pm</p>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Call Us</h3>
+            <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Mon-Fri: 8am - 6pm</p>
             <Button variant="outline" size="sm" fullWidth>+233 30 123 4567</Button>
           </Card>
 
           <Card hoverable className="text-center">
-            <div className="p-4 bg-orange-50 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
-              <Mail className="w-8 h-8 text-orange-600" />
+            <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
+              <Mail className="w-8 h-8 text-orange-600 dark:text-orange-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Email</h3>
-            <p className="text-gray-600 text-sm mb-4">We'll respond within 24 hours</p>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Email</h3>
+            <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">We'll respond within 24 hours</p>
             <Button variant="outline" size="sm" fullWidth>support@lucid.com</Button>
           </Card>
         </motion.div>
@@ -244,17 +244,17 @@ const HelpSupport = () => {
             className="lg:col-span-2 space-y-6"
           >
             <Card>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Frequently Asked Questions</h2>
-              
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Frequently Asked Questions</h2>
+
               {/* Search */}
               <div className="relative mb-6">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search FAQs..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-white pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
+                  className="w-full bg-white dark:bg-[#252b3b] dark:text-slate-200 dark:placeholder-slate-500 pl-12 pr-4 py-3 border-2 border-gray-200 dark:border-[#2d3748] rounded-lg focus:border-blue-600 focus:outline-none"
                 />
               </div>
 
@@ -265,7 +265,7 @@ const HelpSupport = () => {
                   return (
                     <button
                       key={cat.id}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-sm font-medium flex items-center gap-2"
+                      className="px-4 py-2 bg-gray-100 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20 hover:text-primary transition-colors text-sm font-medium flex items-center gap-2"
                     >
                       <Icon className="w-4 h-4" />
                       {cat.name}
@@ -282,8 +282,8 @@ const HelpSupport = () => {
                   ))
                 ) : (
                   <div className="text-center py-12">
-                    <AlertCircle className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <p className="text-gray-600">No FAQs found matching your search.</p>
+                    <AlertCircle className="w-16 h-16 text-gray-400 dark:text-slate-500 mx-auto mb-4" />
+                    <p className="text-gray-600 dark:text-slate-400">No FAQs found matching your search.</p>
                   </div>
                 )}
               </div>
@@ -291,25 +291,25 @@ const HelpSupport = () => {
 
             {/* Resources */}
             <Card>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Resources</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Resources</h2>
               <div className="grid md:grid-cols-2 gap-4">
-                <button className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-primary/10 transition-colors text-left">
+                <button className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-[#252b3b] rounded-lg hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors text-left">
                   <div className="p-3 bg-primary/20 rounded-lg">
                     <BookOpen className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">User Guide</h4>
-                    <p className="text-sm text-gray-600">Complete platform guide</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-slate-100">User Guide</h4>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Complete platform guide</p>
                   </div>
                 </button>
 
-                <button className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-blue-50 transition-colors text-left">
-                  <div className="p-3 bg-orange-100 rounded-lg">
-                    <Video className="w-6 h-6 text-orange-600" />
+                <button className="flex items-center gap-4 p-4 bg-gray-50 dark:bg-[#252b3b] rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors text-left">
+                  <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-lg">
+                    <Video className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900">Video Tutorials</h4>
-                    <p className="text-sm text-gray-600">Learn through videos</p>
+                    <h4 className="font-semibold text-gray-900 dark:text-slate-100">Video Tutorials</h4>
+                    <p className="text-sm text-gray-600 dark:text-slate-400">Learn through videos</p>
                   </div>
                 </button>
               </div>
@@ -324,7 +324,7 @@ const HelpSupport = () => {
             transition={{ delay: 0.1 }}
           >
             <Card>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Contact Support</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Contact Support</h2>
               <form onSubmit={handleContactSubmit} className="space-y-4">
                 <Input
                   label="Subject"
@@ -335,11 +335,11 @@ const HelpSupport = () => {
                 />
 
                 <div className="flex flex-col gap-2">
-                  <label className="font-medium text-gray-700">Category</label>
+                  <label className="font-medium text-gray-700 dark:text-slate-300">Category</label>
                   <select
                     value={contactForm.category}
                     onChange={(e) => setContactForm({...contactForm, category: e.target.value})}
-                    className="w-full px-4 py-3 border-2 rounded-lg bg-white text-gray-700 border-gray-300 focus:border-blue-600 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 rounded-lg bg-white dark:bg-[#252b3b] text-gray-700 dark:text-slate-200 border-gray-300 dark:border-[#2d3748] focus:border-blue-600 focus:outline-none"
                   >
                     <option value="general">General Inquiry</option>
                     <option value="technical">Technical Issue</option>
@@ -350,12 +350,12 @@ const HelpSupport = () => {
                 </div>
 
                 <div className="flex flex-col gap-2">
-                  <label className="font-medium text-gray-700">Message</label>
+                  <label className="font-medium text-gray-700 dark:text-slate-300">Message</label>
                   <textarea
                     value={contactForm.message}
                     onChange={(e) => setContactForm({...contactForm, message: e.target.value})}
                     rows="6"
-                    className="w-full px-4 py-3 border-2 rounded-lg text-gray-700 bg-white border-gray-300 focus:border-blue-600 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 rounded-lg text-gray-700 dark:text-slate-200 bg-white dark:bg-[#252b3b] border-gray-300 dark:border-[#2d3748] focus:border-blue-600 focus:outline-none dark:placeholder-slate-500"
                     placeholder="Describe your issue in detail..."
                     required
                   />
@@ -371,12 +371,12 @@ const HelpSupport = () => {
             {/* Status Banner */}
             {/* [API] GET /system/status → { status: 'operational'|'degraded'|'outage', message, avgResponseTime }
                  Poll every 60s or subscribe to a status page (e.g. statuspage.io). Currently hardcoded. */}
-            <Card className="bg-green-50 border-2 border-green-200 mt-6">
+            <Card className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-700/40 mt-6">
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0 mt-0.5" />
+                <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-semibold text-green-900 mb-1">All Systems Operational</h4>
-                  <p className="text-sm text-green-800">
+                  <h4 className="font-semibold text-green-900 dark:text-green-300 mb-1">All Systems Operational</h4>
+                  <p className="text-sm text-green-800 dark:text-green-400">
                     All services are running smoothly. Average response time: 2 hours.
                   </p>
                 </div>

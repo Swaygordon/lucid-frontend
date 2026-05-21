@@ -44,7 +44,7 @@ export const Avatar = ({
       `}
     >
       {src ? (
-        <img src={src} alt={name} className="w-full h-full object-cover" />
+        <img src={src} alt={name} className="w-full h-full object-cover" loading="lazy" />
       ) : (
         <span className='font-medium'>{fallback || getInitials(name)}</span>
       )}

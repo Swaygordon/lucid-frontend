@@ -83,20 +83,20 @@ const BookingDetailsModalComponent = ({
   // Status configuration
   const getStatusConfig = (status = 'pending') => {
     const configs = {
-      pending: { bg: 'bg-yellow-100', text: 'text-yellow-700', icon: Clock, label: 'Pending' },
-      confirmed: { bg: 'bg-blue-100', text: 'text-blue-700', icon: CheckCircle, label: 'Confirmed' },
-      'in-progress': { bg: 'bg-purple-100', text: 'text-purple-700', icon: AlertCircle, label: 'In Progress' },
-      completed: { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle, label: 'Completed' },
-      cancelled: { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle, label: 'Cancelled' }
+      pending: { bg: 'bg-yellow-100 dark:bg-amber-900/20', text: 'text-yellow-700 dark:text-amber-400', icon: Clock, label: 'Pending' },
+      confirmed: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400', icon: CheckCircle, label: 'Confirmed' },
+      'in-progress': { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400', icon: AlertCircle, label: 'In Progress' },
+      completed: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400', icon: CheckCircle, label: 'Completed' },
+      cancelled: { bg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400', icon: XCircle, label: 'Cancelled' }
     };
     return configs[status.toLowerCase()] || configs.pending;
   };
 
   const getUrgencyConfig = (urgency) => {
     const configs = {
-      normal: { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Normal' },
-      urgent: { bg: 'bg-orange-100', text: 'text-orange-700', label: 'Urgent' },
-      emergency: { bg: 'bg-red-100', text: 'text-red-700', label: 'Emergency' }
+      normal: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400', label: 'Normal' },
+      urgent: { bg: 'bg-orange-100 dark:bg-orange-900/20', text: 'text-orange-700 dark:text-orange-400', label: 'Urgent' },
+      emergency: { bg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400', label: 'Emergency' }
     };
     return configs[urgency] || configs.normal;
   };
@@ -203,12 +203,12 @@ const BookingDetailsModalComponent = ({
   const StatusBanner = () => {
     if (normalizedStatus === 'pending' && userType === 'client') {
       return (
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+        <div className="bg-yellow-50 dark:bg-amber-900/20 border-l-4 border-yellow-400 dark:border-amber-600 p-4 rounded-lg">
           <div className="flex items-center gap-3">
-            <Clock className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+            <Clock className="w-5 h-5 text-yellow-600 dark:text-amber-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-yellow-900">Awaiting Provider Response</p>
-              <p className="text-sm text-yellow-800">
+              <p className="font-semibold text-yellow-900 dark:text-amber-300">Awaiting Provider Response</p>
+              <p className="text-sm text-yellow-800 dark:text-amber-400">
                 The provider will review and respond to your booking request soon.
               </p>
             </div>
@@ -219,12 +219,12 @@ const BookingDetailsModalComponent = ({
 
     if (normalizedStatus === 'confirmed') {
       return (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-4 rounded-lg">
           <div className="flex items-center gap-3">
-            <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0" />
+            <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-blue-900">Booking Confirmed!</p>
-              <p className="text-sm text-blue-800">
+              <p className="font-semibold text-blue-900 dark:text-blue-300">Booking Confirmed!</p>
+              <p className="text-sm text-blue-800 dark:text-blue-400">
                 Scheduled for {booking.date} at {booking.time}
                 {userType === 'provider' && " - Don't forget to start the job when you begin work."}
               </p>
@@ -236,12 +236,12 @@ const BookingDetailsModalComponent = ({
 
     if (normalizedStatus === 'in-progress') {
       return (
-        <div className="bg-purple-50 border-l-4 border-purple-400 p-4 rounded-lg">
+        <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-400 dark:border-purple-600 p-4 rounded-lg">
           <div className="flex items-center gap-3">
-            <Play className="w-5 h-5 text-purple-600 flex-shrink-0" />
+            <Play className="w-5 h-5 text-purple-600 dark:text-purple-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-purple-900">Work in Progress</p>
-              <p className="text-sm text-purple-800">
+              <p className="font-semibold text-purple-900 dark:text-purple-300">Work in Progress</p>
+              <p className="text-sm text-purple-800 dark:text-purple-400">
                 {userType === 'provider'
                   ? "Mark as complete when finished. To cancel, you'll need client approval."
                   : "The provider is currently working on your request. To cancel, you'll need provider approval."
@@ -264,15 +264,15 @@ const BookingDetailsModalComponent = ({
     const requestorName = request.requestedBy === 'provider' ? provider.name : client.name;
 
     return (
-      <div className="bg-green-50 border-l-4 border-green-400 p-4 rounded-lg">
+      <div className="bg-green-50 dark:bg-green-900/20 border-l-4 border-green-400 dark:border-green-600 p-4 rounded-lg">
         <div className="space-y-3">
           <div className="flex items-start gap-3">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-green-900">
+              <p className="font-semibold text-green-900 dark:text-green-300">
                 {isCompletionRequestor ? 'Completion Request Sent' : 'Completion Request Received'}
               </p>
-              <p className="text-sm text-green-800 mt-1">
+              <p className="text-sm text-green-800 dark:text-green-400 mt-1">
                 {isCompletionRequestor
                   ? `You marked this job as complete. Awaiting ${contactLabel.toLowerCase()} confirmation.`
                   : `${requestorName} has marked this job as complete and is requesting your confirmation.`
@@ -281,10 +281,10 @@ const BookingDetailsModalComponent = ({
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-green-200">
-            <p className="text-xs text-gray-600 mb-1 font-semibold">Completion notes:</p>
-            <p className="text-sm text-gray-900">{request.notes}</p>
-            <p className="text-xs text-gray-500 mt-2">
+          <div className="bg-white dark:bg-[#252b3b] rounded-lg p-3 border border-green-200 dark:border-[#1e293b]">
+            <p className="text-xs text-gray-600 dark:text-slate-400 mb-1 font-semibold">Completion notes:</p>
+            <p className="text-sm text-gray-900 dark:text-slate-100">{request.notes}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-500 mt-2">
               Marked complete on: {new Date(request.timestamp).toLocaleString()}
             </p>
           </div>
@@ -301,7 +301,7 @@ const BookingDetailsModalComponent = ({
               {/* [API] PATCH /bookings/:id/completion-request — {action: 'reject'} keeps status as in-progress */}
               <button
                 onClick={() => onRejectCompletion?.(booking)}
-                className="flex-1 px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+                className="flex-1 px-4 py-2 bg-white dark:bg-[#252b3b] border-2 border-gray-300 dark:border-[#2d3748] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2d3748] transition-colors font-semibold text-sm"
               >
                 Request Changes
               </button>
@@ -320,15 +320,15 @@ const BookingDetailsModalComponent = ({
     const requestorName = request.requestedBy === 'provider' ? provider.name : client.name;
 
     return (
-      <div className="bg-orange-50 border-l-4 border-orange-400 p-4 rounded-lg">
+      <div className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 dark:border-orange-600 p-4 rounded-lg">
         <div className="space-y-3">
           <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
+            <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="font-semibold text-orange-900">
+              <p className="font-semibold text-orange-900 dark:text-orange-300">
                 {isRequestor ? 'Cancellation Request Sent' : 'Cancellation Request Received'}
               </p>
-              <p className="text-sm text-orange-800 mt-1">
+              <p className="text-sm text-orange-800 dark:text-orange-400 mt-1">
                 {isRequestor
                   ? `You requested to cancel this booking. Awaiting ${contactLabel.toLowerCase()} approval.`
                   : `${requestorName} has requested to cancel this booking.`
@@ -337,10 +337,10 @@ const BookingDetailsModalComponent = ({
             </div>
           </div>
 
-          <div className="bg-white rounded-lg p-3 border border-orange-200">
-            <p className="text-xs text-gray-600 mb-1 font-semibold">Reason for cancellation:</p>
-            <p className="text-sm text-gray-900">{request.reason}</p>
-            <p className="text-xs text-gray-500 mt-2">
+          <div className="bg-white dark:bg-[#252b3b] rounded-lg p-3 border border-orange-200 dark:border-[#1e293b]">
+            <p className="text-xs text-gray-600 dark:text-slate-400 mb-1 font-semibold">Reason for cancellation:</p>
+            <p className="text-sm text-gray-900 dark:text-slate-100">{request.reason}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-500 mt-2">
               Requested on: {new Date(request.timestamp).toLocaleString()}
             </p>
           </div>
@@ -357,7 +357,7 @@ const BookingDetailsModalComponent = ({
               {/* [API] PATCH /bookings/:id/cancellation-request — {action: 'reject'} keeps current status */}
               <button
                 onClick={() => onRejectCancellation?.(booking)}
-                className="flex-1 px-4 py-2 bg-white border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-semibold text-sm"
+                className="flex-1 px-4 py-2 bg-white dark:bg-[#252b3b] border-2 border-gray-300 dark:border-[#2d3748] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2d3748] transition-colors font-semibold text-sm"
               >
                 Reject Request
               </button>
@@ -381,13 +381,13 @@ const BookingDetailsModalComponent = ({
           initial={{ scale: 0.9, y: 50 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 50 }}
-          className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Modal Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
+          <div className="sticky top-0 bg-white dark:bg-[#1a1f2e] border-b border-gray-200 dark:border-[#1e293b] p-6 flex items-center justify-between z-10">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">{booking.title}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">{booking.title}</h2>
               <div className="flex items-center gap-3 flex-wrap">
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${statusConfig.bg} ${statusConfig.text}`}>
                   <StatusIcon className="w-3 h-3" />
@@ -399,19 +399,19 @@ const BookingDetailsModalComponent = ({
                   </span>
                 )}
                 {booking.bookingReference && (
-                  <span className="text-sm text-gray-500">#{booking.bookingReference}</span>
+                  <span className="text-sm text-gray-500 dark:text-slate-400">#{booking.bookingReference}</span>
                 )}
                 {/* NEW: Show agreed price */}
                 {booking.agreedPrice && (
-                  <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold flex items-center gap-1">
+                  <span className="px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold flex items-center gap-1">
                     <DollarSign className="w-3 h-3" />
                     GH₵ {booking.agreedPrice}
                   </span>
                 )}
               </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <X className="w-6 h-6 text-gray-600" />
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
+              <X className="w-6 h-6 text-gray-600 dark:text-slate-300" />
             </button>
           </div>
 
@@ -437,18 +437,18 @@ const BookingDetailsModalComponent = ({
 
             {/* Contact Information */}
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <User className="w-5 h-5 text-blue-600" />
                 {contactLabel} Information
               </h3>
-              <div className="grid md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
+              <div className="grid md:grid-cols-2 gap-4 bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Name</p>
-                  <p className="font-semibold text-gray-900">{contactName}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Name</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100">{contactName}</p>
                 </div>
                 {contactPhone && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Phone</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Phone</p>
                     <a href={`tel:${contactPhone}`} className="font-semibold text-blue-600 hover:underline flex items-center gap-1">
                       <Phone className="w-4 h-4" />
                       {contactPhone}
@@ -457,7 +457,7 @@ const BookingDetailsModalComponent = ({
                 )}
                 {contactEmail && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Email</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Email</p>
                     <a href={`mailto:${contactEmail}`} className="font-semibold text-blue-600 hover:underline flex items-center gap-1">
                       <Mail className="w-4 h-4" />
                       {contactEmail}
@@ -466,8 +466,8 @@ const BookingDetailsModalComponent = ({
                 )}
                 {userType === 'client' && provider.profession && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Profession</p>
-                    <p className="font-semibold text-gray-900">{provider.profession}</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Profession</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{provider.profession}</p>
                   </div>
                 )}
               </div>
@@ -475,34 +475,34 @@ const BookingDetailsModalComponent = ({
 
             {/* Job Details */}
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
                 {userType === 'provider' ? 'Job' : 'Service'} Details
               </h3>
               <div className="space-y-4">
                 {booking.serviceType && (
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <p className="text-sm text-gray-600 mb-1">Service Type</p>
-                    <p className="font-semibold text-gray-900">{booking.serviceType}</p>
+                  <div className="bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4">
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Service Type</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{booking.serviceType}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Description</p>
-                  <p className="text-gray-900 bg-gray-50 rounded-lg p-3">{booking.description}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Description</p>
+                  <p className="text-gray-900 dark:text-slate-100 bg-gray-50 dark:bg-[#252b3b] rounded-lg p-3">{booking.description}</p>
                 </div>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Estimated Duration</p>
-                    <p className="font-semibold text-gray-900">{booking.duration}</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Estimated Duration</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{booking.duration}</p>
                   </div>
                   {budget.min && budget.max && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Budget Range</p>
-                      <p className="font-semibold text-gray-900">GH₵{budget.min} - GH₵{budget.max}</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Budget Range</p>
+                      <p className="font-semibold text-gray-900 dark:text-slate-100">GH₵{budget.min} - GH₵{budget.max}</p>
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">
                       {userType === 'provider' ? 'Quoted Price' : 'Price'}
                     </p>
                     <p className="font-semibold text-green-600 text-lg">GH₵{booking.price}</p>
@@ -513,21 +513,21 @@ const BookingDetailsModalComponent = ({
 
             {/* Schedule */}
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-blue-600" />
                 Schedule
               </h3>
-              <div className="grid md:grid-cols-2 gap-4 bg-gray-50 rounded-lg p-4">
+              <div className="grid md:grid-cols-2 gap-4 bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">
                     {userType === 'client' ? 'Service' : 'Scheduled'} Date & Time
                   </p>
-                  <p className="font-semibold text-gray-900 text-lg">{booking.date} at {booking.time}</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100 text-lg">{booking.date} at {booking.time}</p>
                 </div>
                 {booking.alternateDate && (
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Alternate Option</p>
-                    <p className="font-semibold text-gray-900">{booking.alternateDate} at {booking.alternateTime}</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Alternate Option</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{booking.alternateDate} at {booking.alternateTime}</p>
                   </div>
                 )}
               </div>
@@ -535,24 +535,24 @@ const BookingDetailsModalComponent = ({
 
             {/* Location */}
             <div>
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-blue-600" />
                 {userType === 'provider' ? 'Service' : ''} Location
               </h3>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div className="bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4 space-y-3">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Address</p>
-                  <p className="font-semibold text-gray-900">{location.address}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Address</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100">{location.address}</p>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600 mb-1">Area</p>
-                    <p className="font-semibold text-gray-900">{location.area}, {location.city}</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Area</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{location.area}, {location.city}</p>
                   </div>
                   {location.landmark && (
                     <div>
-                      <p className="text-sm text-gray-600 mb-1">Landmark</p>
-                      <p className="font-semibold text-gray-900">{location.landmark}</p>
+                      <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Landmark</p>
+                      <p className="font-semibold text-gray-900 dark:text-slate-100">{location.landmark}</p>
                     </div>
                   )}
                 </div>
@@ -571,10 +571,10 @@ const BookingDetailsModalComponent = ({
             {/* Additional Notes */}
             {(booking.notes || booking.additionalNotes) && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">
                   {userType === 'client' ? 'Your' : 'Additional'} Notes
                 </h3>
-                <p className="text-gray-900 bg-yellow-50 rounded-lg p-4 border-l-4 border-yellow-400">
+                <p className="text-gray-900 dark:text-slate-100 bg-yellow-50 dark:bg-amber-900/20 rounded-lg p-4 border-l-4 border-yellow-400 dark:border-amber-600">
                   {booking.notes || booking.additionalNotes}
                 </p>
               </div>
@@ -584,10 +584,10 @@ const BookingDetailsModalComponent = ({
             {/* [API] GET /bookings/:id/attachments — returns [{id, url, type, uploadedAt}] */}
             {booking.images && booking.images.length > 0 && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Attached Images</h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">Attached Images</h3>
                 <div className="grid grid-cols-3 gap-4">
                   {booking.images.map((img, index) => (
-                    <img key={index} src={img} alt={`Attachment ${index + 1}`} className="w-full h-32 object-cover rounded-lg" />
+                    <img key={index} src={img} alt={`Attachment ${index + 1}`} className="w-full h-32 object-cover rounded-lg" loading="lazy" />
                   ))}
                 </div>
               </div>
@@ -597,21 +597,21 @@ const BookingDetailsModalComponent = ({
             {/* [MOCK] booking.review — in prod this comes from GET /bookings/:id which joins reviews table */}
             {normalizedStatus === 'completed' && booking.review && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">
                   {userType === 'client' ? 'Your Review' : 'Client Review'}
                 </h3>
-                <div className="bg-green-50 rounded-lg p-4 border-l-4 border-green-400">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border-l-4 border-green-400 dark:border-green-600">
                   {booking.rating && (
                     <div className="flex items-center gap-2 mb-2">
                       <div className="flex">
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`w-4 h-4 ${i < booking.rating ? 'fill-blue-600 text-blue-600' : 'text-gray-300'}`} />
+                          <Star key={i} className={`w-4 h-4 ${i < booking.rating ? 'fill-blue-600 text-blue-600' : 'text-gray-300 dark:text-slate-600'}`} />
                         ))}
                       </div>
-                      <span className="font-bold text-gray-900">{booking.rating}.0</span>
+                      <span className="font-bold text-gray-900 dark:text-slate-100">{booking.rating}.0</span>
                     </div>
                   )}
-                  <p className="text-gray-900">{booking.review}</p>
+                  <p className="text-gray-900 dark:text-slate-100">{booking.review}</p>
                 </div>
               </div>
             )}
@@ -619,8 +619,8 @@ const BookingDetailsModalComponent = ({
             {/* Cancellation Reason */}
             {normalizedStatus === 'cancelled' && booking.cancellationReason && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 mb-4">Cancellation Reason</h3>
-                <p className="text-gray-900 bg-red-50 rounded-lg p-4 border-l-4 border-red-400">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">Cancellation Reason</h3>
+                <p className="text-gray-900 dark:text-slate-100 bg-red-50 dark:bg-red-900/20 rounded-lg p-4 border-l-4 border-red-400 dark:border-red-600">
                   {booking.cancellationReason}
                 </p>
               </div>
@@ -628,7 +628,7 @@ const BookingDetailsModalComponent = ({
           </div>
 
           {/* Modal Footer - Action Buttons */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
+          <div className="sticky bottom-0 bg-white dark:bg-[#1a1f2e] border-t border-gray-200 dark:border-[#1e293b] p-6">
             {/* Provider Actions */}
             {userType === 'provider' && (
               <>
@@ -673,7 +673,7 @@ const BookingDetailsModalComponent = ({
                     </Link>
                       <button
                       onClick={() => onCancel?.(booking)}
-                      className="px-6 py-2 bg-white border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-semibold flex items-center gap-2"
+                      className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
                     >
                       <Trash2 className="w-5 h-5" />
                       Cancel
@@ -695,8 +695,8 @@ const BookingDetailsModalComponent = ({
                         Mark as Complete
                       </button>
                     ) : (
-                      <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 text-center">
-                        <p className="text-green-800 font-semibold">
+                      <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-700/40 rounded-lg p-4 text-center">
+                        <p className="text-green-800 dark:text-green-300 font-semibold">
                           ✓ Completion request sent. Awaiting client confirmation.
                         </p>
                       </div>
@@ -707,14 +707,14 @@ const BookingDetailsModalComponent = ({
                       {!hasPriceAdjustment && (
                         <button
                           onClick={() => setShowAdjustPriceModal(true)}
-                          className="flex-1 px-4 py-2 bg-white border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors font-semibold flex items-center justify-center gap-2"
+                          className="flex-1 px-4 py-2 bg-white dark:bg-transparent border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors font-semibold flex items-center justify-center gap-2"
                         >
                           <Edit2 className="w-4 h-4" />
                           Adjust Price
                         </button>
                       )}
                       <Link to="/lucid/messages" className="flex-1">
-                        <button className="w-full px-4 py-2 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold">
+                        <button className="w-full px-4 py-2 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold">
                           <MessageCircle className="w-4 h-4 inline mr-2" />
                           Message Client
                         </button>
@@ -723,7 +723,7 @@ const BookingDetailsModalComponent = ({
                         // [API] POST /bookings/:id/cancel — {reason, requestedBy: 'provider'}
                         <button
                           onClick={() => setShowCancelRequestModal(true)}
-                          className="px-6 py-2 bg-white border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-semibold"
+                          className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold"
                         >
                           Request Cancellation
                         </button>
@@ -739,7 +739,7 @@ const BookingDetailsModalComponent = ({
                       <span className="font-semibold text-lg">Job Completed</span>
                     </div>
                     {booking.rating && (
-                      <p className="flex items-center justify-center gap-2 text-gray-600 text-sm">
+                      <p className="flex items-center justify-center gap-2 text-gray-600 dark:text-slate-400 text-sm">
                         Client rated: {booking.rating}.0
                         <Star className="w-4 h-4 fill-blue-600 text-blue-600" />
                       </p>
@@ -757,7 +757,7 @@ const BookingDetailsModalComponent = ({
                     {/* [API] PATCH /bookings/:id — {date, time, description, budget} to edit before confirmed */}
                     <button
                       onClick={() => onEdit?.(booking)}
-                      className="flex-1 px-4 py-3 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold flex items-center justify-center gap-2"
+                      className="flex-1 px-4 py-3 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold flex items-center justify-center gap-2"
                     >
                       <Edit2 className="w-5 h-5" />
                       Edit Booking
@@ -784,7 +784,7 @@ const BookingDetailsModalComponent = ({
                     {/* [API] POST /bookings/:id/cancel — {reason, requestedBy: 'client'} */}
                     <button
                       onClick={() => onCancel?.(booking)}
-                      className="px-6 py-2 bg-white border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-semibold flex items-center gap-2"
+                      className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
                     >
                       <Trash2 className="w-5 h-5" />
                       Cancel
@@ -806,15 +806,15 @@ const BookingDetailsModalComponent = ({
                         Complete & Pay
                       </button>
                     ) : (
-                      <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4 text-center">
-                        <p className="text-green-800 font-semibold">
+                      <div className="bg-green-50 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-700/40 rounded-lg p-4 text-center">
+                        <p className="text-green-800 dark:text-green-300 font-semibold">
                           ✓ Completion request sent. Awaiting provider confirmation.
                         </p>
                       </div>
                     )}
                     <div className="flex gap-3">
                       <Link to="/lucid/messages" className="flex-1">
-                        <button className="w-full px-4 py-2 bg-white border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors font-semibold">
+                        <button className="w-full px-4 py-2 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold">
                           <MessageCircle className="w-4 h-4 inline mr-2" />
                           Message Provider
                         </button>
@@ -823,7 +823,7 @@ const BookingDetailsModalComponent = ({
                         // [API] POST /bookings/:id/cancel — {reason, requestedBy: 'client'}
                         <button
                           onClick={() => setShowCancelRequestModal(true)}
-                          className="px-6 py-2 bg-white border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors font-semibold"
+                          className="px-6 py-2 bg-white dark:bg-transparent border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors font-semibold"
                         >
                           Request Cancellation
                         </button>
@@ -856,7 +856,7 @@ const BookingDetailsModalComponent = ({
                       <AlertCircle className="w-6 h-6" />
                       <span className="font-semibold text-lg">Booking Cancelled</span>
                     </div>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-sm text-gray-600 dark:text-slate-400">
                       This booking was cancelled on {booking.bookingDate}
                     </p>
                   </div>
@@ -878,36 +878,36 @@ const BookingDetailsModalComponent = ({
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+              className="bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl max-w-md w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-orange-100 rounded-full">
-                  <AlertTriangle className="w-6 h-6 text-orange-600" />
+                <div className="p-3 bg-orange-100 dark:bg-orange-900/20 rounded-full">
+                  <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Request Cancellation</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">Request Cancellation</h3>
               </div>
 
               <div className="mb-6">
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 dark:text-slate-400 mb-4">
                   You are requesting to cancel this in-progress booking. The {contactLabel.toLowerCase()} must approve your request before the cancellation is finalized.
                 </p>
 
                 {/* [API] GET /bookings/:id/cancellation-policy — shows fee if within cancellation window */}
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 mb-4">
-                  <p className="text-sm text-yellow-800">
+                <div className="bg-yellow-50 dark:bg-amber-900/20 border-l-4 border-yellow-400 dark:border-amber-600 p-3 mb-4">
+                  <p className="text-sm text-yellow-800 dark:text-amber-300">
                     <span className="font-semibold">Important:</span> Work will continue until the request is approved. Be sure to communicate with the {contactLabel.toLowerCase()}.
                   </p>
                 </div>
 
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                   Reason for Cancellation <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={cancellationReason}
                   onChange={(e) => setCancellationReason(e.target.value)}
                   rows="4"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:outline-none resize-none"
+                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200 dark:placeholder-slate-500 rounded-lg focus:border-orange-500 focus:outline-none resize-none"
                   placeholder="Please provide a detailed reason for requesting cancellation..."
                   required
                 />
@@ -920,7 +920,7 @@ const BookingDetailsModalComponent = ({
                     setCancellationReason('');
                   }}
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold disabled:opacity-50"
+                  className="flex-1 px-4 py-3 bg-gray-200 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-300 dark:hover:bg-[#2d3748] transition-colors font-semibold disabled:opacity-50"
                 >
                   Cancel
                 </button>
@@ -950,35 +950,35 @@ const BookingDetailsModalComponent = ({
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0.9 }}
-              className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+              className="bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl max-w-md w-full p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center gap-3 mb-4">
-                <div className="p-3 bg-green-100 rounded-full">
-                  <CheckCircle className="w-6 h-6 text-green-600" />
+                <div className="p-3 bg-green-100 dark:bg-green-900/20 rounded-full">
+                  <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900">Mark as Complete</h3>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-slate-100">Mark as Complete</h3>
               </div>
 
               <div className="mb-6">
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 dark:text-slate-400 mb-4">
                   You're marking this job as complete. The {contactLabel.toLowerCase()} will need to confirm before the booking status changes to completed.
                 </p>
 
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-4">
-                  <p className="text-sm text-blue-800">
+                <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-3 mb-4">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
                     <span className="font-semibold">Note:</span> This helps ensure both parties agree the work is satisfactory before finalizing.
                   </p>
                 </div>
 
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-sm font-semibold text-gray-700 dark:text-slate-300 mb-2">
                   Completion Notes <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={completionNotes}
                   onChange={(e) => setCompletionNotes(e.target.value)}
                   rows="4"
-                  className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-green-500 focus:outline-none resize-none"
+                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200 dark:placeholder-slate-500 rounded-lg focus:border-green-500 focus:outline-none resize-none"
                   placeholder={userType === 'provider'
                     ? "Describe what was completed (e.g., 'Installed new pipes, tested for leaks, cleaned work area')"
                     : "Confirm the work completed meets your expectations..."
@@ -994,7 +994,7 @@ const BookingDetailsModalComponent = ({
                     setCompletionNotes('');
                   }}
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold disabled:opacity-50"
+                  className="flex-1 px-4 py-3 bg-gray-200 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-300 dark:hover:bg-[#2d3748] transition-colors font-semibold disabled:opacity-50"
                 >
                   Cancel
                 </button>

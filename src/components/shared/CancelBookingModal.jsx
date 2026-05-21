@@ -49,35 +49,35 @@ const CancelBookingModalComponent = ({ booking, isOpen, onClose, onConfirm }) =>
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
           onClick={(e) => e.stopPropagation()}
-          className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6"
+          className="bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl max-w-md w-full p-6"
         >
           {/* Header */}
           <div className="flex items-center space-x-3 mb-4">
             <div className="bg-red-100 p-3 rounded-full">
               <Trash2 className="w-6 h-6 text-red-600" />
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">
               Cancel Booking?
             </h2>
           </div>
 
           {/* Message */}
-          <p className="text-gray-600 mb-2">
+          <p className="text-gray-600 dark:text-slate-400 mb-2">
             Are you sure you want to cancel <span className="font-semibold">{booking.title}</span>?
           </p>
 
           {/* Booking Preview */}
-          <div className="bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
-            <p className="text-sm font-semibold text-gray-900 mb-1">
+          <div className="bg-gray-50 dark:bg-[#252b3b] p-4 rounded-lg mb-6 border border-gray-200 dark:border-[#2d3748]">
+            <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-1">
               {booking.title}
             </p>
-            <p className="text-sm text-gray-600 mb-1">
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">
               Provider: {booking.provider?.name || 'Service Provider'}
             </p>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-slate-400">
               Date: {booking.date} at {booking.time}
             </p>
-            <p className="text-sm text-gray-600 mt-2">
+            <p className="text-sm text-gray-600 dark:text-slate-400 mt-2">
               Price: <span className="font-semibold">GH₵{booking.price}</span>
             </p>
           </div>
@@ -86,8 +86,8 @@ const CancelBookingModalComponent = ({ booking, isOpen, onClose, onConfirm }) =>
           {/* [API] Replace static warning with real policy: GET /bookings/:id/cancellation-policy
                → { feePercent: number, feeAmount: number, hoursRemaining: number, deadline: string }
                Show the actual fee amount if within the penalty window. */}
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
-            <p className="text-sm text-yellow-800">
+          <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 mb-6">
+            <p className="text-sm text-yellow-800 dark:text-yellow-300">
               <span className="font-semibold">Note:</span> Cancellation policies may apply.
               You may be charged a cancellation fee depending on the timing.
             </p>

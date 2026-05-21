@@ -47,8 +47,8 @@ const ProfileSetupBanner = () => {
   ) return null;
 
   return (
-    <div className="bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-4">
-      <div className="flex items-center gap-2 text-amber-800 min-w-0">
+    <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-700/40 px-4 py-2.5 flex items-center justify-between gap-4">
+      <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 min-w-0">
         <AlertCircle className="w-4 h-4 flex-shrink-0" />
         <span className="text-sm font-medium truncate">
           Your provider profile is incomplete — clients can't find you yet.
@@ -56,7 +56,7 @@ const ProfileSetupBanner = () => {
       </div>
       <button
         onClick={() => navigate('/lucid/account/profile/setup')}
-        className="flex-shrink-0 text-sm font-semibold text-amber-900 bg-amber-200 hover:bg-amber-300 px-3 py-1 rounded-lg transition-colors"
+        className="flex-shrink-0 text-sm font-semibold text-amber-900 dark:text-amber-200 bg-amber-200 dark:bg-amber-700/40 hover:bg-amber-300 dark:hover:bg-amber-700/60 px-3 py-1 rounded-lg transition-colors"
       >
         Set Up Profile
       </button>

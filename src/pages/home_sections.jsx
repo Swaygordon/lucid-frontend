@@ -1,10 +1,10 @@
-import React, { memo, lazy, Suspense } from 'react';
+import React, { memo, lazy, Suspense, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Shield, Clock, CheckCircle2 } from 'lucide-react';
-import Search from '../assets/search_options.png';
-import Review from '../assets/Ratings.png';
-import Book from '../assets/book.png';
-import InstantQuotes from '../assets/instant qoutes.jpg';
+import { Shield, Clock, CheckCircle2, ChevronDown } from 'lucide-react';
+import Search from '../assets/search_options.webp';
+import Review from '../assets/Ratings.webp';
+import Book from '../assets/book.webp';
+import InstantQuotes from '../assets/instant_qoutes.webp';
 
 // Lazy load heavy components
 const Carousel = lazy(() => import('../components/carousal_slider.jsx'));
@@ -52,21 +52,21 @@ const IconWrapper = memo(({ children }) => (
 
 // Memoized Feature Card Component
 const FeatureCard = memo(({ icon: Icon, title, description, index }) => (
-  <motion.div 
-    className="card rounded-3xl w-full bg-white card-md shadow-2xl"
+  <motion.div
+    className="flex flex-col rounded-3xl w-full bg-white dark:bg-[#1a1f2e] shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] transition-shadow duration-200"
     variants={fadeInUp}
     initial="hidden"
     whileInView="visible"
     viewport={{ once: true, margin: "-50px" }}
     transition={{ duration: 0.5, delay: index * 0.1 }}
-    whileHover={{ y: -10, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }}
+    whileHover={{ y: -10 }}
   >
-    <div className="card-body items-center text-center">
+    <div className="flex flex-col flex-1 gap-2 p-6 items-center text-center">
       <IconWrapper>
         <Icon size={32} className="text-white" strokeWidth={2} />
       </IconWrapper>
-      <h2 className="text-xl font-semibold text-black mt-4">{title}</h2>
-      <p className="text-gray-600">{description}</p>
+      <h2 className="text-xl font-semibold text-black dark:text-slate-100 mt-4">{title}</h2>
+      <p className="text-gray-600 dark:text-slate-400">{description}</p>
     </div>
   </motion.div>
 ));
@@ -74,19 +74,19 @@ const FeatureCard = memo(({ icon: Icon, title, description, index }) => (
 // Memoized Platform Feature Card
 const PlatformFeatureCard = memo(({ title, description, index }) => (
   <motion.div 
-    className="card w-full bg-white card-md shadow-2xl rounded-3xl hover:shadow-xl transition-shadow"
+    className="flex flex-col w-full bg-white dark:bg-[#1a1f2e] shadow-2xl rounded-3xl hover:shadow-xl transition-shadow"
     variants={scaleIn}
     initial="hidden"
     whileInView="visible"
     viewport={{ once: true, margin: "-50px" }}
     transition={{ duration: 0.4, delay: index * 0.08 }}
-    whileHover={{ scale: 1.03, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1)" }}
+    whileHover={{ scale: 1.03 }}
   >
-    <div className="card-body">
-      <h2 className="card-title text-black mb-2 pb-2 font-semibold text-xl">
+    <div className="flex flex-col flex-1 gap-2 p-6">
+      <h2 className="font-semibold text-xl text-black dark:text-slate-100 mb-2 pb-2">
         {title}
       </h2>
-      <p className="text-gray-600">{description}</p>
+      <p className="text-gray-600 dark:text-slate-400">{description}</p>
     </div>
   </motion.div>
 ));
@@ -122,49 +122,56 @@ const HowItWorksStep = memo(({ step, index }) => (
     >
       {step.num}
     </motion.div>
-    <h2 className="text-lg font-semibold text-black mt-2 min-h-[28px]">
+    <h2 className="text-lg font-semibold text-black dark:text-slate-100 mt-2 min-h-[28px]">
       {step.title}
     </h2>
-    <p className="text-gray-600 max-w-xs m-1 flex-grow">
+    <p className="text-gray-600 dark:text-slate-400 max-w-xs m-1 flex-grow">
       {step.description}
     </p>
   </motion.div>
 ));
 
 // Memoized FAQ Item
-const FAQItem = memo(({ index, question, answer }) => (
-  <motion.div 
-    tabIndex={index} 
-    className="collapse collapse-arrow bg-white border-b-2 rounded-none border-gray-100"
-    variants={fadeInUp}
-    initial="hidden"
-    whileInView="visible"
-    viewport={{ once: true }}
-    transition={{ duration: 0.4, delay: index * 0.05 }}
-    whileHover={{ backgroundColor: "#f9fafb" }}
-  >
-    <div className="collapse-title font-semibold text-black text-left">
-      {question}
-    </div>
-    <div className="collapse-content text-sm text-gray-600 text-left">
-      {answer}
-    </div>
-  </motion.div>
-));
+const FAQItem = memo(({ index, question, answer }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <motion.div
+      className="bg-white dark:bg-[#1a1f2e] border-b-2 rounded-none border-gray-100 dark:border-[#1e293b]"
+      variants={fadeInUp}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
+    >
+      <button
+        onClick={() => setIsOpen(prev => !prev)}
+        className="w-full flex items-center justify-between px-4 py-4 font-semibold text-black dark:text-slate-100 text-left hover:bg-gray-50 dark:hover:bg-[#252b3b] transition-colors"
+      >
+        <span>{question}</span>
+        <ChevronDown className={`w-5 h-5 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 text-sm text-gray-600 dark:text-slate-400 text-left">
+          {answer}
+        </div>
+      )}
+    </motion.div>
+  );
+});
 
 // Memoized Section Header
 const SectionHeader = memo(({ title, description }) => (
   <motion.div 
-    className="items-center text-center my-8 px-2 py-6 bg-white"
+    className="items-center text-center my-8 px-2 py-6 bg-white dark:bg-[#0f1117]"
     variants={fadeInUp}
     initial="hidden"
     whileInView="visible"
     viewport={{ once: true }}
     transition={{ duration: 0.6 }}
   >
-    <h1 className="text-black font-semibold text-3xl">{title}</h1>
+    <h1 className="text-black dark:text-slate-100 font-semibold text-3xl">{title}</h1>
     {description && (
-      <p className="text-gray-600 mt-2 max-w-2xl mx-auto">{description}</p>
+      <p className="text-gray-600 dark:text-slate-400 mt-2 max-w-2xl mx-auto">{description}</p>
     )}
   </motion.div>
 ));
@@ -289,7 +296,7 @@ const FAQ_DATA = [
 
 const Section1 = () => {
   return (
-    <div className="flex flex-col min-h-screen bg-gray-300">
+    <div className="flex flex-col min-h-screen bg-gray-300 dark:bg-[#0f1117]">
       {/* Top 3 Feature Cards */}
       <motion.div 
         className="max-w-[1240px] mx-auto grid md:grid-cols-3 gap-8 mt-16 px-6 mb-6 py-4"
@@ -311,15 +318,15 @@ const Section1 = () => {
 
       {/* Platform Features Section */}
       <motion.div 
-        className="items-center text-center my-4 px-2 py-6 bg-white"
+        className="items-center text-center my-4 px-2 py-6 bg-white dark:bg-[#0f1117]"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
       >
-        <div className="my-2 px-2 py-2 bg-white">
-          <motion.h1 
-            className="text-black font-semibold text-3xl"
+        <div className="my-2 px-2 py-2 bg-white dark:bg-[#0f1117]">
+          <motion.h1
+            className="text-black dark:text-slate-100 font-semibold text-3xl"
             variants={fadeInUp}
             initial="hidden"
             whileInView="visible"
@@ -327,8 +334,8 @@ const Section1 = () => {
           >
             Platform Features
           </motion.h1>
-          <motion.p 
-            className="text-gray-600 mt-2 max-w-2xl mx-auto"
+          <motion.p
+            className="text-gray-600 dark:text-slate-400 mt-2 max-w-2xl mx-auto"
             variants={fadeInUp}
             initial="hidden"
             whileInView="visible"
@@ -359,7 +366,7 @@ const Section1 = () => {
       </motion.div>
 
       {/* How It Works Section */}
-      <div className="flex flex-col min-h-screen bg-white">
+      <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1117]">
         <SectionHeader title="How it works" />
 
         <motion.div 
@@ -377,8 +384,8 @@ const Section1 = () => {
 
       {/* Carousel Section - Lazy Loaded */}
       <Suspense fallback={
-        <motion.div 
-          className="min-h-[400px] bg-gray-200 animate-pulse"
+        <motion.div
+          className="min-h-[700px] md:min-h-[560px] bg-gray-200 animate-pulse"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
         />
@@ -387,17 +394,17 @@ const Section1 = () => {
       </Suspense>
 
       {/* FAQ Section */}
-      <div className="flex flex-col min-h-screen bg-white">
-        <motion.div 
-          className="items-center text-center my-8 px-2 py-6 bg-white"
+      <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1117]">
+        <motion.div
+          className="items-center text-center my-8 px-2 py-6 bg-white dark:bg-[#0f1117]"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <div className="my-4 px-2 py-6 bg-white">
-            <motion.h1 
-              className="text-black font-semibold text-3xl"
+          <div className="my-4 px-2 py-6 bg-white dark:bg-[#0f1117]">
+            <motion.h1
+              className="text-black dark:text-slate-100 font-semibold text-3xl"
               variants={fadeInUp}
               initial="hidden"
               whileInView="visible"
@@ -405,8 +412,8 @@ const Section1 = () => {
             >
               Frequently Asked Questions
             </motion.h1>
-            <motion.p 
-              className="text-gray-600 mt-2 max-w-2xl mx-auto"
+            <motion.p
+              className="text-gray-600 dark:text-slate-400 mt-2 max-w-2xl mx-auto"
               variants={fadeInUp}
               initial="hidden"
               whileInView="visible"

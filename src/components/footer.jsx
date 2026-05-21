@@ -9,7 +9,7 @@ import {
   FaThreads
 } from 'react-icons/fa6';
 import downloadBtn_1 from "../assets/download.png";
-import downloadBtn_2 from "../assets/web-189884714.jpg";
+import downloadBtn_2 from "../assets/web-189884714.webp";
 import Logo2 from "../assets/Lucid-white.png";
 
 // Animation variants
@@ -61,19 +61,18 @@ const FooterLink = memo(({ to, children, className = "" }) => (
 
 // Memoized Download Button Component
 const DownloadButton = memo(({ src, alt, to }) => (
-  <motion.button 
-    className="btn border-2 border-white lg:w-28 m-t-4 mb-4 mr-4"
-    whileHover={{ 
-      scale: 1.05,
-      boxShadow: "0 0 20px rgba(251, 146, 60, 0.6)"
-    }}
+  <motion.button
+    className="inline-flex items-center justify-center bg-black border border-white/40 rounded-xl overflow-hidden mb-4 mr-4 cursor-pointer"
+    whileHover={{ scale: 1.05 }}
     whileTap={{ scale: 0.95 }}
   >
     <Link to={to}>
       <img
         src={src}
         alt={alt}
-        className="h-20 w-24 object-contain"
+        className="h-12 w-36 object-contain"
+        width="144"
+        height="48"
         loading="lazy"
       />
     </Link>
@@ -118,11 +117,11 @@ const DOWNLOAD_BUTTONS = [
 
 // Memoized Footer Section Component
 const FooterSection = memo(({ title, children }) => (
-  <motion.nav 
+  <motion.nav
     className="mx-4 p-2"
     variants={fadeInUp}
   >
-    <h6 className="mb-1 uppercase font-semibold text-xl text-white">{title}</h6>
+    <p className="mb-1 uppercase font-semibold text-xl text-white">{title}</p>
     <div className="flex flex-col gap-2">
       {children}
     </div>
@@ -133,7 +132,7 @@ const Footer = () => {
   return (
     <>
       {/* Top Footer - Logo and Social Links */}
-      <footer className="footer bg-black text-white border-gray-200 border-b px-10 py-4">
+      <footer className="block bg-black text-white border-gray-200 border-b px-10 py-4">
         <motion.div 
           className="flex items-center justify-between w-full"
           initial="hidden"
@@ -147,6 +146,9 @@ const Footer = () => {
                 src={Logo2}
                 alt="Lucid Logo"
                 className="h-20 w-20 object-cover"
+                width="80"
+                height="80"
+                loading="lazy"
                 whileHover={{ rotate: 360 }}
                 transition={{ duration: 0.6 }}
               />
@@ -169,7 +171,7 @@ const Footer = () => {
       </footer>
 
       {/* Main Footer Content */}
-      <footer className="footer sm:footer-horizontal bg-black text-white p-10">
+      <footer className="block bg-black text-white p-10">
         <motion.div
           className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
           initial="hidden"
@@ -231,7 +233,7 @@ const Footer = () => {
       </footer>
 
       {/* Bottom Footer - Copyright */}
-      <footer className="footer bg-black text-white border-gray-200 flex flex-col items-center justify-center text-center border-t px-10">
+      <footer className="flex flex-col items-center justify-center text-center bg-black text-white border-gray-200 border-t px-10">
         <motion.div 
           className="items-center text-center my-2 px-2 py-2"
           initial={{ opacity: 0 }}

@@ -44,23 +44,23 @@ export const Modal = ({
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className={`bg-white rounded-xl shadow-2xl ${sizes[size]} w-full p-8 relative max-h-[90vh] overflow-y-auto`}
+            className={`bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl ${sizes[size]} w-full p-8 relative max-h-[90vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             {showCloseButton && (
               <motion.button
                 onClick={onClose}
-                className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-full transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
               >
-                <X className="w-6 h-6 text-gray-600" />
+                <X className="w-6 h-6 text-gray-600 dark:text-slate-400" />
               </motion.button>
             )}
             
             {title && (
               <motion.h2 
-                className="text-2xl font-bold text-gray-900 mb-6"
+                className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}

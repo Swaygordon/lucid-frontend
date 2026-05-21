@@ -202,7 +202,7 @@ const filteredTransactions = useMemo(() => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <motion.div
@@ -211,8 +211,8 @@ const filteredTransactions = useMemo(() => {
           variants={fadeIn}
           className="mb-8"
         >
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Earnings & Payments</h1>
-          <p className="text-gray-600">Manage your earnings and withdrawals</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100 mb-2">Earnings & Payments</h1>
+          <p className="text-gray-600 dark:text-slate-400">Manage your earnings and withdrawals</p>
         </motion.div>
 
         {/* Main Balance Card */}
@@ -275,16 +275,16 @@ const filteredTransactions = useMemo(() => {
                 animate="visible"
                 variants={fadeIn}
                 transition={{ delay: index * 0.1 }}
-                className="bg-white rounded-xl p-6 shadow-md"
+                className="bg-white dark:bg-[#1a1f2e] rounded-xl p-6 shadow-md"
               >
                 <div className={`p-3 rounded-lg ${colors[stat.color]} w-fit mb-4`}>
                   <Icon className="w-6 h-6" />
                 </div>
-                <h3 className="text-gray-600 text-sm font-medium mb-1">{stat.title}</h3>
-                <p className="text-2xl font-bold text-gray-900 mb-1">
+                <h3 className="text-gray-600 dark:text-slate-400 text-sm font-medium mb-1">{stat.title}</h3>
+                <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-1">
                   {showBalance ? stat.value : '••••••'}
                 </p>
-                <p className="text-xs text-gray-500">{stat.description}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-500">{stat.description}</p>
               </motion.div>
             );
           })}
@@ -310,7 +310,7 @@ const filteredTransactions = useMemo(() => {
         </motion.div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
+        <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-[#1e293b]">
           {['overview', 'earnings', 'withdrawals'].map((tab) => (
             <button
               key={tab}
@@ -318,7 +318,7 @@ const filteredTransactions = useMemo(() => {
               className={`px-6 py-3 font-semibold capitalize transition-colors ${
                 selectedTab === tab
                   ? 'text-primary border-b-2 border-primary'
-                  : 'text-gray-600 hover:text-gray-900'
+                  : 'text-gray-600 dark:text-slate-400 hover:text-gray-900 dark:hover:text-slate-200'
               }`}
             >
               {tab}
@@ -331,25 +331,25 @@ const filteredTransactions = useMemo(() => {
           initial="hidden"
           animate="visible"
           variants={fadeIn}
-          className="bg-white rounded-xl shadow-md p-6"
+          className="bg-white dark:bg-[#1a1f2e] rounded-xl shadow-md p-6"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Transaction History</h2>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Transaction History</h2>
             <div className="flex gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 dark:text-slate-500" />
                 <input
                   type="text"
                   placeholder="Search..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 pr-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
+                  className="pl-10 pr-4 py-2 border-2 border-gray-200 dark:border-[#2d3748] rounded-lg focus:border-blue-600 focus:outline-none dark:bg-[#252b3b] dark:text-slate-200"
                 />
               </div>
               <select
                 value={filterPeriod}
                 onChange={(e) => setFilterPeriod(e.target.value)}
-                className="px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
+                className="px-4 py-2 border-2 border-gray-200 dark:border-[#2d3748] rounded-lg focus:border-blue-600 focus:outline-none dark:bg-[#252b3b] dark:text-slate-200"
               >
                 <option value="all">All Time</option>
                 <option value="week">This Week</option>
@@ -408,7 +408,7 @@ const TransactionItem = ({ transaction, onClick }) => {
     <motion.div
       whileHover={{ scale: 1.01 }}
       onClick={onClick}
-      className="flex items-center justify-between p-4 border-2 border-gray-100 rounded-lg hover:border-blue-200 cursor-pointer transition-all"
+      className="flex items-center justify-between p-4 border-2 border-gray-100 dark:border-[#1e293b] rounded-lg hover:border-blue-200 dark:hover:border-[#2d3748] cursor-pointer transition-all dark:bg-[#252b3b]"
     >
       <div className="flex items-center gap-4">
         <div className={`p-3 rounded-lg ${
@@ -424,26 +424,26 @@ const TransactionItem = ({ transaction, onClick }) => {
         </div>
         
         <div>
-          <h4 className="font-semibold text-gray-900">
+          <h4 className="font-semibold text-gray-900 dark:text-slate-100">
             {isEarning ? transaction.jobTitle : `${transaction.method} Withdrawal`}
           </h4>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-slate-400">
             {transaction.date} • {transaction.reference}
           </p>
           {isEarning && transaction.client && (
-            <p className="text-xs text-gray-500">Client: {transaction.client}</p>
+            <p className="text-xs text-gray-500 dark:text-slate-500">Client: {transaction.client}</p>
           )}
         </div>
       </div>
 
       <div className="text-right">
         <p className={`text-lg font-bold ${
-          isEarning ? 'text-green-600' : 'text-gray-900'
+          isEarning ? 'text-green-600' : 'text-gray-900 dark:text-slate-100'
         }`}>
           {isEarning ? '+' : '-'}GH₵{transaction.amount.toFixed(2)}
         </p>
         {isEarning && (
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-500 dark:text-slate-500">
             Net: GH₵{transaction.netAmount.toFixed(2)}
           </p>
         )}
@@ -497,31 +497,31 @@ const WithdrawalModal = ({ availableBalance, onClose }) => {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-2xl max-w-md w-full p-8 relative"
+        className="bg-white dark:bg-[#1a1f2e] rounded-2xl max-w-md w-full p-8 relative"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
         >
-          <X className="w-5 h-5 text-gray-600" />
+          <X className="w-5 h-5 text-gray-600 dark:text-slate-400" />
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Withdraw Funds</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Withdraw Funds</h2>
 
         <div className="space-y-6">
           {/* Available Balance */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <p className="text-sm text-gray-600 mb-1">Available Balance</p>
-            <p className="text-2xl font-bold text-gray-900">GH₵{availableBalance.toFixed(2)}</p>
+          <div className="bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4">
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Available Balance</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">GH₵{availableBalance.toFixed(2)}</p>
           </div>
 
           {/* Amount Input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               Withdrawal Amount
             </label>
             <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 font-semibold">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600 dark:text-slate-400 font-semibold">
                 GH₵
               </span>
               <input
@@ -529,7 +529,7 @@ const WithdrawalModal = ({ availableBalance, onClose }) => {
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
+                className="w-full pl-12 pr-4 py-3 border-2 border-gray-200 dark:border-[#2d3748] rounded-lg focus:border-blue-600 focus:outline-none dark:bg-[#252b3b] dark:text-slate-200"
               />
             </div>
             <button
@@ -542,7 +542,7 @@ const WithdrawalModal = ({ availableBalance, onClose }) => {
 
           {/* Withdrawal Method */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-3">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
               Withdrawal Method
             </label>
             <div className="grid grid-cols-2 gap-3">
@@ -555,13 +555,13 @@ const WithdrawalModal = ({ availableBalance, onClose }) => {
                     className={`p-4 border-2 rounded-lg transition-all ${
                       method === m.id
                         ? 'border-primary bg-primary/10'
-                        : 'border-gray-200 hover:border-gray-300'
+                        : 'border-gray-200 dark:border-[#2d3748] hover:border-gray-300 dark:bg-[#252b3b]'
                     }`}
                   >
                     <Icon className={`w-6 h-6 mx-auto mb-2 ${
-                      method === m.id ? 'text-primary' : 'text-gray-600'
+                      method === m.id ? 'text-primary' : 'text-gray-600 dark:text-slate-400'
                     }`} />
-                    <p className="text-sm font-semibold text-gray-900">{m.name}</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{m.name}</p>
                   </button>
                 );
               })}
@@ -570,13 +570,13 @@ const WithdrawalModal = ({ availableBalance, onClose }) => {
 
           {/* Provider Selection */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               {method === 'mobile-money' ? 'Mobile Money Provider' : 'Bank'}
             </label>
             <select
               value={provider}
               onChange={(e) => setProvider(e.target.value)}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-[#2d3748] rounded-lg focus:border-blue-600 focus:outline-none dark:bg-[#252b3b] dark:text-slate-200"
             >
               <option value="">Select {method === 'mobile-money' ? 'provider' : 'bank'}</option>
               {(method === 'mobile-money' ? mobileProviders : banks).map((p) => (
@@ -587,7 +587,7 @@ const WithdrawalModal = ({ availableBalance, onClose }) => {
 
           {/* Account Number */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
               {method === 'mobile-money' ? 'Phone Number' : 'Account Number'}
             </label>
             <input
@@ -595,7 +595,7 @@ const WithdrawalModal = ({ availableBalance, onClose }) => {
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
               placeholder={method === 'mobile-money' ? '+233 XX XXX XXXX' : 'Account number'}
-              className="w-full px-4 py-3 border-2 border-gray-200 rounded-lg focus:border-blue-600 focus:outline-none"
+              className="w-full px-4 py-3 border-2 border-gray-200 dark:border-[#2d3748] rounded-lg focus:border-blue-600 focus:outline-none dark:bg-[#252b3b] dark:text-slate-200"
             />
           </div>
 
@@ -639,26 +639,26 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
       <motion.div
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        className="bg-white rounded-2xl max-w-lg w-full p-8 relative max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-[#1a1f2e] rounded-2xl max-w-lg w-full p-8 relative max-h-[90vh] overflow-y-auto"
       >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
         >
-          <X className="w-5 h-5 text-gray-600" />
+          <X className="w-5 h-5 text-gray-600 dark:text-slate-400" />
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">Transaction Details</h2>
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Transaction Details</h2>
 
         <div className="space-y-6">
           {/* Amount Card */}
           <div className={`${isEarning ? 'bg-green-50' : 'bg-blue-50'} rounded-lg p-6 text-center`}>
-            <p className="text-sm text-gray-600 mb-2">Amount</p>
+            <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">Amount</p>
             <p className={`text-4xl font-bold ${isEarning ? 'text-green-600' : 'text-blue-600'} mb-2`}>
               {isEarning ? '+' : '-'}GH₵{transaction.amount.toFixed(2)}
             </p>
             {isEarning && (
-              <div className="text-sm text-gray-600 space-y-1">
+              <div className="text-sm text-gray-600 dark:text-slate-400 space-y-1">
                 <p>Platform Fee (18%): -GH₵{transaction.platformFee.toFixed(2)}</p>
                 <p className="font-semibold text-green-700">Net Amount: GH₵{transaction.netAmount.toFixed(2)}</p>
               </div>
@@ -697,8 +697,8 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
           </div>
 
           {/* Actions */}
-          <div className="flex gap-3 pt-4 border-t border-gray-200">
-            <button className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors flex items-center justify-center gap-2">
+          <div className="flex gap-3 pt-4 border-t border-gray-200 dark:border-[#1e293b]">
+            <button className="flex-1 px-4 py-3 border-2 border-gray-200 dark:border-[#2d3748] text-gray-700 dark:text-slate-300 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-[#252b3b] transition-colors flex items-center justify-center gap-2">
               <Download className="w-5 h-5" />
               Download Receipt
             </button>
@@ -711,12 +711,12 @@ const TransactionDetailsModal = ({ transaction, onClose }) => {
 
 // Detail Row Component
 const DetailRow = ({ label, value, info }) => (
-  <div className="flex justify-between items-start py-3 border-b border-gray-100">
+  <div className="flex justify-between items-start py-3 border-b border-gray-100 dark:border-[#1e293b]">
     <div>
-      <p className="text-sm text-gray-600">{label}</p>
-      {info && <p className="text-xs text-gray-500 mt-1">{info}</p>}
+      <p className="text-sm text-gray-600 dark:text-slate-400">{label}</p>
+      {info && <p className="text-xs text-gray-500 dark:text-slate-500 mt-1">{info}</p>}
     </div>
-    <p className="font-semibold text-gray-900 text-right">{value}</p>
+    <p className="font-semibold text-gray-900 dark:text-slate-100 text-right">{value}</p>
   </div>
 );
 

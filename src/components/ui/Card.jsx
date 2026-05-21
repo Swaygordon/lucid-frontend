@@ -9,7 +9,7 @@ export const Card = ({
   return (
     <div
       className={`
-        bg-white rounded-2xl p-6 shadow-md border border-gray-100
+        bg-white dark:bg-[#1a1f2e] rounded-2xl p-6 shadow-md border border-gray-100 dark:border-[#1e293b]
         ${hoverable ? 'hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer' : ''}
         ${className}
       `}

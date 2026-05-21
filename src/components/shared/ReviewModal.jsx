@@ -128,36 +128,36 @@ const ReviewModalComponent = ({ booking, isOpen, onClose, onSubmit }) => {
           initial={{ scale: 0.9, y: 50 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 50 }}
-          className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+          className="bg-white dark:bg-[#1a1f2e] rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="sticky top-0 bg-white border-b border-gray-200 p-6 flex items-center justify-between z-10">
+          <div className="sticky top-0 bg-white dark:bg-[#1a1f2e] border-b border-gray-200 dark:border-[#1e293b] p-6 flex items-center justify-between z-10">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">Leave a Review</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Leave a Review</h2>
+              <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">
                 How was your experience with {provider.name}?
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
             >
-              <X className="w-6 h-6 text-gray-600" />
+              <X className="w-6 h-6 text-gray-600 dark:text-slate-300" />
             </button>
           </div>
 
           {/* Content */}
           <div className="p-6 space-y-6">
             {/* Booking Info */}
-            <div className="bg-blue-50 rounded-lg p-4 border-l-4 border-blue-400">
-              <p className="text-sm text-blue-800">
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 border-l-4 border-blue-400 dark:border-blue-600">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
                 <strong>Service:</strong> {booking.title}
               </p>
-              <p className="text-sm text-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
                 <strong>Date:</strong> {booking.date}
               </p>
-              <p className="text-sm text-blue-800">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
                 <strong>Price:</strong> GH₵{booking.price}
               </p>
             </div>
@@ -184,7 +184,7 @@ const ReviewModalComponent = ({ booking, isOpen, onClose, onSubmit }) => {
                         className={`w-12 h-12 ${
                           star <= (hoveredRating || rating)
                             ? 'fill-blue-600 text-blue-600'
-                            : 'text-gray-300'
+                            : 'text-gray-300 dark:text-slate-600'
                         }`}
                       />
                     </button>
@@ -199,7 +199,7 @@ const ReviewModalComponent = ({ booking, isOpen, onClose, onSubmit }) => {
                     className="flex items-center space-x-3"
                   >
                     {getRatingEmoji(hoveredRating || rating)}
-                    <span className="text-xl font-semibold text-gray-900">
+                    <span className="text-xl font-semibold text-gray-900 dark:text-slate-100">
                       {getRatingLabel(hoveredRating || rating)}
                     </span>
                   </motion.div>
@@ -222,7 +222,7 @@ const ReviewModalComponent = ({ booking, isOpen, onClose, onSubmit }) => {
                   { key: 'value', label: 'Value for Money' }
                 ].map(({ key, label }) => (
                   <div key={key} className="flex items-center justify-between">
-                    <span className="text-gray-700 font-medium">{label}</span>
+                    <span className="text-gray-700 dark:text-slate-300 font-medium">{label}</span>
                     <div className="flex space-x-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -235,7 +235,7 @@ const ReviewModalComponent = ({ booking, isOpen, onClose, onSubmit }) => {
                             className={`w-6 h-6 ${
                               star <= categories[key]
                                 ? 'fill-blue-600 text-blue-600'
-                                : 'text-gray-300'
+                                : 'text-gray-300 dark:text-slate-600'
                             }`}
                           />
                         </button>
@@ -255,19 +255,19 @@ const ReviewModalComponent = ({ booking, isOpen, onClose, onSubmit }) => {
                 value={reviewText}
                 onChange={(e) => setReviewText(e.target.value)}
                 rows="6"
-                className="w-full px-4 py-3 bg-white text-gray-900 border-2 border-gray-300 rounded-lg focus:border-blue-600 focus:outline-none resize-none"
+                className="w-full px-4 py-3 bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder-slate-500 border-2 border-gray-300 dark:border-[#2d3748] rounded-lg focus:border-blue-600 focus:outline-none resize-none"
                 placeholder="Share details about your experience with this service provider. What did they do well? What could be improved?"
                 required
               />
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-sm text-gray-500 dark:text-slate-500 mt-2">
                 {reviewText.length} characters (minimum 10)
               </p>
             </div>
 
             {/* Guidelines */}
-            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
-              <h4 className="font-semibold text-yellow-900 mb-2">Review Guidelines</h4>
-              <ul className="text-sm text-yellow-800 space-y-1">
+            <div className="bg-yellow-50 dark:bg-amber-900/20 border-l-4 border-yellow-400 dark:border-amber-600 p-4 rounded-lg">
+              <h4 className="font-semibold text-yellow-900 dark:text-amber-300 mb-2">Review Guidelines</h4>
+              <ul className="text-sm text-yellow-800 dark:text-amber-400 space-y-1">
                 <li>• Be honest and fair in your review</li>
                 <li>• Focus on your actual experience</li>
                 <li>• Avoid offensive or inappropriate language</li>
@@ -277,12 +277,12 @@ const ReviewModalComponent = ({ booking, isOpen, onClose, onSubmit }) => {
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
+          <div className="sticky bottom-0 bg-white dark:bg-[#1a1f2e] border-t border-gray-200 dark:border-[#1e293b] p-6">
             <div className="flex gap-4">
               <button
                 onClick={onClose}
                 disabled={isSubmitting}
-                className="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-semibold disabled:opacity-50"
+                className="flex-1 px-6 py-3 bg-gray-200 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-300 dark:hover:bg-[#2d3748] transition-colors font-semibold disabled:opacity-50"
               >
                 Cancel
               </button>

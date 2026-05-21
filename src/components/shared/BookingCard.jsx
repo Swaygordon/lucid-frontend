@@ -32,44 +32,44 @@ export const BookingCard = ({ booking, viewAs = 'client', onView, onCancel }) =>
       animate="visible"
       variants={fadeIn}
       whileHover={{ scale: 1.01 }}
-      className="bg-white rounded-xl p-5 shadow-md hover:shadow-xl transition-all"
+      className="bg-white dark:bg-[#1a1f2e] rounded-xl p-5 shadow-md hover:shadow-xl transition-all border border-transparent dark:border-[#1e293b]"
     >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3 flex-1 min-w-0">
           <Avatar name={personName} size="md" />
           <div className="min-w-0">
-            <h4 className="font-semibold text-gray-900 truncate">{personName}</h4>
-            <p className="text-sm text-gray-600 truncate">{booking.title}</p>
+            <h4 className="font-semibold text-gray-900 dark:text-slate-100 truncate">{personName}</h4>
+            <p className="text-sm text-gray-600 dark:text-slate-400 truncate">{booking.title}</p>
           </div>
         </div>
         <StatusBadge status={booking.status} className="ml-3" />
       </div>
 
-      <p className="text-gray-600 mb-4 text-sm line-clamp-2">{booking.description}</p>
+      <p className="text-gray-600 dark:text-slate-400 mb-4 text-sm line-clamp-2">{booking.description}</p>
 
       <div className="grid grid-cols-2 gap-3 mb-4">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
           <Calendar className="w-4 h-4 text-primary flex-shrink-0" />
           <span>{booking.date}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
           <Clock className="w-4 h-4 text-primary flex-shrink-0" />
           <span>{booking.time}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
           <MapPin className="w-4 h-4 text-primary flex-shrink-0" />
           <span className="truncate">{locationLabel || 'No location'}</span>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-600">
+        <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
           <Clock className="w-4 h-4 text-primary flex-shrink-0" />
           <span>{booking.duration}</span>
         </div>
       </div>
 
-      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+      <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-[#1e293b]">
         <div className="flex items-center gap-2">
           <DollarSign className="w-5 h-5 text-green-600" />
-          <span className="text-xl font-bold text-gray-900">
+          <span className="text-xl font-bold text-gray-900 dark:text-slate-100">
             GH₵{booking.price || 0}
           </span>
         </div>
@@ -78,7 +78,7 @@ export const BookingCard = ({ booking, viewAs = 'client', onView, onCancel }) =>
           {booking.status === 'completed' && booking.rating && (
             <div className="flex items-center gap-1 mr-1">
               <Star className="w-4 h-4 fill-primary text-primary" />
-              <span className="text-sm font-semibold text-gray-900">{booking.rating}</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-slate-100">{booking.rating}</span>
             </div>
           )}
           {onView && (

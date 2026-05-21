@@ -67,29 +67,12 @@ const onDrag = (e) => {
 
 
 
+  // [API] POST /uploads/profile-image (FormData)  → { url }
+  // then PATCH /users/:id { profileImage: url }
+  // Use XHR onprogress for real uploadProgress updates.
   const onSave = () => {
     if (!selectedFile) return;
-    setIsUploading(true);
-
-    // [MOCK] Fake progress — replace this entire block with a real upload:
-    // const formData = new FormData();
-    // formData.append('file', selectedFile);
-    // const xhr = new XMLHttpRequest();
-    // xhr.upload.onprogress = (e) => setUploadProgress(Math.round((e.loaded / e.total) * 100));
-    // xhr.onload = () => { const { url } = JSON.parse(xhr.responseText); /* update user */ closeModal(); };
-    // xhr.open('POST', '/api/uploads/profile-image');
-    // xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-    // xhr.send(formData);
-    const interval = setInterval(() => {
-      setUploadProgress((p) => {
-        if (p >= 100) {
-          clearInterval(interval);
-          setTimeout(closeModal, 400);
-          return 100;
-        }
-        return p + 10;
-      });
-    }, 200);
+    closeModal();
   };
 
   return {

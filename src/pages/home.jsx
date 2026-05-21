@@ -1,18 +1,159 @@
-import React, { useState, useEffect } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FaEllipsisH } from 'react-icons/fa';
 import {
-  MapPin, CheckCircle, CreditCard, Zap, Shield,
-  Briefcase, ArrowRight,
+  Search, MapPin, CheckCircle, CreditCard, Zap, Shield,
+  Briefcase, ArrowRight, Loader2,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { ALL_CATEGORIES } from '../data/categories';
 import Section1 from "./home_sections.jsx";
-import BackgroundImage from "../assets/background.png";
+import LocationPicker from '../components/LocationPicker.jsx';
 import BackToTop from '../components/back_the_top_btn';
+import { useTheme } from '../contexts/ThemeContext';
 
+// Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 }
 };
+
+const scaleIn = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: { opacity: 1, scale: 1 }
+};
+
+const staggerContainer = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+// 5 categories with the shortest names, shown beside the "More" button
+const FALLBACK_CATEGORIES = [...ALL_CATEGORIES]
+  .sort((a, b) => a.name.length - b.name.length)
+  .slice(0, 5)
+  .map(cat => ({ id: cat.id, name: cat.name, slug: cat.slug, icon: cat.icon }));
+
+// Service Icon Component
+const ServiceIcon = memo(
+  ({ icon: IconComponent, name, to, isMore = false }) => {
+    const navigate = useNavigate();
+    return (
+      <motion.div
+        className="flex flex-col items-center gap-2 flex-shrink-0"
+        variants={scaleIn}
+        transition={{ duration: 0.3 }}
+        whileHover={{ scale: 1.05 }}
+      >
+        <div
+          className="relative w-16 h-16 cursor-pointer"
+          onClick={() => navigate(to)}
+        >
+          <div className="absolute top-0 left-6 right-2 w-12 h-12 rounded-lg bg-blue-300" />
+          <motion.div
+            className="absolute top-3 left-3 w-12 h-12 rounded-lg flex items-center justify-center bg-blue-700 hover:bg-blue-300"
+            whileHover={{ rotate: 5, scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <IconComponent size={20} className="text-white" />
+          </motion.div>
+        </div>
+        <p className={`text-center text-xs mt-1 whitespace-nowrap ${isMore ? 'text-black dark:text-slate-200' : 'text-blue-700 dark:text-blue-300'}`}>
+          {name}
+        </p>
+      </motion.div>
+    );
+  }
+);
+
+// Search Bar Component
+const SearchBar = ({ onSearch, isLoading }) => {
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') onSearch(searchTerm);
+  };
+
+  return (
+    <motion.div
+      className="mt-8 sm:mt-12 flex justify-center px-4"
+      variants={fadeInUp}
+      initial="hidden"
+      animate="visible"
+      transition={{ duration: 0.6, delay: 0.4 }}
+    >
+      <div className="flex w-full max-w-2xl bg-white dark:bg-white/10 dark:backdrop-blur-md border border-gray-300 dark:border-white/20 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-200">
+        <input
+          type="text"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="What service do you need?"
+          className="flex-1 px-5 py-3 text-sm sm:text-base text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 bg-transparent focus:outline-none rounded-l-xl"
+        />
+        {/* Divider + inline location picker */}
+        <div className="flex items-center border-l border-gray-200 dark:border-[#2d3748]">
+          <LocationPicker inline />
+        </div>
+        {/* Search button */}
+        <motion.button
+          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 sm:px-7 py-3 rounded-r-xl flex-shrink-0 flex items-center gap-2 transition-colors"
+          whileTap={{ scale: 0.97 }}
+          onClick={() => onSearch(searchTerm)}
+        >
+          {isLoading
+            ? <Loader2 className="w-5 h-5 animate-spin" />
+            : <Search className="w-5 h-5" />
+          }
+          <span className="hidden sm:inline">Search</span>
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+};
+
+// Service Icons Grid Component
+const ServiceIconsGrid = memo(({ categories = [], className = "" }) => (
+  <motion.div
+    className={className}
+    variants={staggerContainer}
+    initial="hidden"
+    whileInView="visible"
+    viewport={{ once: true, margin: "-50px" }}
+  >
+    {categories.map((cat, index) => (
+      <ServiceIcon
+        key={cat.id}
+        icon={cat.icon}
+        name={cat.name}
+        to={`/lucid/services/${cat.slug}`}
+        index={index}
+      />
+    ))}
+    <ServiceIcon
+      icon={FaEllipsisH}
+      name="More"
+      isMore
+      to="/lucid/services/all"
+      index={categories.length}
+    />
+  </motion.div>
+));
+
+// Loading skeleton for service icons
+const ServiceIconsSkeleton = ({ count = 8, className = "" }) => (
+  <div className={className}>
+    {Array.from({ length: count }).map((_, i) => (
+      <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0">
+        <div className="w-16 h-16 rounded-lg bg-gray-200 dark:bg-[#252b3b] animate-pulse" />
+        <div className="w-12 h-3 bg-gray-200 dark:bg-[#252b3b] animate-pulse rounded" />
+      </div>
+    ))}
+  </div>
+);
 
 // ── Cycling word badge ────────────────────────────────────────────────────────
 const SERVICES_CYCLE = ['Electricians', 'Plumbers', 'Cleaners', 'Painters', 'Movers', 'Mechanics'];
@@ -77,6 +218,7 @@ const ProviderCTA = () => (
       }}
     />
     <div className="relative max-w-6xl mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
+      {/* Left — feature list */}
       <motion.div
         initial={{ opacity: 0, x: -30 }}
         whileInView={{ opacity: 1, x: 0 }}
@@ -110,6 +252,7 @@ const ProviderCTA = () => (
         </Link>
       </motion.div>
 
+      {/* Right — 4 stat cards */}
       <motion.div
         className="grid grid-cols-2 gap-4"
         initial="hidden"
@@ -139,61 +282,99 @@ const ProviderCTA = () => (
 // ─────────────────────────────────────────────────────────────────────────────
 
 function Home() {
+  const { isDark } = useTheme();
+  const [categories] = useState(FALLBACK_CATEGORIES);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const id = setTimeout(() => setLoading(false), 800);
+    return () => clearTimeout(id);
+  }, []);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSearch = (searchTerm) => {
+    if (!searchTerm.trim()) return;
+    navigate(`/lucid/search?q=${encodeURIComponent(searchTerm.trim())}`);
+  };
+
   return (
     <>
-      <div className="flex flex-col lg:min-h-screen bg-white">
+      <main>
+      <div className="flex flex-col lg:min-h-screen bg-white dark:bg-[#0f1117]">
         <div
-          className="hero flex-1 w-full min-h-[29rem] relative z-10"
+          className="flex flex-col items-center justify-center flex-1 w-full relative z-10 transition-colors duration-700"
           style={{
-            backgroundImage: `url(${BackgroundImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
+            background: isDark ? [
+              'radial-gradient(ellipse at 62% 18%, rgba(29, 78, 216, 0.55) 0%, transparent 52%)',
+              'radial-gradient(ellipse at 12% 88%, rgba(234, 88, 12, 0.30) 0%, transparent 48%)',
+              'radial-gradient(ellipse at 85% 75%, rgba(109, 40, 217, 0.20) 0%, transparent 40%)',
+              'linear-gradient(145deg, #050b18 0%, #07101f 45%, #060c1c 100%)',
+            ].join(', ') : 'linear-gradient(135deg, #ffffff 0%, #eff6ff 100%)',
           }}
         >
-          {/* Decorative layer */}
+          {/* Decorative layer — overflow-hidden scoped so dropdown can escape */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <motion.div
-              animate={{ y: [0, -28, 0], x: [0, 18, 0] }}
-              transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-              className="absolute -top-20 -right-20 w-80 h-80 bg-blue-400/20 rounded-full blur-3xl"
-            />
-            <motion.div
-              animate={{ y: [0, 22, 0], x: [0, -14, 0] }}
-              transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
-              className="absolute bottom-0 -left-16 w-64 h-64 bg-orange-300/15 rounded-full blur-3xl"
-            />
-            <motion.div
-              animate={{ y: [0, -16, 0] }}
-              transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-              className="absolute top-1/3 right-1/4 w-40 h-40 bg-purple-400/10 rounded-full blur-2xl"
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.06) 1px, transparent 1px)',
-                backgroundSize: '28px 28px',
-              }}
-            />
+
+            {/* ── Dark mode: animated glow orbs ── */}
+            {isDark && (
+              <>
+                <motion.div
+                  animate={{ y: [0, -28, 0], x: [0, 18, 0] }}
+                  transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ willChange: 'transform' }}
+                  className="absolute -top-20 -right-20 w-[480px] h-[480px] rounded-full blur-3xl bg-blue-500/50"
+                />
+                <motion.div
+                  animate={{ y: [0, 22, 0], x: [0, -14, 0] }}
+                  transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut', delay: 2 }}
+                  style={{ willChange: 'transform' }}
+                  className="absolute bottom-0 -left-16 w-80 h-80 rounded-full blur-3xl bg-orange-400/40"
+                />
+                <motion.div
+                  animate={{ y: [0, -16, 0] }}
+                  transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+                  style={{ willChange: 'transform' }}
+                  className="absolute top-1/3 right-1/4 w-64 h-64 rounded-full blur-3xl bg-purple-500/30"
+                />
+                <motion.div
+                  animate={{ scale: [1, 1.08, 1], opacity: [0.6, 0.8, 0.6] }}
+                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+                  style={{ willChange: 'transform, opacity' }}
+                  className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-64 bg-blue-700/25 blur-[80px] rounded-full"
+                />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)',
+                    backgroundSize: '28px 28px',
+                  }}
+                />
+              </>
+            )}
           </div>
 
-          <div className="hero-overlay bg-transparent"></div>
-          <div className="hero-content w-full text-neutral-content text-center px-4 sm:px-6">
-            <div className="w-full max-w-4xl">
+          <div className="relative z-10 w-full text-center px-4 sm:px-6 py-16 sm:py-20">
+            <div className="w-full max-w-3xl mx-auto">
+              {/* Cycling word badge */}
               <CyclingBadge />
 
+              {/* Heading */}
               <motion.h1
-                className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl font-extrabold text-black leading-tight mb-4 sm:mb-6"
+                className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4"
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
                 transition={{ duration: 0.6 }}
               >
-                Trusted help,<br />
-                <span className="block">when and how you need it.</span>
+                Trusted help,{' '}
+                <span className="text-blue-600 dark:text-blue-400">when and how</span>{' '}
+                you need it.
               </motion.h1>
 
+              {/* Paragraph */}
               <motion.p
-                className="text-base sm:text-base md:text-lg text-black leading-relaxed mb-8 px-4"
+                className="text-base md:text-lg text-gray-600 dark:text-slate-300 leading-relaxed mb-8 max-w-xl mx-auto"
                 variants={fadeInUp}
                 initial="hidden"
                 animate="visible"
@@ -204,13 +385,65 @@ function Home() {
                 your neighbourhood for home repairs, cleaning, moving, and more. Get
                 started instantly.
               </motion.p>
+
+              {/* Search Bar */}
+              <SearchBar onSearch={handleSearch} isLoading={searchLoading} />
+
+              {/* Desktop/Tablet Category Grid */}
+              <div className="hidden md:block mt-14 pb-6 w-full">
+                {loading ? (
+                  <ServiceIconsSkeleton
+                    count={6}
+                    className="flex justify-center gap-10"
+                  />
+                ) : (
+                  <ServiceIconsGrid
+                    categories={categories}
+                    className="flex justify-center gap-10"
+                  />
+                )}
+                <motion.div
+                  className="h-px max-w-7xl mx-auto mt-10 mb-10 bg-gray-300 dark:bg-[#1e293b]"
+                  initial={{ scaleX: 0 }}
+                  whileInView={{ scaleX: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.8, delay: 0.5 }}
+                />
+              </div>
             </div>
           </div>
+
+          {/* Mobile Category Scroll — inside hero, shares same background */}
+          <motion.div
+            className="relative z-10 block md:hidden w-full pb-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="overflow-x-auto scrollbar-hide">
+              {loading ? (
+                <ServiceIconsSkeleton count={6} className="flex gap-6 px-6 pb-2" />
+              ) : (
+                <ServiceIconsGrid
+                  categories={categories}
+                  className="flex gap-6 px-6 pb-2"
+                />
+              )}
+            </div>
+            <motion.div
+              className="h-px max-w-7xl mx-auto mt-6 bg-gray-300 dark:bg-white/10"
+              initial={{ scaleX: 0 }}
+              whileInView={{ scaleX: 1 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.8 }}
+            />
+          </motion.div>
         </div>
       </div>
 
       <ProviderCTA />
       <Section1 />
+      </main>
       <BackToTop />
     </>
   );
