@@ -24,3 +24,50 @@ dist-ssr
 *.sln
 *.sw?
 *.env
+
+# ─── Phases 4–7 pages (not yet in scope) ─────────────────────────────────────
+# Phase 4 — Bookings
+src/pages/client_bookings.jsx
+src/pages/provider_bookings.jsx
+src/pages/BookingsPage.jsx
+src/pages/client_history.jsx
+src/pages/provider_history.jsx
+src/pages/BookingHistoryPage.jsx
+src/pages/booking_request.jsx
+src/pages/booking_confirmation.jsx
+
+# Phase 5 — Dashboard
+src/pages/client_dashboard.jsx
+src/pages/provider_dashboard.jsx
+src/pages/DashboardPage.jsx
+src/pages/earnings.jsx
+src/pages/transactions.jsx
+src/pages/favourites.jsx
+
+# Phase 6 — Account & Settings
+src/pages/client_account_overview.jsx
+src/pages/provider_account_overview.jsx
+src/pages/AccountPage.jsx
+src/pages/user_info.jsx
+src/pages/notification_page.jsx
+src/pages/notificationSettings.jsx
+
+# Phase 7 — Messaging
+src/pages/messagelist.jsx
+src/pages/messaging.jsx
+
+# Unrouted / superseded pages
+src/pages/accountsettings.jsx
+src/pages/account_overview.jsx
+src/pages/history.jsx
+src/pages/provider_tasks.jsx
+src/pages/client_task.jsx
+src/pages/clientsignprofile.jsx
+
+# ─── Components only used by phases 4–5 ──────────────────────────────────────
+src/components/earningsDashboard.jsx
+src/components/earnings_chart.jsx
+src/components/demo.jsx
+
+# ─── Data files only used by phases 4+ ───────────────────────────────────────
+src/data/mockBookings.js
