@@ -1,5 +1,5 @@
 import React, { memo, useState, useMemo, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Zap, Sparkles, Truck, Droplets, Car, Scissors, Shirt, PaintRoller, ChevronRight } from 'lucide-react';
 import ServicesCarousel from '../components/servicePage_carousel.jsx';
 import BackToTop from '../components/back_the_top_btn.jsx';
@@ -8,6 +8,39 @@ import BusinessCategorySection from '../components/suggested_category.jsx';
 import { DownloadSection } from '../components/download_ad.jsx';
 import { ALL_CATEGORIES, getCategoryBySlug } from '../data/categories.js';
 import { Hammer, Truck as TruckIcon, Car as CarIcon, HardHat } from 'lucide-react';
+
+// Resolve a free-text query to the most specific matching route.
+// Priority: exact service → exact category → service contains query → category contains query.
+const resolveSearch = (rawQuery) => {
+  const q = rawQuery.trim().toLowerCase();
+  if (!q) return null;
+
+  // 1. Exact service name
+  for (const cat of ALL_CATEGORIES) {
+    for (const svc of cat.services) {
+      if (svc.name.toLowerCase() === q)
+        return `/lucid/services/${cat.slug}/${svc.slug}`;
+    }
+  }
+  // 2. Exact category name or slug
+  for (const cat of ALL_CATEGORIES) {
+    if (cat.name.toLowerCase() === q || cat.slug === q)
+      return `/lucid/services/${cat.slug}`;
+  }
+  // 3. Category name contains query (broad terms like "cleaning", "moving")
+  for (const cat of ALL_CATEGORIES) {
+    if (cat.name.toLowerCase().includes(q))
+      return `/lucid/services/${cat.slug}`;
+  }
+  // 4. Service name contains query (specific trades like "electric", "plumb")
+  for (const cat of ALL_CATEGORIES) {
+    for (const svc of cat.services) {
+      if (svc.name.toLowerCase().includes(q) || q.includes(svc.name.toLowerCase()))
+        return `/lucid/services/${cat.slug}/${svc.slug}`;
+    }
+  }
+  return null; // no match — caller falls back to AllCategories
+};
 
 // Popular services — 8 most-searched in Ghana
 const POPULAR_SERVICES = [
@@ -160,10 +193,23 @@ const Services = () => {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     const id = setTimeout(() => setIsLoading(false), 800);
     return () => clearTimeout(id);
+  }, []);
+
+  // Auto-resolve ?q= from home page search bar handoff
+  useEffect(() => {
+    const q = searchParams.get('q');
+    if (!q?.trim()) return;
+    const route = resolveSearch(q);
+    if (route) {
+      navigate(route, { replace: true });
+    } else {
+      setQuery(q.trim()); // no match — pre-fill the input so the user can refine
+    }
   }, []);
 
   // Shuffle once per mount and split into two distinct groups of 5
@@ -174,9 +220,9 @@ const Services = () => {
 
   const handleSearch = (e) => {
     e.preventDefault();
-    if (query.trim()) {
-      navigate(`/lucid/services/all?q=${encodeURIComponent(query.trim())}`);
-    }
+    if (!query.trim()) return;
+    const route = resolveSearch(query);
+    navigate(route ?? `/lucid/services/all?q=${encodeURIComponent(query.trim())}`);
   };
 
   if (isLoading) return <ServicesSkeleton />;
