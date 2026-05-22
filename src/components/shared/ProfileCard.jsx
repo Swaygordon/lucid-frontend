@@ -6,6 +6,7 @@ import { useFavourites } from '../../contexts/FavouritesContext';
 
 /**
  * ProfileCard Component - Shared user/provider profile card
+ * @param {string} id - Provider ID (UUID)
  * @param {string} name - User name
  * @param {string} role - User role/profession
  * @param {string} location - User location
@@ -52,6 +53,12 @@ const ProfileCardComponent = ({
       );
     }
     return stars;
+  };
+
+  const handleViewProfile = () => {
+    if (onViewProfile) {
+      onViewProfile();
+    }
   };
 
   return (
@@ -102,16 +109,15 @@ const ProfileCardComponent = ({
         <span className="font-semibold">{rating.toFixed(1)}</span>
       </div>
 
-      <Link to="/lucid/providers/me" className="mt-auto">
-        <motion.button
-          onClick={onViewProfile}
-          className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-hover transition"
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
-        >
-          View Profile
-        </motion.button>
-      </Link>
+      {/* FIXED: Removed hardcoded Link, now uses onClick callback */}
+      <motion.button
+        onClick={handleViewProfile}
+        className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-hover transition"
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+      >
+        View Profile
+      </motion.button>
     </motion.div>
   );
 };

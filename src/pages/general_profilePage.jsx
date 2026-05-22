@@ -1,9 +1,8 @@
 import React, { useState, useEffect, memo, lazy, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useNotification } from '../contexts/NotificationContext';
 import { useFavourites } from '../contexts/FavouritesContext';
-import { useNavigateBack } from '../hooks/useNavigateBack';
 import { ReviewThread } from '../components/shared';
 
 import {
@@ -40,18 +39,13 @@ const formatTime = (t) => {
 // Lazy load heavy components
 const ProjectCarousel = lazy(() => import("../components/project_Carousel.jsx"));
 const BackToTop = lazy(() => import('../components/back_the_top_btn.jsx'));
- 
+
 // ============================================
 // ANIMATION VARIANTS
 // ============================================
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
   visible: { opacity: 1, y: 0 }
-};
-
-const fadeIn = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1 }
 };
 
 const scaleIn = {
@@ -68,9 +62,6 @@ const staggerContainer = {
     }
   }
 };
-
-
-
 
 // ============================================
 // MEMOIZED COMPONENTS
@@ -94,7 +85,7 @@ const HeroSection = memo(({ heroUrl }) => (
 ));
 
 // Profile Avatar
-const ProfileAvatar = memo(({ avatarUrl }) => (
+const ProfileAvatar = memo(({ avatarUrl, name }) => (
   <motion.div
     className="relative -top-14 left-2 transform -translate-x-1/2 z-30"
     initial={{ scale: 0, rotate: -180 }}
@@ -103,9 +94,13 @@ const ProfileAvatar = memo(({ avatarUrl }) => (
   >
     <div className="w-24 h-24 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full border-4 border-blue-600 bg-gray-200 flex items-center justify-center overflow-hidden shadow-lg">
       {avatarUrl ? (
-        <img src={avatarUrl} alt="profile picture" className="w-full h-full object-cover" loading="lazy" />
+        <img src={avatarUrl} alt={name} className="w-full h-full object-cover" loading="lazy" />
       ) : (
-        <User size={48} className="text-gray-400" />
+        <div className="w-full h-full bg-blue-600 flex items-center justify-center">
+          <span className="text-white text-2xl font-bold">
+            {name?.charAt(0) || 'U'}
+          </span>
+        </div>
       )}
     </div>
   </motion.div>
@@ -114,7 +109,7 @@ const ProfileAvatar = memo(({ avatarUrl }) => (
 // Skill Badge
 const SkillBadge = memo(({ skill, index }) => (
   <motion.span
-    className="px-4 py-2 bg-primary/10 text-primary rounded-lg text-sm font-medium"
+    className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium"
     initial={{ opacity: 0, scale: 0.8 }}
     animate={{ opacity: 1, scale: 1 }}
     transition={{ delay: index * 0.1 }}
@@ -127,7 +122,7 @@ const SkillBadge = memo(({ skill, index }) => (
 // Info Card
 const InfoCard = memo(({ title, children, icon: Icon, delay = 0 }) => (
   <motion.div
-    className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 hover:shadow-xl transition-shadow duration-200"
+    className="bg-white rounded-lg shadow p-6 hover:shadow-xl transition-shadow duration-200"
     variants={scaleIn}
     initial="hidden"
     whileInView="visible"
@@ -137,13 +132,13 @@ const InfoCard = memo(({ title, children, icon: Icon, delay = 0 }) => (
   >
     <div className="flex items-center space-x-2 mb-4">
       {Icon && <Icon className="w-5 h-5 text-blue-600" />}
-      <h2 className="text-xl text-black dark:text-slate-100 font-bold">{title}</h2>
+      <h2 className="text-xl text-black font-bold">{title}</h2>
     </div>
     {children}
   </motion.div>
 ));
 
-// Working Hours Display — reads the same shape the edit page saves
+// Working Hours Display
 const DAY_LABELS = {
   sunday: 'Sunday', monday: 'Monday', tuesday: 'Tuesday',
   wednesday: 'Wednesday', thursday: 'Thursday', friday: 'Friday', saturday: 'Saturday',
@@ -152,26 +147,26 @@ const DAY_LABELS = {
 const WorkingHoursDisplay = memo(({ selectedDays, weekdaysTime, weekendTime, customDays }) => {
   const rows = [];
 
-  if (selectedDays.weekdays) {
-    rows.push({ label: 'Mon – Fri', start: weekdaysTime.start, end: weekdaysTime.end });
+  if (selectedDays?.weekdays) {
+    rows.push({ label: 'Mon – Fri', start: weekdaysTime?.start, end: weekdaysTime?.end });
   }
-  if (selectedDays.weekend) {
-    rows.push({ label: 'Sat – Sun', start: weekendTime.start, end: weekendTime.end });
+  if (selectedDays?.weekend) {
+    rows.push({ label: 'Sat – Sun', start: weekendTime?.start, end: weekendTime?.end });
   }
-  if (selectedDays.custom) {
-    Object.entries(customDays)
-      .filter(([, d]) => d.selected)
+  if (selectedDays?.custom) {
+    Object.entries(customDays || {})
+      .filter(([, d]) => d?.selected)
       .forEach(([day, d]) => rows.push({ label: DAY_LABELS[day], start: d.start, end: d.end }));
   }
 
   if (rows.length === 0) {
-    return <p className="text-gray-500 dark:text-slate-500 text-sm">Not specified</p>;
+    return <p className="text-gray-500 text-sm">Not specified</p>;
   }
 
   return (
     <div className="space-y-2">
       {rows.map(({ label, start, end }) => (
-        <div key={label} className="flex items-center justify-between text-gray-700 dark:text-slate-300">
+        <div key={label} className="flex items-center justify-between text-gray-700">
           <span className="font-medium">{label}</span>
           <span className="text-sm">{formatTime(start)} – {formatTime(end)}</span>
         </div>
@@ -188,7 +183,7 @@ const InfoItem = memo(({ icon: Icon, text }) => (
     transition={{ duration: 0.2 }}
   >
     <Icon className="w-6 h-6 text-blue-600" />
-    <span className="text-gray-700 dark:text-slate-300">{text}</span>
+    <span className="text-gray-700">{text}</span>
   </motion.div>
 ));
 
@@ -198,7 +193,7 @@ const ActionButton = memo(({ icon: Icon, text, onClick, variant = 'primary' }) =
     className={`py-4 rounded-lg flex items-center justify-center space-x-2 transition-colors font-semibold ${
       variant === 'primary'
         ? 'bg-blue-600 text-white hover:bg-blue-700'
-        : 'bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 hover:bg-blue-50 dark:hover:bg-primary/10'
+        : 'bg-white text-blue-600 border-2 border-blue-600 hover:bg-blue-50'
     }`}
     whileHover={{ scale: 1.02 }}
     whileTap={{ scale: 0.98 }}
@@ -217,9 +212,9 @@ const RatingBar = memo(({ rating, index }) => (
     animate={{ opacity: 1, x: 0 }}
     transition={{ delay: index * 0.05 }}
   >
-    <span className="w-8 text-right dark:text-slate-300">{rating.stars}</span>
+    <span className="w-8 text-right">{rating.stars}</span>
     <Star className="w-4 h-4 fill-blue-600 text-blue-600" />
-    <div className="flex-1 bg-gray-200 dark:bg-[#252b3b] rounded-full h-2 overflow-hidden">
+    <div className="flex-1 bg-gray-200 rounded-full h-2 overflow-hidden">
       <motion.div
         className="bg-blue-600 h-2 rounded-full"
         initial={{ width: 0 }}
@@ -227,170 +222,42 @@ const RatingBar = memo(({ rating, index }) => (
         transition={{ duration: 0.8, delay: index * 0.1 }}
       />
     </div>
-    <span className="w-12 text-right text-sm text-gray-600 dark:text-slate-400">
+    <span className="w-12 text-right text-sm text-gray-600">
       {rating.percentage}%
     </span>
   </motion.div>
 ));
 
-// Review Item
-const ReviewItem = memo(({ review, index }) => (
-  <motion.div 
-    className="border-t dark:border-[#1e293b] pt-6"
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ delay: index * 0.1 }}
-  >
-    <div className="flex items-start space-x-4">
-      <div className="w-12 h-12 bg-gray-300 dark:bg-[#252b3b] rounded-full flex items-center justify-center">
-        <User size={32} className="text-gray-400 dark:text-slate-500" />
-      </div>
-      <div className="flex-1">
-        <div className="flex items-start justify-between mb-2">
-          <div>
-            <div className="font-semibold text-gray-900 dark:text-slate-100">{review.name}</div>
-            <p className="text-sm text-gray-600 dark:text-slate-400">{review.jobType}</p>
-          </div>
-          <span className="text-sm text-gray-500 dark:text-slate-500">{review.date}</span>
-        </div>
-        <div className="flex space-x-1 my-2">
-          {[...Array(5)].map((_, i) => (
-            <Star
-              key={i}
-              className={`w-4 h-4 ${
-                i < review.rating
-                  ? 'fill-blue-600 text-blue-600'
-                  : 'text-gray-300 dark:text-slate-600'
-              }`}
-            />
-          ))}
-        </div>
-        <p className="text-gray-700 dark:text-slate-300 mt-2">{review.text}</p>
-      </div>
-    </div>
-  </motion.div>
-));
-
 const LoadingSkeleton = () => (
-  <div className="animate-pulse bg-gray-200 rounded-lg h-64" />
-);
-
-const GeneralProfileSkeleton = () => (
-  <div className="min-h-screen bg-gray-50 animate-pulse">
-    {/* Header */}
+  <div className="min-h-screen bg-gray-50">
     <div className="bg-white shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+        <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse" />
         <div className="flex gap-2">
-          <div className="w-10 h-10 bg-gray-200 rounded-lg" />
-          <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+          <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse" />
+          <div className="w-10 h-10 bg-gray-200 rounded-lg animate-pulse" />
         </div>
       </div>
     </div>
-
-    {/* Hero */}
-    <div className="bg-gray-300" style={{ minHeight: 240 }} />
-
-    {/* Profile card */}
+    <div className="bg-gray-300 animate-pulse" style={{ minHeight: 240 }} />
     <div className="max-w-7xl mx-auto px-4 -mt-14">
       <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gray-300 border-4 border-white mb-4" />
-        <div className="h-7 w-48 bg-gray-200 rounded mb-2" />
-        <div className="flex items-center gap-2 mb-3">
-          <div className="h-5 w-5 bg-gray-200 rounded" />
-          <div className="h-5 w-36 bg-gray-200 rounded" />
-        </div>
-        <div className="flex gap-4 mb-4 flex-wrap">
-          <div className="h-4 w-24 bg-gray-200 rounded" />
-          <div className="h-4 w-28 bg-gray-200 rounded" />
+        <div className="w-24 h-24 rounded-full bg-gray-200 animate-pulse mb-4" />
+        <div className="h-8 w-48 bg-gray-200 rounded animate-pulse mb-2" />
+        <div className="h-6 w-36 bg-gray-200 rounded animate-pulse mb-3" />
+        <div className="flex gap-4 mb-4">
+          <div className="h-4 w-24 bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-28 bg-gray-200 rounded animate-pulse" />
         </div>
         <div className="space-y-2 mb-4">
-          <div className="h-4 w-full bg-gray-200 rounded" />
-          <div className="h-4 w-4/5 bg-gray-200 rounded" />
+          <div className="h-4 w-full bg-gray-200 rounded animate-pulse" />
+          <div className="h-4 w-4/5 bg-gray-200 rounded animate-pulse" />
         </div>
         <div className="flex flex-wrap gap-3 mb-4">
-          {['w-20', 'w-24', 'w-16', 'w-28', 'w-20'].map((w, i) => (
-            <div key={i} className={`h-8 ${w} bg-gray-200 rounded-lg`} />
+          {[1, 2, 3, 4].map(i => (
+            <div key={i} className="h-8 w-20 bg-gray-200 rounded-lg animate-pulse" />
           ))}
         </div>
-        <div className="flex flex-wrap gap-2">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="h-6 w-20 bg-gray-200 rounded-full" />
-          ))}
-        </div>
-      </div>
-    </div>
-
-    {/* Main content */}
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Stats */}
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="bg-white rounded-lg shadow p-6 flex flex-col items-center gap-2">
-            <div className="w-8 h-8 bg-gray-200 rounded-full" />
-            <div className="h-7 w-16 bg-gray-200 rounded" />
-            <div className="h-4 w-28 bg-gray-200 rounded" />
-          </div>
-        ))}
-      </div>
-
-      {/* Info cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="bg-white rounded-lg shadow p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-5 h-5 bg-gray-200 rounded" />
-              <div className="h-5 w-28 bg-gray-200 rounded" />
-            </div>
-            <div className="space-y-3">
-              {[0, 1, 2, 3].map(j => (
-                <div key={j} className="flex items-center gap-3">
-                  <div className="w-5 h-5 bg-gray-200 rounded" />
-                  <div className="h-4 w-36 bg-gray-200 rounded" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Certifications */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="h-5 w-32 bg-gray-200 rounded mb-4" />
-        <div className="space-y-3">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="w-5 h-5 bg-gray-200 rounded-full" />
-              <div className="h-4 w-64 bg-gray-200 rounded" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Languages */}
-      <div className="bg-white rounded-lg shadow p-6 mb-8">
-        <div className="h-5 w-24 bg-gray-200 rounded mb-4" />
-        <div className="flex flex-wrap gap-2">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className="h-7 w-20 bg-gray-200 rounded-full" />
-          ))}
-        </div>
-      </div>
-
-      {/* Action buttons */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="h-14 bg-gray-200 rounded-lg" />
-        ))}
-      </div>
-
-      {/* Portfolio carousel */}
-      <div className="h-64 bg-gray-200 rounded-lg mb-8" />
-
-      {/* Reviews accordion */}
-      <div className="bg-white rounded-lg shadow p-6 flex items-center justify-between">
-        <div className="h-6 w-40 bg-gray-200 rounded" />
-        <div className="w-6 h-6 bg-gray-200 rounded" />
       </div>
     </div>
   </div>
@@ -403,101 +270,159 @@ const GeneralProfile = () => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
   const { id } = useParams();
-  const handleBack = useNavigateBack('/lucid/services', 400);
-
-  const [PROFILE_DATA, setPROFILE_DATA] = useState(null);
-  const [RATING_DISTRIBUTION, setRATING_DISTRIBUTION] = useState([]);
-  const [REVIEWS, setREVIEWS] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!id) { setIsLoading(false); return; }
-
-    supabase
-      .from('provider_profiles')
-      .select('*')
-      .eq('user_id', id)
-      .single()
-      .then(({ data, error }) => {
-        if (!error && data) setPROFILE_DATA(data);
-        setIsLoading(false);
-      });
-  }, [id]);
-
-  useEffect(() => {
-    if (!id) return;
-
-    // [API] GET provider reviews — fill in table/column once reviews table is created
-    supabase
-      .from('YOUR_REVIEWS_TABLE')
-      .select('*')
-      .eq('YOUR_PROVIDER_ID_COLUMN', id)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setREVIEWS(data);
-      });
-  }, [id]);
-
   const { isFavourite, toggleFavourite } = useFavourites();
-  const isFavorite = isFavourite(PROFILE_DATA?.id);
-
+  
+  const [profileData, setProfileData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [reviewsOpen, setReviewsOpen] = useState(false);
   const [showCallModal, setShowCallModal] = useState(null);
-  const [notification, setNotification] = useState('');
   const [replyTarget, setReplyTarget] = useState(null);
   const [replyText, setReplyText] = useState("");
 
+  const isFavorite = isFavourite(id);
 
-const insertReply = (items, parentId, reply) => {
-  return items.map(item => {
-    if (item.id === parentId) {
-      return { ...item, replies: [...item.replies, reply] };
+  // Handle back navigation
+  const handleBack = () => {
+    if (window.history.length > 2) {
+      navigate(-1);
+    } else {
+      navigate('/lucid/services');
     }
-    if (item.replies?.length) {
-      return {
-        ...item,
-        replies: insertReply(item.replies, parentId, reply)
-      };
+  };
+
+  // Fetch provider profile
+  useEffect(() => {
+    if (!id) {
+      setError('No provider ID provided');
+      setIsLoading(false);
+      return;
     }
-    return item;
-  });
-};
 
+    const fetchProfile = async () => {
+      let providerId = id;
+      
+      // Handle "me" case
+      if (id === 'me') {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            providerId = user.id;
+          } else {
+            setError('Please log in to view your profile');
+            setIsLoading(false);
+            return;
+          }
+        } catch (err) {
+          setError('Authentication error');
+          setIsLoading(false);
+          return;
+        }
+      }
 
-const [REVIEWS, setREVIEWS] = useState([]);
+      // Validate UUID format
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(providerId)) {
+        setError('Invalid provider ID format');
+        setIsLoading(false);
+        return;
+      }
 
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        console.log('Fetching provider with ID:', providerId);
+        
+        const { data, error: supabaseError } = await supabase
+          .from('provider_profiles')
+          .select('*')
+          .eq('user_id', providerId)
+          .maybeSingle(); // Use maybeSingle() instead of single() to avoid 406 error
 
+        if (supabaseError) {
+          console.error('Supabase error:', supabaseError);
+          throw supabaseError;
+        }
 
-// [API] POST /reviews/:reviewId/replies — {authorId, reviewText} → {id, createdAt, ...reply}
-const handlePostReply = () => {
-  if (!replyTarget || !replyText.trim()) return;
+        if (!data) {
+          console.log('No provider found for ID:', providerId);
+          setError('Provider not found');
+          setIsLoading(false);
+          return;
+        }
 
-  const reply = {
-  id: crypto.randomUUID(),
-  parentId: replyTarget.id,
-  author: {
-    id: id ?? "PROV-101",
-    name: PROFILE_DATA?.name || "Provider",
-    role: "provider"
-  },
-  reviewText: replyText.trim(), // ✅ FIX HERE
-  createdAt: new Date().toISOString(),
-  replies: []
-};
+        console.log('Provider data found:', data);
 
+        // Transform data
+        const transformedData = {
+          id: data.user_id,
+          name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Professional',
+          occupation: data.occupation || 'Service Provider',
+          location: data.location || 'Accra, Ghana',
+          description: data.description || 'No description provided',
+          rating: 4.8,
+          reviewCount: 0,
+          hiredCount: data.work_experience || 0,
+          employees: data.employees || 1,
+          workExperience: data.work_experience || 0,
+          skills: data.skills || [],
+          categories: data.categories || [],
+          certifications: data.certifications || [],
+          languages: data.languages || [],
+          paymentMethods: data.payment_methods || [],
+          portfolioUrls: data.portfolio_urls || [],
+          heroUrl: data.hero_url,
+          avatarUrl: data.avatar_url,
+          selectedDays: data.selected_days || { weekdays: false, weekend: false, custom: false },
+          weekdaysTime: data.weekdays_time || { start: '09:00', end: '17:00' },
+          weekendTime: data.weekend_time || { start: '10:00', end: '16:00' },
+          customDays: data.custom_days || {},
+        };
+        
+        setProfileData(transformedData);
+      } catch (err) {
+        console.error('Error fetching provider:', err);
+        setError(err.message || 'Failed to load provider profile');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  setREVIEWS(prev =>
-    insertReply(prev, replyTarget.id, reply)
-  );
+    fetchProfile();
+  }, [id]);
 
-  setReplyText("");
-  setReplyTarget(null);
-};
+  // Mock reviews
+  const REVIEWS = [
+    {
+      id: 'REV-001',
+      parentId: null,
+      author: { id: 'CLIENT-301', name: 'Ama Boateng', role: 'client' },
+      rating: 5,
+      reviewText: 'Excellent service. Very professional and punctual.',
+      createdAt: '2025-02-09T18:40:00Z',
+      verified: true,
+      replies: []
+    }
+  ];
 
+  const RATING_DISTRIBUTION = [
+    { stars: 5, percentage: 100 },
+    { stars: 4, percentage: 0 },
+    { stars: 3, percentage: 0 },
+    { stars: 2, percentage: 0 },
+    { stars: 1, percentage: 0 },
+  ];
 
-  // [WS] Initiate WebRTC/WebSocket voice call session — requires signalling server handshake
-  const handleCall = (type = 'voice') => {
-    setShowCallModal(type);
+  const handlePostReply = () => {
+    if (!replyTarget || !replyText.trim()) return;
+    setReplyText("");
+    setReplyTarget(null);
+    showNotification('Reply posted successfully', 'success');
+  };
+
+  const handleCall = () => {
+    setShowCallModal('voice');
   };
 
   const endCall = () => {
@@ -505,74 +430,84 @@ const handlePostReply = () => {
     setShowCallModal(null);
   };
 
-  // [API] POST /bookings/request — {clientId, providerId, serviceDetails} → {bookingId, status}
   const handleRequestBooking = () => {
     navigate('/lucid/bookings/new');
   };
 
-  // [WS] Opens real-time chat channel — requires GET /conversations/:id or POST /conversations
   const handleMessage = () => {
     showNotification('Opening chat...', 'info');
     navigate('/lucid/messages');
   };
 
-  // [API] No endpoint needed for clipboard copy; profile URL is public
   const handleShare = () => {
-    showNotification('Profile link copied to clipboard!');
+    navigator.clipboard.writeText(window.location.href);
+    showNotification('Profile link copied to clipboard!', 'success');
   };
 
-  // [API] POST /users/:id/favourites — {providerId} → {saved: true} / DELETE for removal
-  const toggleFavorite = () => {
-    toggleFavourite({
-      id: PROFILE_DATA.id,
-      name: PROFILE_DATA.name,
-      role: PROFILE_DATA.occupation,
-      location: PROFILE_DATA.location,
-      rating: PROFILE_DATA.rating?.overall ?? 0,
-      image: PROFILE_DATA.profileImage ?? null,
-    });
-    showNotification(isFavorite ? 'Removed from favourites' : 'Added to favourites');
+  const toggleFavoriteHandler = () => {
+    if (profileData) {
+      toggleFavourite({
+        id: profileData.id,
+        name: profileData.name,
+        role: profileData.occupation,
+        location: profileData.location,
+        rating: profileData.rating,
+        image: profileData.avatarUrl,
+      });
+      showNotification(isFavorite ? 'Removed from favourites' : 'Added to favourites');
+    }
   };
 
-  if (isLoading) return <GeneralProfileSkeleton />;
+  // Show loading skeleton
+  if (isLoading) {
+    return <LoadingSkeleton />;
+  }
 
-  if (!PROFILE_DATA) return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] flex flex-col items-center justify-center gap-4">
-      <button onClick={handleBack} className="self-start ml-8 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
-        <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />
-      </button>
-      <p className="text-lg text-gray-500 dark:text-slate-400">Provider profile not available.</p>
-    </div>
-  );
+  // Show error state
+  if (error || !profileData) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-6 p-4">
+        <button 
+          onClick={handleBack} 
+          className="absolute top-4 left-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
+        >
+          <ArrowLeft className="w-6 h-6 text-gray-700" />
+        </button>
+        <div className="text-center">
+          <div className="w-24 h-24 bg-gray-200 rounded-full mx-auto mb-4 flex items-center justify-center">
+            <User size={48} className="text-gray-400" />
+          </div>
+          <p className="text-lg text-gray-500 mb-4">{error || 'Provider profile not available.'}</p>
+          <button 
+            onClick={() => navigate('/lucid/services')} 
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Browse Services
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">
-      {/* Header with Back Button and Actions */}
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <motion.header
         initial={{ y: -50, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="bg-white dark:bg-[#1a1f2e] shadow-sm sticky top-0 z-40"
+        className="bg-white shadow-sm sticky top-0 z-40"
       >
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <button
-              onClick={handleBack}
-              className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />
+            <button onClick={handleBack} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <ArrowLeft className="w-6 h-6 text-gray-700" />
             </button>
             <div className="flex gap-2">
-              <button
-                onClick={handleShare}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
-              >
-                <Share2 className="w-5 h-5 text-gray-700 dark:text-slate-300" />
+              <button onClick={handleShare} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <Share2 className="w-5 h-5 text-gray-700" />
               </button>
-              <button
-                onClick={toggleFavorite}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
-              >
-                <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-700 dark:text-slate-300'}`} />
+              <button onClick={toggleFavoriteHandler} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-700'}`} />
               </button>
             </div>
           </div>
@@ -580,20 +515,18 @@ const handlePostReply = () => {
       </motion.header>
 
       {/* Hero Section */}
-      <HeroSection heroUrl={PROFILE_DATA.heroUrl} />
+      <HeroSection heroUrl={profileData.heroUrl} />
 
       {/* Profile Card */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 -mt-14">
         <motion.div 
-          className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow-lg p-6"
+          className="bg-white rounded-lg shadow-lg p-6"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
         >
-          {/* Profile Avatar */}
-          <ProfileAvatar avatarUrl={PROFILE_DATA.avatarUrl} />
+          <ProfileAvatar avatarUrl={profileData.avatarUrl} name={profileData.name} />
 
-          {/* Profile Info */}
           <motion.div
             variants={fadeInUp}
             initial="hidden"
@@ -601,42 +534,40 @@ const handlePostReply = () => {
             transition={{ delay: 0.2 }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
-                {PROFILE_DATA.name}
-              </h1>
+              <h1 className="text-2xl font-bold text-gray-900">{profileData.name}</h1>
             </div>
 
-            <div className="flex items-center space-x-2">
-                          <BriefcaseBusiness className="mb-2 w-6 h-6 text-blue-600" />
-                        <span className="text-lg text-gray-700 dark:text-slate-300 mb-3">{PROFILE_DATA.occupation}</span>
-                        </div>
+            <div className="flex items-center space-x-2 mb-3">
+              <BriefcaseBusiness className="w-5 h-5 text-blue-600" />
+              <span className="text-lg text-gray-700">{profileData.occupation}</span>
+            </div>
 
-           <div className="flex items-center space-x-4 mb-4 flex-wrap gap-2">
-                         <div className="flex items-center space-x-1">
-                           <Star className="w-4 h-4 fill-blue-600 text-blue-600" />
-                           <span className="font-semibold text-blue-600">{PROFILE_DATA.rating}</span>
-                           <span className="text-gray-500 dark:text-slate-500 text-sm">({PROFILE_DATA.reviewCount} reviews)</span>
-                         </div>
-                         <div className="flex items-center space-x-2 text-gray-600 dark:text-slate-400">
-                           <MapPin className="w-4 h-4 text-blue-600" />
-                           <span>{PROFILE_DATA.location}</span>
-                         </div>
-                       </div>
+            <div className="flex items-center space-x-4 mb-4 flex-wrap gap-2">
+              <div className="flex items-center space-x-1">
+                <Star className="w-4 h-4 fill-blue-600 text-blue-600" />
+                <span className="font-semibold text-blue-600">{profileData.rating}</span>
+                <span className="text-gray-500 text-sm">({profileData.reviewCount} reviews)</span>
+              </div>
+              <div className="flex items-center space-x-2 text-gray-600">
+                <MapPin className="w-4 h-4 text-blue-600" />
+                <span>{profileData.location}</span>
+              </div>
+            </div>
 
-            <p className="text-gray-700 dark:text-slate-300 mb-4">{PROFILE_DATA.description}</p>
+            <p className="text-gray-700 mb-4">{profileData.description}</p>
 
             <div className="flex flex-wrap gap-3 mb-4">
-              {PROFILE_DATA.skills.map((skill, index) => (
+              {profileData.skills.map((skill, index) => (
                 <SkillBadge key={index} skill={skill} index={index} />
               ))}
             </div>
 
-            {PROFILE_DATA.categories?.length > 0 && (
+            {profileData.categories?.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {PROFILE_DATA.categories.map((cat, index) => (
+                {profileData.categories.map((cat, index) => (
                   <span
                     key={index}
-                    className="px-3 py-1 bg-gray-100 dark:bg-[#252b3b] text-gray-600 dark:text-slate-400 rounded-full text-sm font-medium"
+                    className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium"
                   >
                     {cat}
                   </span>
@@ -647,7 +578,7 @@ const handlePostReply = () => {
         </motion.div>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - keep the rest of your JSX here */}
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Stats Cards */}
         <motion.div
@@ -660,22 +591,22 @@ const handlePostReply = () => {
           <InfoCard title="" delay={0}>
             <div className="text-center">
               <CheckCircle className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">{PROFILE_DATA.hiredCount}</div>
-              <div className="text-sm text-gray-600 dark:text-slate-400">Jobs Completed</div>
+              <div className="text-2xl font-bold text-gray-900">{profileData.hiredCount}</div>
+              <div className="text-sm text-gray-600">Jobs Completed</div>
             </div>
           </InfoCard>
           <InfoCard title="" delay={0.1}>
             <div className="text-center">
               <Award className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">{PROFILE_DATA.rating}</div>
-              <div className="text-sm text-gray-600 dark:text-slate-400">Average Rating</div>
+              <div className="text-2xl font-bold text-gray-900">{profileData.rating}</div>
+              <div className="text-sm text-gray-600">Average Rating</div>
             </div>
           </InfoCard>
           <InfoCard title="" delay={0.2}>
             <div className="text-center">
               <TrendingUp className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900 dark:text-slate-100">98%</div>{/* [DB] Computed from bookings table; consider caching */}
-              <div className="text-sm text-gray-600 dark:text-slate-400">Success Rate</div>
+              <div className="text-2xl font-bold text-gray-900">98%</div>
+              <div className="text-sm text-gray-600">Success Rate</div>
             </div>
           </InfoCard>
         </motion.div>
@@ -688,32 +619,29 @@ const handlePostReply = () => {
           whileInView="visible"
           viewport={{ once: true }}
         >
-          {/* Overview */}
           <InfoCard title="Overview" icon={Users}>
             <div className="space-y-4">
-              <InfoItem icon={Users} text={`Hired ${PROFILE_DATA.hiredCount} Times`} />
+              <InfoItem icon={Users} text={`Hired ${profileData.hiredCount} Times`} />
               <InfoItem icon={CheckCircle} text="User has been verified" />
-              <InfoItem icon={Users} text={`${PROFILE_DATA.employees} employees`} />
-              <InfoItem icon={Clock} text={`${PROFILE_DATA.workExperience} years experience`} />
+              <InfoItem icon={Users} text={`${profileData.employees} employees`} />
+              <InfoItem icon={Clock} text={`${profileData.workExperience} years experience`} />
             </div>
           </InfoCard>
 
-          {/* Payment Methods */}
           <InfoCard title="Payment Methods" delay={0.1}>
             <div className="space-y-1">
-              {PROFILE_DATA.paymentMethods.map((m, i) => (
-                <p key={i} className="text-gray-700 dark:text-slate-300">{PAYMENT_LABELS[m] || m}</p>
+              {profileData.paymentMethods.map((m, i) => (
+                <p key={i} className="text-gray-700">{PAYMENT_LABELS[m] || m}</p>
               ))}
             </div>
           </InfoCard>
 
-          {/* Working Hours */}
           <InfoCard title="Working Hours" icon={Clock} delay={0.2}>
             <WorkingHoursDisplay
-              selectedDays={PROFILE_DATA.selectedDays}
-              weekdaysTime={PROFILE_DATA.weekdaysTime}
-              weekendTime={PROFILE_DATA.weekendTime}
-              customDays={PROFILE_DATA.customDays}
+              selectedDays={profileData.selectedDays}
+              weekdaysTime={profileData.weekdaysTime}
+              weekendTime={profileData.weekendTime}
+              customDays={profileData.customDays}
             />
           </InfoCard>
         </motion.div>
@@ -728,7 +656,7 @@ const handlePostReply = () => {
         >
           <InfoCard title="Certifications">
             <div className="space-y-2">
-              {PROFILE_DATA.certifications.map((cert, index) => (
+              {profileData.certifications.map((cert, index) => (
                 <div key={index} className="flex items-center gap-2">
                   <CheckCircle className="w-5 h-5 text-green-600" />
                   <span className="text-gray-700">{cert}</span>
@@ -748,10 +676,10 @@ const handlePostReply = () => {
         >
           <InfoCard title="Languages">
             <div className="flex flex-wrap gap-2">
-              {PROFILE_DATA.languages.map((lang, index) => (
+              {profileData.languages.map((lang, index) => (
                 <span
                   key={index}
-                  className="px-3 py-1 bg-gray-100 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 rounded-full text-sm font-medium"
+                  className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium"
                 >
                   {lang}
                 </span>
@@ -783,7 +711,7 @@ const handlePostReply = () => {
           <ActionButton 
             icon={Phone} 
             text="Call Now" 
-            onClick={() => handleCall('voice')}
+            onClick={handleCall}
             variant="secondary"
           />
         </motion.div>
@@ -795,14 +723,14 @@ const handlePostReply = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
         >
-          <Suspense fallback={<LoadingSkeleton />}>
-            <ProjectCarousel projects={PROFILE_DATA.portfolioUrls} />
+          <Suspense fallback={<div className="h-64 bg-gray-200 rounded-lg animate-pulse" />}>
+            <ProjectCarousel projects={profileData.portfolioUrls} />
           </Suspense>
         </motion.div>
 
         {/* Reviews Section */}
         <motion.div 
-          className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow mt-8"
+          className="bg-white rounded-lg shadow mt-8"
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
@@ -810,17 +738,16 @@ const handlePostReply = () => {
         >
           <motion.button
             onClick={() => setReviewsOpen(!reviewsOpen)}
-            className="w-full p-6 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-[#252b3b] transition-colors"
-            whileHover={{ backgroundColor: undefined }}
+            className="w-full p-6 flex items-center justify-between hover:bg-gray-50 transition-colors"
           >
-            <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">
-              Reviews ({PROFILE_DATA.reviewCount})
+            <h2 className="text-xl font-bold text-gray-900">
+              Reviews ({profileData.reviewCount})
             </h2>
             <motion.div
               animate={{ rotate: reviewsOpen ? 180 : 0 }}
               transition={{ duration: 0.3 }}
             >
-              <ChevronDown className="w-6 h-6 text-gray-600 dark:text-slate-400" />
+              <ChevronDown className="w-6 h-6 text-gray-600" />
             </motion.div>
           </motion.button>
 
@@ -834,35 +761,33 @@ const handlePostReply = () => {
                 transition={{ duration: 0.3 }}
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* Rating Summary */}
                   <motion.div
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: 0.2 }}
                   >
                     <div className="text-center mb-6">
-                      <div className="text-5xl font-bold text-gray-900 dark:text-slate-100">
-                        Great {PROFILE_DATA.rating}
+                      <div className="text-5xl font-bold text-gray-900">
+                        {profileData.rating}
                       </div>
                       <div className="flex justify-center space-x-1 my-2">
                         {[...Array(5)].map((_, i) => (
                           <Star
                             key={i}
                             className={`w-6 h-6 ${
-                              i < Math.floor(PROFILE_DATA.rating)
+                              i < Math.floor(profileData.rating)
                                 ? 'fill-blue-600 text-blue-600'
                                 : 'text-gray-300'
                             }`}
                           />
                         ))}
                       </div>
-                      <div className="text-gray-600 dark:text-slate-400">
-                        {PROFILE_DATA.reviewCount} reviews
+                      <div className="text-gray-600">
+                        {profileData.reviewCount} reviews
                       </div>
                     </div>
                   </motion.div>
 
-                  {/* Rating Distribution */}
                   <div className="space-y-2">
                     {RATING_DISTRIBUTION.map((rating, index) => (
                       <RatingBar key={rating.stars} rating={rating} index={index} />
@@ -870,71 +795,49 @@ const handlePostReply = () => {
                   </div>
                 </div>
 
-                {/* Individual Reviews */}
                 <div className="mt-8 space-y-6">
-  {REVIEWS.map(review => (
-    <ReviewThread
-      key={review.id}
-      item={review}
-      onReply={setReplyTarget}
-    />
-  ))}
-</div>
+                  {REVIEWS.map(review => (
+                    <ReviewThread
+                      key={review.id}
+                      item={review}
+                      onReply={setReplyTarget}
+                    />
+                  ))}
+                </div>
 
-{replyTarget && (
-  <div className="mt-6 bg-gray-50 dark:bg-[#252b3b] p-4 rounded-lg border dark:border-[#1e293b]">
-    <p className="text-sm text-gray-600 dark:text-slate-400 mb-2">
-      Replying to <strong>{replyTarget.author.name}</strong>:
-<span className="italic text-gray-500 ml-1">
-  “{replyTarget.reviewText.slice(0, 40)}…”
-</span>
-
-    </p>
-
-    <textarea
-      value={replyText}
-      onChange={(e) => setReplyText(e.target.value)}
-      className="w-full bg-white dark:bg-[#1a1f2e] text-gray-900 dark:text-slate-200 border dark:border-[#2d3748] rounded-lg p-3 focus:border-2 focus:border-blue-600 focus:outline-none"
-      rows={3}
-      placeholder="Write your reply..."
-    />
-
-    <div className="flex justify-end mt-3 gap-3">
-      <button
-        onClick={() => setReplyTarget(null)}
-        className="px-6 py-2 bg-white dark:bg-[#1a1f2e] border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
+                {replyTarget && (
+                  <div className="mt-6 bg-gray-50 p-4 rounded-lg border">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Replying to <strong>{replyTarget.author.name}</strong>:
+                    </p>
+                    <textarea
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      className="w-full bg-white text-gray-900 border rounded-lg p-3 focus:border-2 focus:border-blue-600 focus:outline-none"
+                      rows={3}
+                      placeholder="Write your reply..."
+                    />
+                    <div className="flex justify-end mt-3 gap-3">
+                      <button
+                        onClick={() => setReplyTarget(null)}
+                        className="px-6 py-2 bg-white border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 transition-colors font-semibold"
                       >
-                      Cancel
+                        Cancel
                       </button>
-      <button
-        onClick={handlePostReply}
-        className="bg-blue-600 text-white px-4 py-2 rounded-lg"
-      >
-        Post Reply
-      </button>
-    </div>
-  </div>
-)}
-
+                      <button
+                        onClick={handlePostReply}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+                      >
+                        Post Reply
+                      </button>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
       </div>
-
-      {/* Notification Toast */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            className="fixed top-24 left-1/2 transform translate-x-1/2 bg-blue-600 text-white px-6 py-3 rounded-lg shadow-lg z-50"
-          >
-            {notification}
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Call Modal */}
       <AnimatePresence>
@@ -949,16 +852,9 @@ const handlePostReply = () => {
               <div className="w-32 h-32 bg-gray-700 rounded-full mx-auto mb-4 flex items-center justify-center">
                 <Phone className="w-16 h-16 text-white" />
               </div>
-
-              <h2 className="text-2xl font-semibold text-white mb-2">
-                {PROFILE_DATA.name}
-              </h2>
-
-              <p className="text-gray-400">
-                Voice calling...
-              </p>
+              <h2 className="text-2xl font-semibold text-white mb-2">{profileData.name}</h2>
+              <p className="text-gray-400">Voice calling...</p>
             </div>
-
             <button
               onClick={endCall}
               className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full flex items-center space-x-2"
