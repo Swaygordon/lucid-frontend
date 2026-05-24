@@ -36,6 +36,7 @@ const ProfileCardComponent = ({
   };
 
   const renderStars = () => {
+    const r = rating ?? 0;
     const stars = [];
     for (let i = 1; i <= maxRating; i++) {
       stars.push(
@@ -43,9 +44,9 @@ const ProfileCardComponent = ({
           key={i}
           size={20}
           className={
-            i <= Math.floor(rating)
+            i <= Math.floor(r)
               ? 'fill-primary text-primary'
-              : i - rating < 1
+              : i - r < 1
               ? 'fill-primary/50 text-primary'
               : 'fill-none text-primary'
           }
@@ -106,7 +107,7 @@ const ProfileCardComponent = ({
 
       <div className="flex items-center justify-center gap-2 mb-4">
         <div className="flex gap-0.5">{renderStars()}</div>
-        <span className="font-semibold">{rating.toFixed(1)}</span>
+        <span className="font-semibold">{rating != null ? rating.toFixed(1) : '—'}</span>
       </div>
 
       {/* FIXED: Removed hardcoded Link, now uses onClick callback */}

@@ -148,6 +148,7 @@ const MobileCategoryButton = memo(({ category, isActive, onClick }) => {
 
         <motion.button
           onClick={onClick}
+          aria-label={category.name}
           className={`absolute top-3 left-3 w-12 h-12 rounded-lg flex items-center justify-center transition-colors duration-300 ${
             isActive
               ? 'bg-orange-600 hover:bg-orange-700'
@@ -174,7 +175,7 @@ const MoreButton = memo(({ isMobile = false }) => (
   <div className="flex flex-col items-center gap-2 snap-center">
     <div className={`relative ${isMobile ? 'w-16 h-16' : 'w-14 h-14'} mt-6 flex items-center justify-center`}>
       <div className={`absolute top-0 ${isMobile ? 'left-6' : 'left-5'} right-2 w-12 h-12 bg-blue-300 rounded-lg`} />
-      <Link to="/lucid/services/all">
+      <Link to="/lucid/services/all" aria-label="View all categories">
         <motion.div
           className={`${isMobile ? 'absolute top-3 left-3' : 'relative top-2 left-1'} w-12 h-12 bg-blue-700 rounded-lg hover:bg-blue-300 flex items-center justify-center transition-all duration-300 cursor-pointer`}
           whileHover={{ scale: 1.1, rotate: 5 }}
@@ -219,9 +220,9 @@ const ServiceCard = memo(({ service, index }) => {
             />
           </figure>
           <div className="flex flex-col gap-2 p-4">
-            <h4 className="flex items-center gap-2 text-lg font-semibold text-black dark:text-slate-100">
+            <h2 className="flex items-center gap-2 text-lg font-semibold text-black dark:text-slate-100">
               {service.title}
-            </h4>
+            </h2>
             <div className="flex items-center gap-2 text-sm text-black dark:text-slate-300">
               <MapPin className="w-4 h-4 text-blue-600" />
               <span>{service.subtitle}</span>

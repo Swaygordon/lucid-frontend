@@ -1,10 +1,90 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { PROFILE_SETUP_KEY } from './provider_profile_setup';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
+import { GHANA_LOCATIONS } from '../contexts/LocationContext';
+
+const CityPicker = ({ value, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState('');
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setQuery('');
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const filteredGroups = query.trim()
+    ? GHANA_LOCATIONS
+        .map(g => ({ ...g, areas: g.areas.filter(a => a.toLowerCase().includes(query.toLowerCase())) }))
+        .filter(g => g.areas.length > 0)
+    : GHANA_LOCATIONS;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <label className="font-medium text-sm text-gray-700 dark:text-slate-300">City</label>
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen(p => !p)}
+          className="w-full flex items-center justify-between px-4 py-2.5 border-2 rounded-lg bg-white dark:bg-[#252b3b] border-gray-300 dark:border-[#2d3748] transition-all duration-200 focus:outline-none focus:border-primary"
+        >
+          <span className={value ? 'text-gray-700 dark:text-slate-200 text-sm' : 'text-gray-400 dark:text-slate-400 text-sm'}>
+            {value || 'Select your city'}
+          </span>
+          <ChevronDown className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        </button>
+        {open && (
+          <div className="absolute top-full mt-1.5 z-50 w-full bg-white dark:bg-[#1a1f2e] border border-gray-200 dark:border-[#1e293b] rounded-xl shadow-xl overflow-hidden">
+            <div className="p-2 border-b border-gray-100 dark:border-[#1e293b]">
+              <input
+                autoFocus
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search locations..."
+                className="w-full px-3 py-1.5 text-sm text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-[#252b3b] border border-gray-200 dark:border-[#2d3748] rounded-lg focus:outline-none focus:border-blue-400 dark:placeholder-slate-500"
+              />
+            </div>
+            <div className="max-h-52 overflow-y-auto">
+              {filteredGroups.map(group => (
+                <div key={group.region}>
+                  <p className="px-3 pt-2 pb-1 text-xs font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wide">
+                    {group.region}
+                  </p>
+                  {group.areas.map(area => (
+                    <button
+                      key={area}
+                      type="button"
+                      onClick={() => { onChange(area); setOpen(false); setQuery(''); }}
+                      className={`w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-[#252b3b] ${
+                        value === area
+                          ? 'text-blue-600 font-semibold bg-blue-50 dark:bg-blue-900/20'
+                          : 'text-gray-700 dark:text-slate-300'
+                      }`}
+                    >
+                      {area}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const Signup = () => {
   const [formData, setFormData] = useState({
@@ -70,13 +150,13 @@ const Signup = () => {
         'Account created! Please confirm your email, then complete your profile setup.',
         'success'
       );
-      setTimeout(() => navigate('/lucid/account/profile/setup'), 3000);
+      setTimeout(() => navigate('/lucid/account/profile/setup', { replace: true }), 3000);
     } else {
       showNotification(
         'Account created! Please check your email to confirm your address.',
         'success'
       );
-      setTimeout(() => navigate('/lucid/signin'), 3000);
+      setTimeout(() => navigate('/lucid/signin', { replace: true }), 3000);
     }
   };
 
@@ -99,8 +179,9 @@ const Signup = () => {
   const PasswordToggle = () => (
     <button
       type="button"
+      aria-label={showPassword ? 'Hide password' : 'Show password'}
       onClick={() => setShowPassword(!showPassword)}
-      className="text-gray-400 hover:text-gray-600 transition-colors"
+      className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
     >
       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
     </button>
@@ -154,23 +235,19 @@ const Signup = () => {
                   required
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    label="Phone Number"
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    placeholder="Phone number"
-                  />
-                  <Input
-                    label="City"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleChange}
-                    placeholder="City"
-                  />
-                </div>
+                <Input
+                  label="Phone Number"
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="Phone number"
+                />
+
+                <CityPicker
+                  value={formData.city}
+                  onChange={city => setFormData(prev => ({ ...prev, city }))}
+                />
 
                 <Input
                   label="Address"
@@ -253,7 +330,7 @@ const Signup = () => {
                 {/* OR Divider */}
                 <div className="flex items-center my-6">
                   <div className="flex-1 border-t border-gray-300 dark:border-[#2d3748]" />
-                  <span className="px-4 text-gray-500 dark:text-slate-500 text-sm">OR</span>
+                  <span className="px-4 text-gray-500 dark:text-slate-400 text-sm">OR</span>
                   <div className="flex-1 border-t border-gray-300 dark:border-[#2d3748]" />
                 </div>
 
@@ -283,7 +360,7 @@ const Signup = () => {
 
           <div className="mb-6 mt-2 text-gray-900 dark:text-slate-300">
             Already have an account?
-            <Link to="/lucid/signin" className="text-blue-700 hover:text-orange-600 ml-2">
+            <Link to="/lucid/signin" className="text-blue-700 dark:text-blue-400 hover:text-secondary underline ml-2">
               Log in
             </Link>
           </div>

@@ -18,13 +18,15 @@ const CategorySkeleton = () => (
       </div>
     </div>
 
-    {/* Breadcrumb */}
+    {/* Breadcrumb — 4 crumbs: Home › Services › All Services › Category */}
     <div className="max-w-6xl mx-auto px-5 pt-5 pb-2 flex items-center gap-2">
       <div className="h-4 w-10 bg-gray-200 rounded" />
       <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-20 bg-gray-200 rounded" />
+      <div className="h-4 w-16 bg-gray-200 rounded" />
       <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-28 bg-gray-200 rounded" />
+      <div className="h-4 w-24 bg-gray-200 rounded" />
+      <div className="h-3 w-3 bg-gray-200 rounded" />
+      <div className="h-4 w-32 bg-gray-200 rounded" />
     </div>
 
     {/* Sub-services grid */}
@@ -111,6 +113,7 @@ const Category = () => {
       <div className="max-w-6xl mx-auto px-5 pt-5 pb-2">
         <Breadcrumb crumbs={[
           { label: 'Home',         href: '/lucid/' },
+          { label: 'Services',     href: '/lucid/services' },
           { label: 'All Services', href: '/lucid/services/all' },
           { label: cat.name },
         ]} />

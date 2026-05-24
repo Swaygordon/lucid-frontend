@@ -25,8 +25,8 @@ export default {
         },
         // Secondary colors
         secondary: {
-          DEFAULT: '#ea580c',
-          hover: '#c2410c',
+          DEFAULT: '#c2410c',   // orange-700 — orange-600 (#ea580c) failed WCAG AA contrast with white text
+          hover: '#9a3412',
           light: '#f97316',
           dark: '#9a3412',
           50: '#fff7ed',

@@ -96,6 +96,7 @@ const AllCategories = () => {
             </div>
             <button
               type="button"
+              aria-label="Search"
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-r-xl flex items-center gap-2 transition-colors flex-shrink-0"
             >
               <Search size={18} />
@@ -108,7 +109,8 @@ const AllCategories = () => {
       {/* Breadcrumb */}
       <div className="max-w-6xl mx-auto px-5 pt-5 pb-1">
         <Breadcrumb crumbs={[
-          { label: 'Home', href: '/lucid/' },
+          { label: 'Home',         href: '/lucid/' },
+          { label: 'Services',     href: '/lucid/services' },
           { label: 'All Services' },
         ]} />
       </div>
@@ -116,7 +118,7 @@ const AllCategories = () => {
       {/* Grid */}
       <div className="max-w-6xl mx-auto px-5 py-8">
         {filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-500 dark:text-slate-500">
+          <div className="text-center py-20 text-gray-500 dark:text-slate-400">
             No services match &ldquo;{query}&rdquo;
           </div>
         ) : (
@@ -124,8 +126,8 @@ const AllCategories = () => {
             {filtered.map(cat => {
               const Icon = cat.icon;
               return (
-                <Link key={cat.id} to={`/lucid/services/${cat.slug}`}>
-                  <div className="rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 dark:border-[#1e293b] transition-all duration-300 group bg-white dark:bg-[#1a1f2e]">
+                <Link key={cat.id} to={`/lucid/services/${cat.slug}`} className="h-full">
+                  <div className="rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 dark:border-[#1e293b] transition-all duration-300 group bg-white dark:bg-[#1a1f2e] h-full flex flex-col">
                     {/* Image */}
                     <div className="relative h-44 overflow-hidden">
                       <img
@@ -139,10 +141,10 @@ const AllCategories = () => {
                       </div>
                     </div>
                     {/* Text */}
-                    <div className="p-5">
-                      <h3 className="text-base font-bold text-gray-900 dark:text-slate-100 mb-1">{cat.name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-slate-500 mb-3">{cat.description}</p>
-                      <p className="text-xs text-blue-600 font-medium">
+                    <div className="p-5 flex-1">
+                      <h2 className="text-base font-bold text-gray-900 dark:text-slate-100 mb-1">{cat.name}</h2>
+                      <p className="text-sm text-gray-500 dark:text-slate-400 mb-3">{cat.description}</p>
+                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
                         {cat.services.length} services available
                       </p>
                     </div>

@@ -81,16 +81,18 @@ export default function ServicesCarousel({ services = [] }) {
           <ChevronRight size={20} className="text-gray-700 dark:text-slate-300" />
         </button>
 
-        <div className="flex justify-center gap-2 mt-6">
+        <div className="flex justify-center gap-1 mt-6">
           {Array.from({ length: maxIndex + 1 }).map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrentIndex(i)}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                currentIndex === i ? 'bg-blue-600 w-6' : 'bg-gray-300 dark:bg-slate-600 w-2'
-              }`}
               aria-label={`Slide ${i + 1}`}
-            />
+              className="p-2 flex items-center justify-center"
+            >
+              <span className={`h-2 rounded-full transition-all duration-300 block ${
+                currentIndex === i ? 'bg-blue-600 w-6' : 'bg-gray-300 dark:bg-slate-600 w-2'
+              }`} />
+            </button>
           ))}
         </div>
       </div>

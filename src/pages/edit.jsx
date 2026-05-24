@@ -1,5 +1,6 @@
 import React, { useState, useCallback, memo, useEffect } from 'react';
 import { useNavigate } from "react-router-dom";
+import { GHANA_LOCATIONS } from '../contexts/LocationContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -589,7 +590,7 @@ const EditProfile = () => {
       if (error) throw error;
 
       showNotification('Profile saved successfully!', 'success');
-      navigate('/lucid/account/profile');
+      navigate('/lucid/account/profile', { replace: true });
     } catch (error) {
       console.error('Save error:', error);
       showNotification(error.message || 'Failed to save profile', 'error');
@@ -599,7 +600,7 @@ const EditProfile = () => {
   };
 
   const handleCancel = () => {
-    navigate('/lucid/account/profile');
+    navigate('/lucid/account/profile', { replace: true });
   };
 
   const openUpload = (target) => setUploadTarget(target);
@@ -622,8 +623,85 @@ const EditProfile = () => {
 
   if (loadingData) {
     return (
-      <div className="min-h-screen flex items-center justify-center dark:bg-[#0f1117]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="bg-gray-50 dark:bg-[#0f1117] min-h-screen pb-32 animate-pulse">
+        {/* Hero banner */}
+        <div className="w-full h-44 md:h-56 bg-gray-300 dark:bg-[#252b3b]" />
+
+        {/* Avatar + buttons */}
+        <div className="flex flex-col items-center -mt-14 mb-6 gap-3">
+          <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gray-300 dark:bg-[#252b3b] border-4 border-white dark:border-[#0f1117]" />
+          <div className="flex gap-2">
+            <div className="h-8 w-28 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+          </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto px-5 space-y-6">
+          {/* Name row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+            <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+          </div>
+          {/* Occupation / Other name row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+            <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+          </div>
+          {/* Location dropdown */}
+          <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+
+          {/* Category chips */}
+          <div className="flex flex-wrap gap-2">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <div key={i} className="h-9 w-28 bg-gray-200 dark:bg-[#252b3b] rounded-full" />
+            ))}
+          </div>
+
+          {/* Two-column section */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-5">
+            {/* Left: description + overview + payment */}
+            <div className="space-y-8">
+              <div className="h-28 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+              <div className="space-y-4">
+                <div className="h-5 w-24 bg-gray-200 dark:bg-[#252b3b] rounded" />
+                <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+                <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+                <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+              </div>
+              <div className="space-y-3">
+                <div className="h-5 w-32 bg-gray-200 dark:bg-[#252b3b] rounded" />
+                <div className="h-8 bg-gray-200 dark:bg-[#252b3b] rounded" />
+                <div className="h-8 bg-gray-200 dark:bg-[#252b3b] rounded" />
+              </div>
+            </div>
+            {/* Right: skills + certs + languages + portfolio */}
+            <div className="space-y-8">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="space-y-3">
+                  <div className="h-5 w-28 bg-gray-200 dark:bg-[#252b3b] rounded" />
+                  <div className="h-10 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+                </div>
+              ))}
+              {/* Portfolio upload area */}
+              <div className="h-28 bg-gray-200 dark:bg-[#252b3b] rounded-lg border-2 border-dashed border-gray-300 dark:border-[#2d3748]" />
+            </div>
+          </div>
+
+          {/* Working hours */}
+          <div className="space-y-4">
+            <div className="h-6 w-36 bg-gray-200 dark:bg-[#252b3b] rounded" />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="h-24 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
+              ))}
+            </div>
+          </div>
+
+          {/* Save / Cancel buttons */}
+          <div className="flex gap-4 justify-center pt-8 border-t border-gray-200 dark:border-[#1e293b]">
+            <div className="h-11 flex-1 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+            <div className="h-11 flex-1 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -735,11 +813,20 @@ const EditProfile = () => {
               <MapPin className="w-5 h-5 text-blue-600" />
               <label className="font-medium text-gray-700 dark:text-slate-300">Location</label>
             </div>
-            <InputField
+            <select
               value={formMethods.profile.location}
               onChange={(e) => formMethods.handleInputChange('location', e.target.value)}
-              placeholder="e.g., Achimota, Accra"
-            />
+              className="w-full px-3 py-2.5 border-2 border-gray-300 dark:border-[#2d3748] rounded-md text-sm bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-all"
+            >
+              <option value="">Select your area</option>
+              {GHANA_LOCATIONS.map(group => (
+                <optgroup key={group.region} label={group.region}>
+                  {group.areas.map(area => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
 
           {/* Service Categories */}

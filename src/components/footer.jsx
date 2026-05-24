@@ -1,4 +1,4 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from 'react-router-dom';
 import {
@@ -8,11 +8,11 @@ import {
   FaYoutube,
   FaThreads
 } from 'react-icons/fa6';
-import downloadBtn_1 from "../assets/download.png";
-import downloadBtn_2 from "../assets/web-189884714.webp";
-import Logo2 from "../assets/Lucid-white.png";
+import { ArrowRight } from 'lucide-react';
+import LogoMark from "../assets/Lucid-L.webp";
+import LogoHorizontalBlack from "../assets/Lucid-horizontal black.webp";
+import LogoHorizontalWhite from "../assets/Lucid-horizontal white.webp";
 
-// Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0 }
@@ -22,231 +22,199 @@ const staggerContainer = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
-    transition: {
-      staggerChildren: 0.1
-    }
+    transition: { staggerChildren: 0.08 }
   }
 };
 
-// Memoized Social Icon Component
-const SocialIcon = memo(({ Icon, to, ariaLabel }) => (
-  <motion.div
-    whileHover={{ scale: 1.2, rotate: 5 }}
-    whileTap={{ scale: 0.9 }}
-  >
-    <Link 
-      to={to} 
-      className="hover:text-orange-600 transition-colors"
-      aria-label={ariaLabel}
-    >
-      <Icon size={24} className="fill-current" />
-    </Link>
-  </motion.div>
-));
-
-// Memoized Footer Link Component
-const FooterLink = memo(({ to, children, className = "" }) => (
-  <motion.div
-    whileHover={{ x: 5 }}
-    transition={{ duration: 0.2 }}
-  >
-    <Link 
-      to={to} 
-      className={`hover:text-orange-600 transition-colors block ${className}`}
-    >
-      {children}
-    </Link>
-  </motion.div>
-));
-
-// Memoized Download Button Component
-const DownloadButton = memo(({ src, alt, to }) => (
-  <motion.button
-    className="inline-flex items-center justify-center bg-black border border-white/40 rounded-xl overflow-hidden mb-4 mr-4 cursor-pointer"
-    whileHover={{ scale: 1.05 }}
-    whileTap={{ scale: 0.95 }}
-  >
-    <Link to={to}>
-      <img
-        src={src}
-        alt={alt}
-        className="h-12 w-36 object-contain"
-        width="144"
-        height="48"
-        loading="lazy"
-      />
-    </Link>
-  </motion.button>
-));
-
-// Data Constants
 const SOCIAL_LINKS = [
-  { Icon: FaXTwitter, to: "/lucid", label: "Twitter" },
-  { Icon: FaYoutube, to: "/lucid", label: "YouTube" },
-  { Icon: FaFacebook, to: "/lucid", label: "Facebook" },
-  { Icon: FaInstagram, to: "/lucid", label: "Instagram" },
-  { Icon: FaThreads, to: "/lucid", label: "Threads" }
+  { Icon: FaFacebook,  to: "/lucid/", label: "Facebook" },
+  { Icon: FaInstagram, to: "/lucid/", label: "Instagram" },
+  { Icon: FaXTwitter,  to: "/lucid/", label: "Twitter" },
+  { Icon: FaYoutube,   to: "/lucid/", label: "YouTube" },
+  { Icon: FaThreads,   to: "/lucid/", label: "Threads" },
 ];
 
-const QUICK_LINKS = [
-  { to: "/lucid", label: "Pricing" },
-  { to: "/lucid", label: "How it works" },
-  { to: "/Service", label: "Services" },
-  { to: "/lucid", label: "Safety" },
-  { to: "/client_dashboard", label: "client dashboard" }
+const NAVIGATION_LINKS = [
+  { to: "/lucid/",         label: "Home" },
+  { to: "/lucid/Service",  label: "Services" },
+  { to: "/lucid/",         label: "How it works" },
+  { to: "/lucid/",         label: "Pricing" },
+  { to: "/lucid/",         label: "Safety" },
 ];
 
 const COMPANY_LINKS = [
-  { to: "/about", label: "About us" },
-  { to: "/lucid", label: "Contact" },
-  { to: "/lucid", label: "Jobs" },
-  { to: "/client_bookings", label: "client bookings" },
-  { to: "/client_account", label: "Client Account profile" }
+  { to: "/lucid/about",                  label: "About us" },
+  { to: "/lucid/",                       label: "Contact" },
+  { to: "/lucid/",                       label: "Jobs" },
+  { to: "/lucid/client_bookings",        label: "Bookings" },
+  { to: "/lucid/client_account",         label: "Account" },
 ];
 
 const LEGAL_LINKS = [
-  { to: "/lucid", label: "Terms of use" },
-  { to: "/lucid", label: "Privacy policy" },
-  { to: "/lucid", label: "Cookie policy" }
+  { to: "/lucid/", label: "Terms of use" },
+  { to: "/lucid/", label: "Privacy policy" },
+  { to: "/lucid/", label: "Cookie policy" },
 ];
 
-const DOWNLOAD_BUTTONS = [
-  { src: downloadBtn_1, alt: "App Store download button", to: "/lucid" },
-  { src: downloadBtn_2, alt: "Play Store download button", to: "/lucid" }
-];
-
-// Memoized Footer Section Component
-const FooterSection = memo(({ title, children }) => (
-  <motion.nav
-    className="mx-4 p-2"
-    variants={fadeInUp}
+const FooterLink = memo(({ to, children }) => (
+  <Link
+    to={to}
+    className="text-sm text-gray-600 dark:text-slate-400 hover:text-primary dark:hover:text-primary-light transition-colors"
   >
-    <p className="mb-1 uppercase font-semibold text-xl text-white">{title}</p>
-    <div className="flex flex-col gap-2">
-      {children}
-    </div>
-  </motion.nav>
+    {children}
+  </Link>
+));
+
+const SocialIcon = memo(({ Icon, to, ariaLabel }) => (
+  <motion.div whileHover={{ scale: 1.15, y: -2 }} whileTap={{ scale: 0.9 }}>
+    <Link
+      to={to}
+      aria-label={ariaLabel}
+      className="inline-flex items-center justify-center w-9 h-9 rounded-full text-primary dark:text-primary-light hover:bg-primary/10 dark:hover:bg-primary/20 transition-colors"
+    >
+      <Icon size={20} />
+    </Link>
+  </motion.div>
 ));
 
 const Footer = () => {
+  const [email, setEmail] = useState("");
+
+  const handleSubscribe = (e) => {
+    e.preventDefault();
+    // [API] POST /newsletter/subscribe — wire to backend when ready
+    setEmail("");
+  };
+
   return (
-    <>
-      {/* Top Footer - Logo and Social Links */}
-      <footer className="block bg-black text-white border-gray-200 border-b px-10 py-4">
-        <motion.div 
-          className="flex items-center justify-between w-full"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={staggerContainer}
-        >
-          <motion.div variants={fadeInUp}>
-            <Link to="/lucid" className="flex items-center">
-              <motion.img
-                src={Logo2}
-                alt="Lucid Logo"
-                className="h-20 w-20 object-cover"
-                width="80"
-                height="80"
-                loading="lazy"
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.6 }}
-              />
-            </Link>
+    <footer className="relative bg-primary dark:bg-[#0f1117] pt-10 sm:pt-24 pb-4 px-4 sm:px-6 lg:px-10 overflow-hidden">
+      <motion.div
+        className="relative mx-auto max-w-7xl bg-white dark:bg-[#1a1f2e] rounded-2xl sm:rounded-3xl shadow-2xl px-6 sm:px-10 lg:px-14 pt-6 sm:pt-8 pb-6"
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-50px" }}
+        variants={staggerContainer}
+      >
+        {/* Top: 4-column content grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
+          {/* Brand Statement */}
+          <motion.div variants={fadeInUp} className="flex flex-col gap-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+              Lucid Ltd
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed max-w-xs">
+              Connecting Ghana with trusted local service providers.
+            </p>
+            <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed max-w-xs">
+              From everyday repairs to skilled professionals — booked in minutes.
+            </p>
+            <div className="flex flex-wrap items-center gap-1 mt-1">
+              {SOCIAL_LINKS.map((s, i) => (
+                <SocialIcon key={i} Icon={s.Icon} to={s.to} ariaLabel={s.label} />
+              ))}
+            </div>
           </motion.div>
-          
-          <motion.nav variants={fadeInUp}>
-            <div className="grid grid-flow-col gap-4">
-              {SOCIAL_LINKS.map((social, index) => (
-                <SocialIcon
-                  key={index}
-                  Icon={social.Icon}
-                  to={social.to}
-                  ariaLabel={social.label}
-                />
+
+          {/* Navigation */}
+          <motion.nav variants={fadeInUp} className="flex flex-col gap-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+              Navigation
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              {NAVIGATION_LINKS.map((link, i) => (
+                <FooterLink key={i} to={link.to}>{link.label}</FooterLink>
               ))}
             </div>
           </motion.nav>
-        </motion.div>
-      </footer>
 
-      {/* Main Footer Content */}
-      <footer className="block bg-black text-white p-10">
-        <motion.div
-          className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-50px" }}
-          variants={staggerContainer}
-        >
-          {/* Company Info */}
-          <FooterSection title="Lucid Ltd">
-            <p className="max-w-60 text-sm leading-relaxed">
-              Lorem Ipsum is simply dummy text of the printing and typesetting
-              industry. Lorem Ipsum has been the industry's standard dummy text ever
-              since the 1500s, when an unknown printer took a galley of type and
-              scrambled it to make a type specimen book.
-            </p>
-          </FooterSection>
-
-          {/* Quick Links */}
-          <FooterSection title="Quick Links">
-            {QUICK_LINKS.map((link, index) => (
-              <FooterLink key={index} to={link.to}>
-                {link.label}
-              </FooterLink>
-            ))}
-          </FooterSection>
-
-          {/* Company Links */}
-          <FooterSection title="Company">
-            {COMPANY_LINKS.map((link, index) => (
-              <FooterLink key={index} to={link.to}>
-                {link.label}
-              </FooterLink>
-            ))}
-          </FooterSection>
-
-          {/* Legal & Downloads */}
-          <FooterSection title="Legal">
-            {LEGAL_LINKS.map((link, index) => (
-              <FooterLink key={index} to={link.to}>
-                {link.label}
-              </FooterLink>
-            ))}
-            
-            <motion.div 
-              className="mt-8"
-              variants={fadeInUp}
-            >
-              {DOWNLOAD_BUTTONS.map((button, index) => (
-                <DownloadButton
-                  key={index}
-                  src={button.src}
-                  alt={button.alt}
-                  to={button.to}
-                />
+          {/* Company */}
+          <motion.nav variants={fadeInUp} className="flex flex-col gap-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+              Company
+            </h3>
+            <div className="flex flex-col gap-2.5">
+              {COMPANY_LINKS.map((link, i) => (
+                <FooterLink key={i} to={link.to}>{link.label}</FooterLink>
               ))}
-            </motion.div>
-          </FooterSection>
-        </motion.div>
-      </footer>
+            </div>
+          </motion.nav>
 
-      {/* Bottom Footer - Copyright */}
-      <footer className="flex flex-col items-center justify-center text-center bg-black text-white border-gray-200 border-t px-10">
-        <motion.div 
-          className="items-center text-center my-2 px-2 py-2"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.6 }}
+          {/* Join Lucid */}
+          <motion.div variants={fadeInUp} className="flex flex-col gap-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+              Join Lucid
+            </h3>
+            <form onSubmit={handleSubscribe} className="relative w-full max-w-sm">
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="type your email"
+                className="w-full pl-4 pr-11 py-2.5 text-sm bg-gray-50 dark:bg-[#252b3b] border border-gray-200 dark:border-[#2d3748] rounded-lg text-gray-700 dark:text-slate-200 placeholder:text-gray-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-primary transition-colors"
+              />
+              <button
+                type="submit"
+                aria-label="Subscribe"
+                className="absolute right-1 top-1/2 -translate-y-1/2 inline-flex items-center justify-center w-9 h-9 rounded-md bg-primary hover:bg-primary-hover text-white transition-colors"
+              >
+                <ArrowRight size={16} />
+              </button>
+            </form>
+            <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed max-w-xs">
+              Every booking carries a system behind it. Built to keep your home running.
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Bottom: Large logo — mobile shows the L mark only; desktop shows the horizontal wordmark */}
+        <motion.div
+          variants={fadeInUp}
+          className="mt-6 sm:mt-8 flex items-center justify-center"
         >
-          <p className="text-sm">
-            Copyright © {new Date().getFullYear()} Lucid Ltd - All rights reserved
-          </p>
+          <img
+            src={LogoMark}
+            alt="Lucid"
+            className="block md:hidden h-40 w-auto object-contain"
+            width="160"
+            height="160"
+          />
+          <div className="hidden md:block">
+            <img
+              src={LogoHorizontalBlack}
+              alt="Lucid"
+              className="block dark:hidden h-32 lg:h-40 w-auto object-contain"
+            />
+            <img
+              src={LogoHorizontalWhite}
+              alt="Lucid"
+              className="hidden dark:block h-32 lg:h-40 w-auto object-contain"
+            />
+          </div>
         </motion.div>
-      </footer>
-    </>
+
+        {/* Copyright + legal */}
+        <motion.div
+          variants={fadeInUp}
+          className="mt-4 pt-4 border-t border-gray-100 dark:border-[#2d3748] flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6"
+        >
+          <p className="text-xs text-gray-500 dark:text-slate-500 text-center">
+            © {new Date().getFullYear()} Lucid Ltd. All rights reserved.
+          </p>
+          <div className="flex items-center gap-4">
+            {LEGAL_LINKS.map((link, i) => (
+              <Link
+                key={i}
+                to={link.to}
+                className="text-xs text-gray-500 dark:text-slate-500 hover:text-primary dark:hover:text-primary-light transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </motion.div>
+      </motion.div>
+    </footer>
   );
 };
 

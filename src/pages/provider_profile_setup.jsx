@@ -1,5 +1,6 @@
 import React, { useState, useCallback, memo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { GHANA_LOCATIONS } from '../contexts/LocationContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
 import {
@@ -624,7 +625,20 @@ const ProviderProfileSetup = () => {
               <MapPin className="w-5 h-5 text-blue-600" />
               <label className="font-medium text-gray-700 dark:text-slate-300">Location</label>
             </div>
-            <InputField value={formMethods.profile.location} onChange={(e) => formMethods.handleInputChange('location', e.target.value)} placeholder="e.g., Achimota, Accra" />
+            <select
+              value={formMethods.profile.location}
+              onChange={(e) => formMethods.handleInputChange('location', e.target.value)}
+              className="w-full px-3 py-2.5 border-2 border-gray-300 dark:border-[#2d3748] rounded-md text-sm bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-all"
+            >
+              <option value="">Select your area</option>
+              {GHANA_LOCATIONS.map(group => (
+                <optgroup key={group.region} label={group.region}>
+                  {group.areas.map(area => (
+                    <option key={area} value={area}>{area}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </div>
 
           <CategoryChipSelector

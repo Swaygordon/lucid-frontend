@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { PROFILE_SETUP_KEY } from './provider_profile_setup';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
 
 const Signin = () => {
-  const [formData, setFormData] = useState({ email: '', password: '', role: 'client' });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
@@ -76,25 +75,16 @@ const Signin = () => {
       .eq('id', data.user.id)
       .single();
 
-    // Validate selected account type matches the actual role in DB
-    if (profile?.role && profile.role !== formData.role) {
-      await supabase.auth.signOut();
-      showNotification(
-        formData.role === 'client'
-          ? 'This account is registered as a Service Provider. Please select "Service Provider" to sign in.'
-          : 'This account is registered as a Client. Please select "Client" to sign in.',
-        'error'
-      );
-      setLoading(false);
-      return;
-    }
-
     showNotification(`Welcome back${profile?.first_name ? `, ${profile.first_name}` : ''}!`, 'success');
 
     if (profile?.role === 'service_provider') {
-      // Send provider to complete setup if they haven't done it yet
-      const setupDone = localStorage.getItem(PROFILE_SETUP_KEY) === 'true';
-      navigate(setupDone ? '/lucid/dashboard' : '/lucid/account/profile/setup', { replace: true });
+      const { data: providerProfile } = await supabase
+        .from('provider_profiles')
+        .select('first_name')
+        .eq('user_id', data.user.id)
+        .single();
+      const setupDone = !!providerProfile?.first_name;
+      navigate(setupDone ? '/lucid/account/profile' : '/lucid/account/profile/setup', { replace: true });
     } else {
       navigate('/lucid/', { replace: true });
     }
@@ -134,8 +124,9 @@ const Signin = () => {
   const PasswordToggle = () => (
     <button
       type="button"
+      aria-label={showPassword ? 'Hide password' : 'Show password'}
       onClick={() => setShowPassword(!showPassword)}
-      className="text-gray-500 hover:text-gray-700 transition-colors"
+      className="p-1 text-gray-500 hover:text-gray-700 transition-colors"
     >
       {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
     </button>
@@ -173,37 +164,6 @@ const Signin = () => {
                   endIcon={<PasswordToggle />}
                 />
 
-                {/* Account Type */}
-                <div>
-                  <label className="text-left block font-medium text-gray-700 dark:text-slate-300 mb-2">
-                    Account Type <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-6">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="role"
-                        value="client"
-                        checked={formData.role === 'client'}
-                        onChange={handleChange}
-                        className="bg-white accent-blue-600 w-4 h-4"
-                      />
-                      <span className="text-gray-900 dark:text-slate-200 font-medium">Client</span>
-                    </label>
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="role"
-                        value="service_provider"
-                        checked={formData.role === 'service_provider'}
-                        onChange={handleChange}
-                        className="bg-white accent-blue-600 w-4 h-4"
-                      />
-                      <span className="text-gray-900 dark:text-slate-200 font-medium">Service Provider</span>
-                    </label>
-                  </div>
-                </div>
-
                 <Button type="submit" variant="primary" size="md" fullWidth loading={loading}>
                   Sign In
                 </Button>
@@ -224,7 +184,7 @@ const Signin = () => {
                 {/* OR Divider */}
                 <div className="flex items-center my-6">
                   <div className="flex-1 border-t border-gray-300 dark:border-[#2d3748]" />
-                  <span className="px-4 text-gray-500 dark:text-slate-500 text-sm">OR</span>
+                  <span className="px-4 text-gray-500 dark:text-slate-400 text-sm">OR</span>
                   <div className="flex-1 border-t border-gray-300 dark:border-[#2d3748]" />
                 </div>
 
@@ -254,7 +214,7 @@ const Signin = () => {
 
           <div className="mb-6 mt-2 text-gray-900 dark:text-slate-300">
             Don't have an account?
-            <Link to="/lucid/signup" className="text-blue-700 hover:text-orange-600 ml-2">
+            <Link to="/lucid/signup" className="text-blue-700 dark:text-blue-400 hover:text-secondary underline ml-2">
               Sign Up
             </Link>
           </div>

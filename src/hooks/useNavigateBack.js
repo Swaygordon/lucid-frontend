@@ -8,7 +8,7 @@ import { useNotification } from '../contexts/NotificationContext';
  * @param {string} fallbackRoute - Route to navigate to if no history
  * @param {number} delay - Delay before navigation (ms)
  */
-export const useNavigateBack = (fallbackRoute = '/lucid_dev_backup', delay = 200) => {
+export const useNavigateBack = (fallbackRoute = '/lucid/', delay = 200) => {
   const navigate = useNavigate();
   const { showNotification } = useNotification();
 

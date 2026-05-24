@@ -184,6 +184,7 @@ const HelpSupport = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={handleBackClick}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />
@@ -211,7 +212,7 @@ const HelpSupport = () => {
             <div className="p-4 bg-primary/10 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
               <MessageCircle className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Live Chat</h3>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Live Chat</h2>
             <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Get instant help from our support team</p>
             <Button variant="outline" size="sm" fullWidth>Start Chat</Button>
           </Card>
@@ -220,7 +221,7 @@ const HelpSupport = () => {
             <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
               <Phone className="w-8 h-8 text-green-600 dark:text-green-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Call Us</h3>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Call Us</h2>
             <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Mon-Fri: 8am - 6pm</p>
             <Button variant="outline" size="sm" fullWidth>+233 30 123 4567</Button>
           </Card>
@@ -229,7 +230,7 @@ const HelpSupport = () => {
             <div className="p-4 bg-orange-50 dark:bg-orange-900/20 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4">
               <Mail className="w-8 h-8 text-orange-600 dark:text-orange-400" />
             </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Email</h3>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-2">Email</h2>
             <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">We'll respond within 24 hours</p>
             <Button variant="outline" size="sm" fullWidth>support@lucid.com</Button>
           </Card>
@@ -298,7 +299,7 @@ const HelpSupport = () => {
                     <BookOpen className="w-6 h-6 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-slate-100">User Guide</h4>
+                    <h3 className="font-semibold text-gray-900 dark:text-slate-100">User Guide</h3>
                     <p className="text-sm text-gray-600 dark:text-slate-400">Complete platform guide</p>
                   </div>
                 </button>
@@ -308,7 +309,7 @@ const HelpSupport = () => {
                     <Video className="w-6 h-6 text-orange-600 dark:text-orange-400" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-slate-100">Video Tutorials</h4>
+                    <h3 className="font-semibold text-gray-900 dark:text-slate-100">Video Tutorials</h3>
                     <p className="text-sm text-gray-600 dark:text-slate-400">Learn through videos</p>
                   </div>
                 </button>
@@ -335,8 +336,9 @@ const HelpSupport = () => {
                 />
 
                 <div className="flex flex-col gap-2">
-                  <label className="font-medium text-gray-700 dark:text-slate-300">Category</label>
+                  <label htmlFor="support-category" className="font-medium text-gray-700 dark:text-slate-300">Category</label>
                   <select
+                    id="support-category"
                     value={contactForm.category}
                     onChange={(e) => setContactForm({...contactForm, category: e.target.value})}
                     className="w-full px-4 py-3 border-2 rounded-lg bg-white dark:bg-[#252b3b] text-gray-700 dark:text-slate-200 border-gray-300 dark:border-[#2d3748] focus:border-blue-600 focus:outline-none"
@@ -375,7 +377,7 @@ const HelpSupport = () => {
               <div className="flex items-start gap-3">
                 <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                 <div>
-                  <h4 className="font-semibold text-green-900 dark:text-green-300 mb-1">All Systems Operational</h4>
+                  <h3 className="font-semibold text-green-900 dark:text-green-300 mb-1">All Systems Operational</h3>
                   <p className="text-sm text-green-800 dark:text-green-400">
                     All services are running smoothly. Average response time: 2 hours.
                   </p>

@@ -53,15 +53,13 @@ const UserProfile           = lazy(() => import('./pages/user_Profile.jsx'));
 const EditProfile           = lazy(() => import('./pages/edit.jsx'));
 const ProviderProfileSetup  = lazy(() => import('./pages/provider_profile_setup.jsx'));
 
-// Bookings (Phase 4) — not in scope yet
-// const ClientBookings     = lazy(() => import('./pages/client_bookings.jsx'));
-// const ProviderBookings   = lazy(() => import('./pages/provider_bookings.jsx'));
-// const BookingsPage       = lazy(() => import('./pages/BookingsPage.jsx'));
-// const ClientHistory      = lazy(() => import('./pages/client_history.jsx'));
-// const ProviderHistory    = lazy(() => import('./pages/provider_history.jsx'));
-// const BookingHistoryPage = lazy(() => import('./pages/BookingHistoryPage.jsx'));
-// const BookingRequest     = lazy(() => import('./pages/booking_request.jsx'));
-// const BookingConfirmation = lazy(() => import('./pages/booking_confirmation.jsx'));
+// Bookings (Phase 4)
+// ClientBookings / ProviderBookings / ClientHistory / ProviderHistory are sub-components
+// imported directly by BookingsPage and BookingHistoryPage — not lazy-loaded here.
+const BookingsPage        = lazy(() => import('./pages/BookingsPage.jsx'));
+const BookingHistoryPage  = lazy(() => import('./pages/BookingHistoryPage.jsx'));
+const BookingRequest      = lazy(() => import('./pages/booking_request.jsx'));
+const BookingConfirmation = lazy(() => import('./pages/booking_confirmation.jsx'));
 
 // Dashboard (Phase 5) — not in scope yet
 // const ClientDashboard    = lazy(() => import('./pages/client_dashboard.jsx'));
@@ -159,6 +157,53 @@ function ScrollToTop() {
   return null;
 }
 
+// Page-level skeleton shown while a lazy route chunk is loading.
+// Fills the viewport so the Footer doesn't pull up to the top on first paint.
+function PageSkeleton() {
+  return (
+    <div className="min-h-screen bg-white dark:bg-[#0f1117] animate-pulse">
+      {/* Hero — mimics the home hero height and content layout */}
+      <div className="flex flex-col items-center justify-center py-16 sm:py-24 px-4 text-center">
+        {/* CyclingBadge */}
+        <div className="h-9 w-48 bg-gray-200 dark:bg-[#252b3b] rounded-full mb-6" />
+        {/* Heading — two lines */}
+        <div className="h-10 sm:h-12 w-3/4 max-w-lg bg-gray-200 dark:bg-[#252b3b] rounded-lg mb-3" />
+        <div className="h-10 sm:h-12 w-1/2 max-w-xs bg-gray-200 dark:bg-[#252b3b] rounded-lg mb-6" />
+        {/* Paragraph */}
+        <div className="h-4 w-full max-w-md bg-gray-200 dark:bg-[#252b3b] rounded mb-2" />
+        <div className="h-4 w-3/4 max-w-sm bg-gray-200 dark:bg-[#252b3b] rounded mb-8" />
+        {/* Search bar */}
+        <div className="w-full max-w-2xl h-12 bg-gray-200 dark:bg-[#252b3b] rounded-xl mb-14" />
+        {/* Category icons row */}
+        <div className="flex justify-center gap-10">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0">
+              <div className="w-16 h-16 rounded-lg bg-gray-200 dark:bg-[#252b3b]" />
+              <div className="w-12 h-3 rounded bg-gray-200 dark:bg-[#252b3b]" />
+            </div>
+          ))}
+        </div>
+      </div>
+      {/* ProviderCTA / section stand-in */}
+      <div className="bg-gray-50 dark:bg-[#1a1f2e] px-4 py-16">
+        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <div className="h-8 w-48 bg-gray-200 dark:bg-[#252b3b] rounded" />
+            <div className="h-4 w-full bg-gray-200 dark:bg-[#252b3b] rounded" />
+            <div className="h-4 w-4/5 bg-gray-200 dark:bg-[#252b3b] rounded" />
+            <div className="h-10 w-36 bg-gray-200 dark:bg-[#252b3b] rounded-lg mt-2" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-28 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Layout({ children }) {
   const location = useLocation(); // current URL — re-evaluates on every navigation
 
@@ -167,25 +212,26 @@ function Layout({ children }) {
     // '/lucid/account',                 // AccountPage (Phase 6)
     // '/lucid/notifications',           // NotificationsPage (Phase 6)
     // '/lucid/dashboard',               // DashboardPage (Phase 5)
-    // '/lucid/bookings',                // BookingsPage (Phase 4)
-    // '/lucid/bookings/history',        // BookingHistoryPage (Phase 4)
+    '/lucid/bookings',                // BookingsPage (Phase 4)
+    '/lucid/bookings/history',        // BookingHistoryPage (Phase 4)
+    '/lucid/bookings/confirmation',   // BookingConfirmation (Phase 4)
+    // '/lucid/bookings/new',         // BookingRequest — now a prefix route, handled below
     // '/lucid/notifications/settings',  // NotificationSettings (Phase 6)
     // '/lucid/earnings',                // EarningsPayments (Phase 5)
     // '/lucid/transactions',            // TransactionsPage (Phase 5)
     // '/lucid/messages',                // MessagesListPage (Phase 7)
     '/lucid/account/profile',         // UserProfile (Phase 3)
-    // '/lucid/bookings/confirmation',   // BookingConfirmation (Phase 4)
-    // '/lucid/bookings/new',            // BookingRequest (Phase 4)
     '/lucid/account/profile/edit',    // EditProfile (Phase 3)
     '/lucid/account/profile/setup',   // ProviderProfileSetup (Phase 3)
     '/lucid/help',                    // Help & Support (public)
     // '/lucid/account/settings',        // AccountSettings (Phase 6)
-    '/lucid/providers/me',            // GeneralProfile (Phase 3)
     // '/lucid/favourites',              // Favourites (Phase 5)
   ];
 
-  // Prefix-based hide — catches dynamic segments like /lucid/messages/abc123
+  // Prefix-based hide — catches dynamic segments like /lucid/providers/:id
   const hideNavAndFooterPrefix = [
+    '/lucid/providers/',      // GeneralProfile — any provider UUID or "me" (Phase 3)
+    '/lucid/bookings/new/',   // BookingRequest — dynamic :providerId segment (Phase 4)
     // '/lucid/messages/', // individual chat threads (Phase 7)
   ];
 
@@ -197,7 +243,7 @@ function Layout({ children }) {
     <>
       {!shouldHideLayout && <Navbar />}   {/* shown on public pages only */}
       <ProfileSetupBanner />              {/* visible sitewide until provider completes setup */}
-      {children}                          {/* the actual page component */}
+      <main>{children}</main>             {/* landmark required for screen readers */}
       {!shouldHideLayout && <Footer />}   {/* shown on public pages only */}
     </>
   );
@@ -227,7 +273,7 @@ function App() {
         <ScrollToTop />
         {/* Layout reads location from Router context — must be inside <Router> */}
         <Layout>
-          <Suspense fallback={<div className="min-h-screen bg-white dark:bg-[#0f1117]" />}>
+          <Suspense fallback={<PageSkeleton />}>
           <Routes>
 
             {/* ── PUBLIC ROUTES ─────────────────────────────────────────────
@@ -315,18 +361,22 @@ function App() {
               element={<ProtectedRoute><ProviderProfileSetup /></ProtectedRoute>} />
             {/* Post-signup onboarding step for providers. Back → /lucid/. Save → /lucid/dashboard. */}
 
-            {/* Phase 4 — Bookings (not in scope yet) */}
-            {/* <Route path="/lucid/bookings"
-              element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} /> */}
+            {/* ── BOOKINGS (Phase 4) ────────────────────────────────────
+                Order matters: /bookings/new, /bookings/confirmation,
+                and /bookings/history must come before /bookings so
+                they are not shadowed by the parent route.            */}
 
-            {/* <Route path="/lucid/bookings/new"
-              element={<ProtectedRoute><BookingRequest /></ProtectedRoute>} /> */}
+            <Route path="/lucid/bookings/new/:providerId"
+              element={<ProtectedRoute><BookingRequest /></ProtectedRoute>} />
 
-            {/* <Route path="/lucid/bookings/confirmation"
-              element={<ProtectedRoute><BookingConfirmation /></ProtectedRoute>} /> */}
+            <Route path="/lucid/bookings/confirmation"
+              element={<ProtectedRoute><BookingConfirmation /></ProtectedRoute>} />
 
-            {/* <Route path="/lucid/bookings/history"
-              element={<ProtectedRoute><BookingHistoryPage /></ProtectedRoute>} /> */}
+            <Route path="/lucid/bookings/history"
+              element={<ProtectedRoute><BookingHistoryPage /></ProtectedRoute>} />
+
+            <Route path="/lucid/bookings"
+              element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
 
             {/* Phase 5 — Favourites (not in scope yet) */}
             {/* <Route path="/lucid/favourites"

@@ -52,55 +52,6 @@ const scaleIn = {
 // MEMOIZED COMPONENTS
 // ============================================
 
-// Hero Section Component
-const HeroSection = React.memo(({ backgroundImage, icon: Icon, title, subtitle }) => (
-  <div className='h-1/2'>
-    <div
-      className="relative w-full h-96 flex items-center justify-center"
-      style={{
-        backgroundImage: `url(${backgroundImage})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-      <motion.div
-        className="relative z-10 flex flex-col gap-4 justify-start items-start w-full"
-        initial="hidden"
-        animate="visible"
-        variants={fadeInUp}
-        transition={{ duration: 0.6 }}
-      >
-        <div className="max-w-3xl px-6 text-left">
-          <motion.div
-            className="mb-4"
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{ scale: 1, rotate: 0 }}
-            transition={{ duration: 0.5, type: "spring" }}
-          >
-            <Icon size={46} className="text-white" />
-          </motion.div>
-          <motion.h1
-            className="text-2xl md:text-4xl font-bold text-white leading-tight mb-4 drop-shadow-lg"
-            variants={fadeInUp}
-            transition={{ delay: 0.2 }}
-          >
-            {title}
-          </motion.h1>
-          <motion.p
-            className="text-white text-lg md:text-xl drop-shadow-md"
-            variants={fadeInUp}
-            transition={{ delay: 0.3 }}
-          >
-            {subtitle}
-          </motion.p>
-        </div>
-      </motion.div>
-    </div>
-  </div>
-));
-
 const RATING_OPTIONS = [
   { value: 0,   label: 'All Ratings'  },
   { value: 4.5, label: '4.5+ Stars'   },
@@ -229,14 +180,17 @@ const SelectedServiceSkeleton = () => (
         <div className="h-4 w-36 bg-gray-200 rounded" />
       </div>
     </div>
+    {/* Breadcrumb — 5 crumbs: Home › Services › All Services › Category › Service */}
     <div className="max-w-6xl mx-auto px-5 pt-4 pb-2 flex items-center gap-2">
       <div className="h-4 w-10 bg-gray-200 rounded" />
-      <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-20 bg-gray-200 rounded" />
       <div className="h-3 w-3 bg-gray-200 rounded" />
       <div className="h-4 w-16 bg-gray-200 rounded" />
       <div className="h-3 w-3 bg-gray-200 rounded" />
       <div className="h-4 w-24 bg-gray-200 rounded" />
+      <div className="h-3 w-3 bg-gray-200 rounded" />
+      <div className="h-4 w-32 bg-gray-200 rounded" />
+      <div className="h-3 w-3 bg-gray-200 rounded" />
+      <div className="h-4 w-28 bg-gray-200 rounded" />
     </div>
     <div className="container mx-auto px-6 pb-16">
       <div className="bg-blue-50 dark:bg-primary/10 rounded-lg p-4 mb-6">
@@ -266,8 +220,9 @@ const SelectedServiceSkeleton = () => (
   </div>
 );
 
-// Build category data from the database categories
-const _FEATURED_SLUGS = ['plumbing', 'electrical', 'cleaning', 'painting'];
+// [API] GET /categories/featured?limit=4 → [{id, name, slug, icon}]
+// Hardcoded until admin can configure featured categories
+const _FEATURED_SLUGS = ['home-repairs', 'moving', 'auto-repairs', 'construction'];
 
 const SERVICE_ICONS = _FEATURED_SLUGS.map((slug, i) => {
   const cat = getCategoryBySlug(slug);
@@ -335,93 +290,122 @@ const SelectedService = () => {
 
       let filteredProviders = data || [];
 
-      console.log('All providers:', filteredProviders.map(p => ({
-        name: `${p.first_name} ${p.last_name}`,
-        categories: p.categories,
-        skills: p.skills,
-        occupation: p.occupation
-      })));
-
-      // Category search terms mapping
       const categorySearchTerms = {
-        'auto-repairs': ['auto repair', 'auto repairs', 'automotive', 'car repair', 'vehicle repair', 'auto', 'mechanic', 'engine'],
-        'home-repairs': ['home repair', 'home repairs', 'house repair', 'maintenance', 'home', 'repair'],
-        'electrical': ['electrical', 'electrician', 'wiring', 'circuit', 'electric'],
-        'plumbing': ['plumbing', 'plumber', 'pipe', 'water', 'faucet', 'toilet'],
-        'cleaning': ['cleaning', 'cleaner', 'house cleaning', 'janitorial', 'maid'],
-        'painting': ['painting', 'painter', 'paint', 'house painting'],
-        'moving': ['moving', 'mover', 'relocation', 'furniture moving', 'delivery'],
-        'construction': ['construction', 'building', 'renovation', 'contractor']
+        'home-repairs':   ['home repair', 'home repairs', 'house repair', 'maintenance', 'handyman', 'repair'],
+        'moving':         ['moving', 'mover', 'relocation', 'packing', 'transport', 'delivery', 'furniture moving'],
+        'auto-repairs':   ['auto repair', 'automotive', 'car repair', 'vehicle repair', 'mechanic', 'garage'],
+        'construction':   ['construction', 'building', 'renovation', 'contractor', 'masonry', 'roofing'],
+        'beauty':         ['beauty', 'hair', 'makeup', 'fashion', 'tailoring', 'barber', 'grooming', 'salon'],
+        'events':         ['event', 'catering', 'decoration', 'photography', 'dj', 'entertainment', 'party'],
+        'skilled-trades': ['carpentry', 'welding', 'solar', 'ac repair', 'furniture making', 'technician', 'trade'],
+        'cleaning':       ['cleaning', 'cleaner', 'janitorial', 'maid', 'laundry', 'sanitation', 'waste'],
+        'education':      ['tutoring', 'tutor', 'teaching', 'lessons', 'training', 'coaching', 'education'],
+        'tech':           ['tech', 'phone repair', 'laptop repair', 'cctv', 'network', 'it support', 'electronics'],
       };
 
-      // Service search terms mapping
       const serviceSearchTerms = {
-        'engine-repair': ['engine repair', 'engine', 'auto repair', 'car repair', 'mechanic', 'automotive', 'engine fixing'],
-        'electrical-repairs': ['electrical repair', 'electrical', 'electrician', 'wiring', 'circuit', 'electric'],
-        'plumbing': ['plumbing', 'plumber', 'pipe', 'water heater', 'faucet', 'toilet repair'],
-        'house-cleaning': ['house cleaning', 'cleaning', 'janitorial', 'maid', 'housekeep'],
-        'furniture-moving': ['furniture moving', 'moving', 'mover', 'relocation', 'furniture']
+        // home-repairs
+        'electrical-repairs': ['electrical', 'electrician', 'wiring', 'circuit', 'electric', 'power'],
+        'plumbing':           ['plumbing', 'plumber', 'pipe', 'water heater', 'faucet', 'toilet repair'],
+        'painting':           ['painting', 'painter', 'paint', 'house painting', 'wall painting'],
+        'tiling':             ['tiling', 'tile', 'flooring', 'floor', 'mosaic', 'ceramics'],
+        'handyman':           ['handyman', 'general repair', 'odd jobs', 'fix', 'maintenance'],
+        // moving
+        'furniture-moving':   ['furniture moving', 'moving', 'mover', 'relocation', 'furniture'],
+        'packing':            ['packing', 'packing services', 'packaging', 'boxes', 'pack'],
+        'storage':            ['storage', 'warehouse', 'storage solutions', 'store items'],
+        'office-relocation':  ['office relocation', 'office moving', 'commercial moving', 'business relocation'],
+        // auto-repairs
+        'engine-repair':      ['engine repair', 'engine', 'auto repair', 'car repair', 'mechanic', 'automotive'],
+        'brake-service':      ['brake', 'brakes', 'brake service', 'brake repair', 'brake pad'],
+        'oil-change':         ['oil change', 'oil service', 'lubrication', 'oil filter', 'engine oil'],
+        'vulcanizing':        ['vulcanizing', 'tyre', 'tire', 'puncture', 'wheel', 'rim'],
+        'car-wash':           ['car wash', 'vehicle wash', 'detailing', 'auto detailing', 'car cleaning'],
+        // construction
+        'building':           ['building', 'construction', 'contractor', 'structural', 'civil'],
+        'roofing':            ['roofing', 'roof', 'roof repair', 'gutter', 'shingles', 'roofing contractor'],
+        'renovation':         ['renovation', 'remodel', 'refurbish', 'interior', 'upgrade'],
+        'fencing':            ['fencing', 'fence', 'gate', 'boundary wall', 'compound wall'],
+        'masonry':            ['masonry', 'plastering', 'bricklaying', 'concrete', 'block'],
+        // beauty
+        'hair-braiding':      ['hair braiding', 'braiding', 'cornrows', 'dreadlocks', 'hair stylist'],
+        'natural-hair':       ['natural hair', 'natural hair styling', 'loc', 'afro', 'twists'],
+        'makeup':             ['makeup', 'beauty', 'cosmetics', 'bridal makeup', 'artist'],
+        'tailoring':          ['tailoring', 'tailor', 'seamstress', 'sewing', 'fashion', 'clothes'],
+        'barbering':          ['barbering', 'barber', 'haircut', 'shave', 'grooming'],
+        // events
+        'event-planning':     ['event planning', 'event planner', 'events', 'coordination', 'organiser'],
+        'catering':           ['catering', 'caterer', 'food', 'meals', 'cooking', 'chef'],
+        'decoration':         ['decoration', 'decorator', 'decor', 'floral', 'setup', 'backdrop'],
+        'photography':        ['photography', 'photographer', 'videography', 'video', 'pictures'],
+        'music-dj':           ['dj', 'music', 'disc jockey', 'sound system', 'entertainment', 'band'],
+        // skilled-trades
+        'carpentry':          ['carpentry', 'carpenter', 'woodwork', 'cabinet', 'furniture', 'joinery'],
+        'welding':            ['welding', 'welder', 'fabrication', 'metalwork', 'steel', 'iron'],
+        'solar-installation': ['solar', 'solar panel', 'generator', 'inverter', 'power installation'],
+        'ac-repair':          ['ac repair', 'air conditioning', 'ac', 'hvac', 'cooling', 'refrigeration'],
+        'furniture-making':   ['furniture making', 'furniture', 'custom furniture', 'woodwork', 'cabinet'],
+        // cleaning
+        'house-cleaning':     ['house cleaning', 'home cleaning', 'cleaning', 'janitorial', 'maid', 'housekeep'],
+        'office-cleaning':    ['office cleaning', 'commercial cleaning', 'workspace cleaning', 'corporate'],
+        'deep-cleaning':      ['deep cleaning', 'thorough cleaning', 'spring cleaning', 'scrubbing'],
+        'laundry':            ['laundry', 'ironing', 'washing', 'dry cleaning', 'clothes'],
+        'waste-collection':   ['waste', 'garbage', 'trash', 'refuse', 'collection', 'sanitation'],
+        // education
+        'math-tutoring':      ['maths', 'math', 'mathematics', 'tutoring', 'tutor', 'algebra', 'calculus'],
+        'english-tutoring':   ['english', 'grammar', 'writing', 'reading', 'literature', 'language'],
+        'music-lessons':      ['music lessons', 'music', 'instrument', 'piano', 'guitar', 'singing'],
+        'driving-lessons':    ['driving', 'driving lessons', 'driving school', 'license', 'road'],
+        'computer-training':  ['computer', 'computer training', 'it training', 'software', 'ms office'],
+        // tech
+        'phone-repair':       ['phone repair', 'mobile repair', 'smartphone', 'screen repair', 'battery'],
+        'laptop-repair':      ['laptop repair', 'computer repair', 'pc repair', 'hardware', 'software fix'],
+        'cctv-installation':  ['cctv', 'cctv installation', 'surveillance', 'camera', 'security system'],
+        'network-setup':      ['network', 'wifi', 'wi-fi', 'internet', 'router', 'cable', 'networking'],
+        'it-support':         ['it support', 'tech support', 'helpdesk', 'troubleshooting', 'it'],
       };
 
       // Filter by category
       if (categorySlug) {
         const searchTerms = categorySearchTerms[categorySlug] || [categorySlug.replace(/-/g, ' ')];
-        
         filteredProviders = filteredProviders.filter(provider => {
-          const categories = (provider.categories || []).join(' ').toLowerCase();
-          const skills = (provider.skills || []).join(' ').toLowerCase();
-          const occupation = (provider.occupation || '').toLowerCase();
-          
-          const searchableText = `${categories} ${skills} ${occupation}`;
-          
-          const matches = searchTerms.some(term => 
-            searchableText.includes(term.toLowerCase())
-          );
-          
-          if (matches) {
-            console.log(`✅ Provider ${provider.first_name} matched category ${categorySlug}`);
-          }
-          return matches;
+          const searchableText = [
+            ...(provider.categories || []),
+            ...(provider.skills || []),
+            provider.occupation || '',
+          ].join(' ').toLowerCase();
+          return searchTerms.some(term => searchableText.includes(term));
         });
       }
 
       // Filter by service
       if (serviceSlug && svcData?.name) {
         const searchTerms = serviceSearchTerms[serviceSlug] || [svcData.name.toLowerCase()];
-        
         filteredProviders = filteredProviders.filter(provider => {
-          const skills = (provider.skills || []).join(' ').toLowerCase();
-          const categories = (provider.categories || []).join(' ').toLowerCase();
-          const occupation = (provider.occupation || '').toLowerCase();
-          
-          const searchableText = `${skills} ${categories} ${occupation}`;
-          
-          const matches = searchTerms.some(term => 
-            searchableText.includes(term.toLowerCase())
-          );
-          
-          if (matches) {
-            console.log(`✅ Provider ${provider.first_name} matched service ${svcData.name}`);
-          }
-          return matches;
+          const searchableText = [
+            ...(provider.skills || []),
+            ...(provider.categories || []),
+            provider.occupation || '',
+          ].join(' ').toLowerCase();
+          return searchTerms.some(term => searchableText.includes(term));
         });
       }
 
-      console.log('Filtered providers count:', filteredProviders.length);
-      console.log('Filtered providers:', filteredProviders.map(p => ({
-        name: `${p.first_name} ${p.last_name}`,
-        categories: p.categories,
-        skills: p.skills
-      })));
+      // Filter by location
+      if (area) {
+        filteredProviders = filteredProviders.filter(provider =>
+          provider.location && provider.location.includes(area)
+        );
+      }
 
       const transformedProviders = filteredProviders.map(provider => ({
         id: provider.user_id,
         name: `${provider.first_name || ''} ${provider.last_name || ''}`.trim() || 'Professional',
         role: provider.occupation || categorySlug || 'Service Provider',
         location: provider.location || 'Accra, Ghana',
-        rating: 4.5,
+        rating: provider.rating ?? null,
         image: provider.avatar_url,
-        verified: false,
+        verified: provider.verification_status === 'verified',
         totalJobs: provider.work_experience || 0,
       }));
 
@@ -443,16 +427,17 @@ const SelectedService = () => {
   }, [providers, filters]);
 
   const stats = useMemo(() => {
-    if (filteredProviders.length === 0) return { totalProviders: 0, averageRating: 0 };
-    const totalRating = filteredProviders.reduce((sum, p) => sum + p.rating, 0);
-    return {
-      totalProviders: filteredProviders.length,
-      averageRating: (totalRating / filteredProviders.length).toFixed(1)
-    };
+    if (filteredProviders.length === 0) return { totalProviders: 0, averageRating: '—' };
+    const ratedProviders = filteredProviders.filter(p => p.rating != null);
+    const averageRating = ratedProviders.length === 0
+      ? '—'
+      : (ratedProviders.reduce((sum, p) => sum + p.rating, 0) / ratedProviders.length).toFixed(1);
+    return { totalProviders: filteredProviders.length, averageRating };
   }, [filteredProviders]);
 
   const breadcrumbCrumbs = useMemo(() => [
-    { label: 'Home', href: '/lucid/' },
+    { label: 'Home',         href: '/lucid/' },
+    { label: 'Services',     href: '/lucid/services' },
     { label: 'All Services', href: '/lucid/services/all' },
     { label: catData?.name ?? categorySlug, href: `/lucid/services/${categorySlug}` },
     { label: svcData?.name ?? serviceSlug },
@@ -507,10 +492,7 @@ const SelectedService = () => {
                   image={profile.image}
                   verified={profile.verified}
                   totalJobs={profile.totalJobs}
-                  onViewProfile={() => {
-                    console.log('Navigating to provider:', profile.id, profile.name);
-                    navigate(`/lucid/providers/${profile.id}`);
-                  }}
+                  onViewProfile={() => navigate(`/lucid/providers/${profile.id}`)}
                 />
               </motion.div>
             ))}

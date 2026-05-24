@@ -3,7 +3,7 @@
 // All fields (status, rating, price, location) map directly to columns in the bookings table.
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, MapPin, DollarSign, Eye, MessageCircle, Star } from 'lucide-react';
 import { Avatar, Button } from '../ui';
 import { StatusBadge } from '../ui/StatusBadge';
@@ -14,6 +14,7 @@ const fadeIn = {
 };
 
 export const BookingCard = ({ booking, viewAs = 'client', onView, onCancel }) => {
+  const navigate = useNavigate();
   const isClient = viewAs === 'client';
 
   const personName = isClient
@@ -94,12 +95,10 @@ export const BookingCard = ({ booking, viewAs = 'client', onView, onCancel }) =>
           {isActive && (
             // [API] GET /conversations?bookingId={booking.id} — fetch or create the thread,
             // then navigate to /messagePage?conversationId={id} so the right chat opens.
-            <Link to="/lucid/messages">
-              <Button size="sm">
-                <MessageCircle className="w-4 h-4" />
-                Chat
-              </Button>
-            </Link>
+            <Button size="sm" onClick={() => navigate('/lucid/messages')}>
+              <MessageCircle className="w-4 h-4" />
+              Chat
+            </Button>
           )}
         </div>
       </div>

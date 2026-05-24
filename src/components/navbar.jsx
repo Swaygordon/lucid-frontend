@@ -12,6 +12,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
 import { Sun, Moon } from 'lucide-react';
 import Logo from "../assets/Lucid.webp";
+import LogoWhite from "../assets/Lucid white.webp";
 
 const NotificationBadge = ({ count = 0, className = "" }) => {
   if (!count || count <= 0) return null;
@@ -189,7 +190,7 @@ function Navbar() {
         {/* Logo */}
         <div className="flex items-center ml-4 md:ml-12">
           <Link to="/lucid/" className="flex items-center">
-            <img src={Logo} alt="Lucid Logo" className="h-5 w-20 object-cover" width="80" height="20" loading="eager" />
+            <img src={isDark ? LogoWhite : Logo} alt="Lucid Logo" className="h-5 w-20 object-cover" width="80" height="20" loading="eager" />
           </Link>
         </div>
 
@@ -257,11 +258,14 @@ function Navbar() {
               )}
             </div>
           ) : (
-            <Link to="/lucid/signin">
-              <Button variant="secondary" size="sm" className="ml-4 hidden lg:block whitespace-nowrap">
-                Sign In
-              </Button>
-            </Link>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="ml-4 hidden lg:block whitespace-nowrap"
+              onClick={() => navigate('/lucid/signin')}
+            >
+              Sign In
+            </Button>
           )}
 
           {/* Theme Toggle */}
@@ -307,7 +311,7 @@ function Navbar() {
         <div className="p-6 h-dvh flex flex-col">
           {/* Logo */}
           <div className="mb-6">
-            <img src={Logo} alt="Lucid Logo" className="h-5 w-28 object-cover m-1" width="112" height="20" loading="lazy" />
+            <img src={isDark ? LogoWhite : Logo} alt="Lucid Logo" className="h-5 w-28 object-cover m-1" width="112" height="20" loading="lazy" />
           </div>
 
           {/* User Profile (Mobile) */}
@@ -381,12 +385,10 @@ function Navbar() {
                 Logout
               </Button>
             ) : (
-              <Link to="/lucid/signin" onClick={handleLinkClick}>
-                <Button variant="secondary" fullWidth>
-                  <LogIn className="w-4 h-4" />
-                  Sign In
-                </Button>
-              </Link>
+              <Button variant="secondary" fullWidth onClick={() => { handleLinkClick(); navigate('/lucid/signin'); }}>
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Button>
             )}
           </div>
         </div>

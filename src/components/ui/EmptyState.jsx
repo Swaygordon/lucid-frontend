@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
 
 const fadeIn = {
@@ -9,6 +9,7 @@ const fadeIn = {
 };
 
 export const EmptyState = ({ icon: Icon, heading, description, action }) => {
+  const navigate = useNavigate();
   return (
     <motion.div
       initial="hidden"
@@ -22,11 +23,9 @@ export const EmptyState = ({ icon: Icon, heading, description, action }) => {
           <p className="text-gray-600 dark:text-slate-400 mb-6">{description}</p>
         )}
         {action && (
-          <Link to={action.to}>
-            <Button variant="primary" size="md">
-              {action.label}
-            </Button>
-          </Link>
+          <Button variant="primary" size="md" onClick={() => navigate(action.to)}>
+            {action.label}
+          </Button>
         )}
       </div>
     </motion.div>

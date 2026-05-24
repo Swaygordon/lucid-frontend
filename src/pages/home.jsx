@@ -81,7 +81,7 @@ const SearchBar = ({ onSearch, isLoading }) => {
     <motion.div
       className="mt-8 sm:mt-12 flex justify-center px-4"
       variants={fadeInUp}
-      initial="hidden"
+      initial={false}
       animate="visible"
       transition={{ duration: 0.6, delay: 0.4 }}
     >
@@ -100,6 +100,7 @@ const SearchBar = ({ onSearch, isLoading }) => {
         </div>
         {/* Search button */}
         <motion.button
+          aria-label="Search"
           className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 sm:px-7 py-3 rounded-r-xl flex-shrink-0 flex items-center gap-2 transition-colors"
           whileTap={{ scale: 0.97 }}
           onClick={() => onSearch(searchTerm)}
@@ -166,12 +167,7 @@ const CyclingBadge = () => {
   }, []);
 
   return (
-    <motion.div
-      className="inline-flex items-center gap-2 bg-blue-600/90 backdrop-blur-sm px-5 py-2 rounded-full mb-6 shadow-lg"
-      initial={{ opacity: 0, y: -10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5 }}
-    >
+    <div className="inline-flex items-center gap-2 bg-blue-600/90 backdrop-blur-sm px-5 py-2 rounded-full mb-6 shadow-lg">
       <MapPin className="w-4 h-4 text-orange-300 flex-shrink-0" />
       <span className="text-white text-sm font-medium">Find trusted</span>
       <div className="overflow-hidden h-5 flex items-center">
@@ -189,7 +185,7 @@ const CyclingBadge = () => {
         </AnimatePresence>
       </div>
       <span className="text-white text-sm font-medium">near you</span>
-    </motion.div>
+    </div>
   );
 };
 
@@ -363,7 +359,7 @@ function Home() {
               <motion.h1
                 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-gray-900 dark:text-white leading-tight mb-4"
                 variants={fadeInUp}
-                initial="hidden"
+                initial={false}
                 animate="visible"
                 transition={{ duration: 0.6 }}
               >
@@ -376,7 +372,7 @@ function Home() {
               <motion.p
                 className="text-base md:text-lg text-gray-600 dark:text-slate-300 leading-relaxed mb-8 max-w-xl mx-auto"
                 variants={fadeInUp}
-                initial="hidden"
+                initial={false}
                 animate="visible"
                 transition={{ duration: 0.6, delay: 0.2 }}
               >

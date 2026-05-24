@@ -39,8 +39,9 @@ const staggerContainer = {
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-const MOCK_RATING_DISTRIBUTION = [
-  { stars: 5, percentage: 100 },
+// [API] GET /reviews/distribution?providerId={id} → {distribution: [{stars, percentage}]}
+const RATING_DISTRIBUTION = [
+  { stars: 5, percentage: 0 },
   { stars: 4, percentage: 0 },
   { stars: 3, percentage: 0 },
   { stars: 2, percentage: 0 },
@@ -373,7 +374,7 @@ const UserProfile = () => {
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
 
-  const RATING_DISTRIBUTION = MOCK_RATING_DISTRIBUTION;
+  // RATING_DISTRIBUTION is declared at module scope above
 
   const [reviewsOpen,   setReviewsOpen]   = useState(false);
   const [notification,  setNotification]  = useState('');
@@ -425,23 +426,8 @@ const UserProfile = () => {
       return item;
     });
 
-  const [REVIEWS, setREVIEWS] = useState([
-    {
-      id: 'REV-001', parentId: null, bookingId: 'BK-REVIEW-001',
-      author: { id: 'CLIENT-301', name: 'Ama Boateng', role: 'client' },
-      rating: 5,
-      reviewText: 'Excellent service. Very professional and punctual.',
-      createdAt: '2025-02-09T18:40:00Z', verified: true,
-      replies: [
-        {
-          id: 'REP-001', parentId: 'REV-001',
-          author: { id: 'PROV-101', name: 'Gabriel A. Gordon-Mensah', role: 'provider' },
-          reviewText: 'Thank you so much, Ama. It was a pleasure working with you.',
-          createdAt: '2025-02-09T20:10:00Z', replies: []
-        }
-      ]
-    }
-  ]);
+  // [API] GET /reviews?providerId={id}&sort=recent&page={n}&limit={n} → {reviews: [{id, author, rating, reviewText, createdAt, verified, replies}]}
+  const [REVIEWS, setREVIEWS] = useState([]);
 
   const handlePostReply = () => {
     if (!replyTarget || !replyText.trim()) return;
@@ -479,8 +465,9 @@ const UserProfile = () => {
 
   const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
   const displayName = fullName || 'Provider';
-  const rating = 4.8;
-  const reviewCount = REVIEWS.length;
+  // [API] GET /reviews/summary?providerId={id} → {averageRating, reviewCount}
+  const rating = profileData.average_rating ?? null;
+  const reviewCount = profileData.review_count ?? 0;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">
@@ -503,7 +490,7 @@ const UserProfile = () => {
       </motion.header>
 
       {/* Hero */}
-      <HeroSection heroUrl={profileData.hero_url} onEditClick={() => setUploadOpen(true)} />
+      <HeroSection heroUrl={profileData.hero_url} onEditClick={() => navigate('/lucid/account/profile/edit')} />
 
       {/* Profile Card */}
       <div className="relative max-w-7xl mx-auto px-4 -mt-14 z-10">
