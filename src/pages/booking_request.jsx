@@ -129,31 +129,41 @@ const BookingRequest = () => {
   const [uploadedImages, setUploadedImages] = useState([]);
   const [provider, setProvider] = useState(null);
   const [providerLoading, setProviderLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
   const handleBackClick = useNavigateBack(`/lucid/providers/${providerId}`, 600);
 
-  // [API] GET /providers/:id → {name, profession, location}
+  // Get current user and provider
   useEffect(() => {
-    if (!providerId) return;
-    async function fetchProvider() {
-      const { data } = await supabase
-        .from('provider_profiles')
-        .select('user_id, first_name, last_name, occupation, location')
-        .eq('user_id', providerId)
-        .single();
-      if (data) {
-        setProvider({
-          id: data.user_id,
-          name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Service Provider',
-          profession: data.occupation || '',
-          location: data.location || '',
-        });
+    async function fetchData() {
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setCurrentUser(user);
+        // Don't fetch profile here to avoid 400 error - use user metadata instead
       }
-      setProviderLoading(false);
+      
+      // Get provider
+      if (providerId) {
+        const { data } = await supabase
+          .from('provider_profiles')
+          .select('user_id, first_name, last_name, occupation, location')
+          .eq('user_id', providerId)
+          .single();
+        if (data) {
+          setProvider({
+            id: data.user_id,
+            name: `${data.first_name || ''} ${data.last_name || ''}`.trim() || 'Service Provider',
+            profession: data.occupation || '',
+            location: data.location || '',
+          });
+        }
+        setProviderLoading(false);
+      }
     }
-    fetchProvider();
+    fetchData();
   }, [providerId]);
 
-  // Form state — contact and location fields pre-filled from the client's account profile
+  // Form state
   const [formData, setFormData] = useState({
     serviceType: '',
     customService: '',
@@ -163,21 +173,20 @@ const BookingRequest = () => {
     preferredTime: '',
     alternateDate: '',
     alternateTime: '',
-    address:    '',
-    city:       '',
-    area:       '',
-    landmark:   '',
+    address: '',
+    city: '',
+    area: '',
+    landmark: '',
     postalCode: '',
     estimatedDuration: '',
     budgetMin: '',
     budgetMax: '',
-    contactName:  '',
+    contactName: '',
     contactPhone: '',
     contactEmail: '',
     additionalNotes: ''
   });
 
-  // [API] Consider GET /services?providerId={id} to return the provider's offered service types
   const serviceTypes = [
     'Plumbing Repair',
     'Electrical Installation',
@@ -199,7 +208,6 @@ const BookingRequest = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  // [API] POST /bookings/:id/attachments — multipart/form-data; images uploaded separately after booking is created
   const handleImageUpload = (e) => {
     const files = Array.from(e.target.files);
     if (uploadedImages.length + files.length > 5) {
@@ -282,87 +290,144 @@ const BookingRequest = () => {
   setLoading(true);
 
   try {
-    // Transform form data to match booking structure
-    const transformedBooking = {
-  id: Date.now(), // [API] id assigned by backend on POST /bookings
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      showNotification('Please log in to book a service', 'error');
+      navigate('/lucid/signin');
+      return;
+    }
 
-  title:
-    formData.serviceType === 'Other (Specify)'
+    const serviceTitle = formData.serviceType === 'Other (Specify)'
       ? formData.customService
-      : formData.serviceType,
+      : formData.serviceType;
 
-  serviceType:
-    formData.serviceType === 'Other (Specify)'
-      ? formData.customService
-      : formData.serviceType,
+    // Calculate duration in hours
+    let durationHours = null;
+    if (formData.estimatedDuration) {
+      const match = formData.estimatedDuration.match(/(\d+)/);
+      if (match) durationHours = parseInt(match[1], 10);
+    }
 
-  status: 'pending', // [DB] initial status set by backend, not client
+    // Create the full location string
+    const locationString = `${formData.address}, ${formData.area}, ${formData.city || 'Accra'}`;
 
-  date: formData.preferredDate,
-  time: formData.preferredTime,
-  alternateDate: formData.alternateDate || null,
-  alternateTime: formData.alternateTime || null,
+    // Create booking with ALL form data - using ONLY columns that exist
+    const { data: booking, error: bookingError } = await supabase
+      .from('bookings')
+      .insert({
+        // Basic booking info (these columns exist)
+        client_id: user.id,
+        provider_id: provider.id,
+        service_date: formData.preferredDate,
+        service_time: formData.preferredTime,
+        duration_hours: durationHours,
+        total_amount: 0,
+        status: 'pending',
+        description: formData.description,
+        cancellation_reason: null,
+        
+        // These columns will be added by the SQL above
+        location: locationString,
+        urgency: formData.urgency,
+        alternate_date: formData.alternateDate || null,
+        alternate_time: formData.alternateTime || null,
+        street_address: formData.address,
+        area: formData.area,
+        landmark: formData.landmark || null,
+        postal_code: formData.postalCode || null,
+        contact_name: formData.contactName,
+        contact_phone: formData.contactPhone,
+        contact_email: formData.contactEmail || null,
+        budget_min: formData.budgetMin ? parseFloat(formData.budgetMin) : null,
+        budget_max: formData.budgetMax ? parseFloat(formData.budgetMax) : null,
+        additional_notes: formData.additionalNotes || null,
+        service_type: serviceTitle,
+        
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      })
+      .select();
 
-  price: 0, // provider sets later
+    if (bookingError) {
+      console.error('Booking error details:', bookingError);
+      throw bookingError;
+    }
 
-  description: formData.description,
-  duration: formData.estimatedDuration,
-  urgency: formData.urgency,
+    if (!booking || booking.length === 0) {
+      throw new Error('No booking data returned');
+    }
 
-  bookingDate: new Date().toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  }),
+    const newBooking = booking[0];
 
-  bookingReference: `BK${Date.now().toString().slice(-8)}`, // [DB] generate reference server-side for uniqueness guarantees
+    // Create notification for provider
+    const { error: notifError } = await supabase
+      .from('notifications')
+      .insert({
+        user_id: provider.id,
+        type: 'booking',
+        title: 'New Booking Request',
+        message: `New booking request from ${formData.contactName} for ${serviceTitle}`,
+        metadata: { 
+          booking_id: newBooking.id, 
+          client_name: formData.contactName,
+          service_type: serviceTitle,
+          date: formData.preferredDate,
+          time: formData.preferredTime
+        },
+        created_at: new Date().toISOString(),
+        is_read: false
+      });
 
-  provider: {
-    name: provider.name,
-    profession: provider.profession,
-    phone: provider.phone || null,
-    email: provider.email || null,
-    rating: provider.rating ?? null
-  },
-
-  client: {
-    name: formData.contactName,
-    phone: formData.contactPhone,
-    email: formData.contactEmail || null
-  },
-
-  location: {
-    address: formData.address,
-    area: formData.area,
-    city: formData.city,
-    landmark: formData.landmark || null,
-    postalCode: formData.postalCode || null
-    // [API] Consider GET /geocode?q={address} for coordinate storage
-  },
-
-  budget: {
-    min: formData.budgetMin ? parseInt(formData.budgetMin, 10) : null,
-    max: formData.budgetMax ? parseInt(formData.budgetMax, 10) : null
-  },
-
-  images: uploadedImages.map(img => img.preview), // [API] POST /bookings/:id/attachments — multipart/form-data → {attachmentUrls[]}
-
-  additionalNotes: formData.additionalNotes || null
-};
-
-    // [API] POST /bookings — {providerId, serviceType, description, urgency, preferredDate, preferredTime, alternateDate, alternateTime, estimatedDuration, address, area, city, landmark, postalCode, budgetMin, budgetMax, contactName, contactPhone, contactEmail, additionalNotes} → {bookingId, bookingReference, status}
+    if (notifError) {
+      console.error('Notification error:', notifError);
+    }
 
     showNotification('Booking request sent successfully!', 'success');
 
-    // Navigate with transformed data
     navigate('/lucid/bookings/confirmation', {
       state: {
-        bookingData: transformedBooking,
+        bookingData: {
+          id: newBooking.id,
+          title: serviceTitle,
+          serviceType: serviceTitle,
+          status: 'pending',
+          date: formData.preferredDate,
+          time: formData.preferredTime,
+          alternateDate: formData.alternateDate || null,
+          alternateTime: formData.alternateTime || null,
+          price: 0,
+          description: formData.description,
+          duration: formData.estimatedDuration,
+          urgency: formData.urgency,
+          bookingReference: `BK${newBooking.id.slice(0, 8)}`,
+          provider: {
+            name: provider.name,
+            profession: provider.profession,
+          },
+          client: {
+            name: formData.contactName,
+            phone: formData.contactPhone,
+            email: formData.contactEmail || null
+          },
+          location: {
+            address: formData.address,
+            area: formData.area,
+            city: formData.city,
+            landmark: formData.landmark || null,
+            postalCode: formData.postalCode || null
+          },
+          budget: {
+            min: formData.budgetMin ? parseInt(formData.budgetMin, 10) : null,
+            max: formData.budgetMax ? parseInt(formData.budgetMax, 10) : null
+          },
+          additionalNotes: formData.additionalNotes || null
+        },
         provider
       }
     });
   } catch (error) {
-    showNotification('Failed to submit booking', 'error');
+    console.error('Booking error:', error);
+    showNotification(error.message || 'Failed to submit booking. Please try again.', 'error');
   } finally {
     setLoading(false);
   }
@@ -377,52 +442,8 @@ const BookingRequest = () => {
 
   if (providerLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] animate-pulse">
-        {/* Sticky header */}
-        <div className="bg-white dark:bg-[#1a1f2e] shadow-sm sticky top-0 z-40">
-          <div className="max-w-3xl mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="w-9 h-9 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-            <div className="flex flex-col items-center gap-1">
-              <div className="h-5 w-32 bg-gray-200 dark:bg-[#252b3b] rounded" />
-              <div className="h-4 w-44 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            </div>
-            <div className="w-9 h-9 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-          </div>
-        </div>
-
-        <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
-          {/* Progress steps */}
-          <div className="flex items-center justify-between">
-            {[0, 1, 2, 3].map(i => (
-              <div key={i} className="flex items-center gap-2 flex-1">
-                <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-[#252b3b] flex-shrink-0" />
-                {i < 3 && <div className="h-1 flex-1 bg-gray-200 dark:bg-[#252b3b] rounded" />}
-              </div>
-            ))}
-          </div>
-
-          {/* Form card */}
-          <div className="bg-white dark:bg-[#1a1f2e] rounded-2xl shadow-sm p-6 space-y-5">
-            <div className="h-6 w-40 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map(i => (
-                <div key={i} className="h-20 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
-              ))}
-            </div>
-            <div className="h-28 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
-            <div className="grid grid-cols-3 gap-3">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
-              ))}
-            </div>
-          </div>
-
-          {/* Nav buttons */}
-          <div className="flex justify-between gap-4">
-            <div className="h-12 w-28 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
-            <div className="h-12 w-36 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
@@ -599,62 +620,10 @@ const BookingRequest = () => {
                                 <div className="font-semibold text-gray-900 dark:text-slate-100">{level.label}</div>
                                 <div className="text-sm text-gray-600 dark:text-slate-400">{level.description}</div>
                               </div>
-                              {level.extra && (
-                                <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">
-                                  {level.extra}
-                                </span>
-                              )}
                             </div>
                           </button>
                         ))}
                       </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-3">
-                        Upload Images (Optional, max 5)
-                      </label>
-                      <div className="border-2 border-dashed border-gray-300 dark:border-[#2d3748] hover:border-blue-600 transition-colors rounded-lg p-6">
-                        <input
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={handleImageUpload}
-                          className="hidden"
-                          id="image-upload"
-                        />
-                        <label
-                          htmlFor="image-upload"
-                          className="flex flex-col items-center cursor-pointer"
-                        >
-                          <ImageIcon className="w-12 h-12 text-gray-400 hover:text-primary transition-colors mb-2" />
-                          <span className="text-sm text-gray-600 dark:text-slate-400">Click to upload images</span>
-                          <span className="text-xs text-gray-500 dark:text-slate-500 mt-1">
-                            PNG, JPG up to 5MB each
-                          </span>
-                        </label>
-                      </div>
-
-                      {uploadedImages.length > 0 && (
-                        <div className="grid grid-cols-3 gap-3 mt-4">
-                          {uploadedImages.map((img) => (
-                            <div key={img.id} className="relative group">
-                              <img
-                                src={img.preview}
-                                alt="Upload preview"
-                                className="w-full h-24 object-cover rounded-lg"
-                              />
-                              <button
-                                type="button"
-                                onClick={() => removeImage(img.id)}
-                                className="absolute top-1 right-1 p-1 bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <X className="w-4 h-4 text-white" />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </Card>
@@ -679,12 +648,11 @@ const BookingRequest = () => {
                         <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                         <div className="text-sm text-blue-900 dark:text-blue-300">
                           <p className="font-semibold mb-1">Important</p>
-                          <p>The service provider will confirm availability after reviewing your request. You can provide alternate dates to increase chances of quick confirmation.</p>
+                          <p>The service provider will confirm availability after reviewing your request.</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* [API] Consider GET /providers/:id/availability?date={date} to validate preferred date against provider schedule */}
                     <div className="grid md:grid-cols-2 gap-6">
                       <Input
                         label="Preferred Date"
@@ -749,7 +717,6 @@ const BookingRequest = () => {
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Location Details</h2>
 
                   <div className="space-y-6">
-                    {/* [API] Consider GET /geocode?q={address} for coordinate storage after address entry */}
                     <Input
                       label="Street Address"
                       name="address"
@@ -805,7 +772,6 @@ const BookingRequest = () => {
                 <Card>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Contact Information</h2>
 
-                  {/* [AUTH] Pre-fill contactName, contactPhone, contactEmail from authenticated user profile: GET /users/me */}
                   <div className="space-y-6">
                     <Input
                       label="Contact Name"
@@ -872,7 +838,7 @@ const BookingRequest = () => {
                 </Card>
 
                 {/* Review Summary */}
-                <Card className="bg-gray-50">
+                <Card className="bg-gray-50 dark:bg-[#1a1f2e]">
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">Booking Summary</h2>
 
                   <div className="space-y-4">

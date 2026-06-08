@@ -13,7 +13,6 @@ import { motion } from 'framer-motion';
 import { Button, Input } from '../components/ui';
 
 // ─── Profile setup completion helper ─────────────────────────────────────────
-// Key shared with ProfileSetupBanner and sign_in so they all read the same flag.
 export const PROFILE_SETUP_KEY = 'lucid_provider_profile_complete';
 export const markProfileComplete = () =>
   localStorage.setItem(PROFILE_SETUP_KEY, 'true');
@@ -435,13 +434,11 @@ const ProviderProfileSetup = () => {
     return publicUrl;
   };
 
-  // Skip — account exists but profile not yet complete. Banner will remind them.
   const handleSkip = () => {
     showNotification('You can complete your profile anytime from your dashboard.', 'info');
     setTimeout(() => navigate('/lucid/', { replace: true }), 800);
   };
 
-  // Save — upserts to DB, marks setup complete, clears the sitewide banner.
   const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -472,6 +469,7 @@ const ProviderProfileSetup = () => {
         avatar_url: avatarUrl,
         hero_url: heroUrl,
         is_profile_complete: true,
+        verification_status: 'pending', // Add this line - pending admin approval
         updated_at: new Date().toISOString()
       };
 
@@ -482,7 +480,7 @@ const ProviderProfileSetup = () => {
       if (error) throw error;
 
       markProfileComplete();
-      showNotification('Profile saved! Welcome to Lucid.', 'success');
+      showNotification('Profile submitted for review! You will be notified once approved.', 'success');
       navigate('/lucid/account/profile', { replace: true });
     } catch (error) {
       console.error('Save error:', error);
@@ -530,12 +528,12 @@ const ProviderProfileSetup = () => {
         .animate-fade-in { animation: fade-in 0.5s ease-out; }
       `}</style>
 
-      {/* ── Onboarding Header ── */}
+      {/* Onboarding Header */}
       <div className="bg-white dark:bg-[#1a1f2e] border-b border-gray-200 dark:border-[#1e293b] px-4 py-5 text-center">
         <p className="text-sm text-blue-600 font-semibold tracking-wide uppercase mb-1">Step 2 of 2</p>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Set Up Your Provider Profile</h1>
         <p className="text-gray-500 dark:text-slate-500 text-sm mt-1 max-w-md mx-auto">
-          Help clients find and trust you. You can always update this later.
+          Help clients find and trust you. Your profile will be reviewed by our team.
         </p>
         <button
           onClick={handleSkip}
@@ -545,7 +543,7 @@ const ProviderProfileSetup = () => {
         </button>
       </div>
 
-      {/* ── Hero Background ── */}
+      {/* Hero Background */}
       <div className="relative w-full h-44 md:h-56 overflow-hidden">
         {heroUrl ? (
           <img src={heroUrl} alt="Profile banner" className="w-full h-full object-cover" loading="lazy" />
@@ -570,7 +568,7 @@ const ProviderProfileSetup = () => {
         </div>
       </div>
 
-      {/* ── Profile Picture ── */}
+      {/* Profile Picture */}
       <div className="flex justify-center -mt-14 mb-6 relative z-10">
         <div className="flex flex-col items-center gap-3">
           <div className="relative group">
@@ -720,7 +718,7 @@ const ProviderProfileSetup = () => {
           {/* Actions */}
           <div className="flex gap-4 justify-center mt-8 pt-8 border-t border-gray-200 dark:border-[#1e293b]">
             <Button fullWidth variant="danger" size="md" onClick={handleSkip}>Skip for now</Button>
-            <Button fullWidth size="md" onClick={handleSave} loading={loading}>Complete Profile Setup</Button>
+            <Button fullWidth size="md" onClick={handleSave} loading={loading}>Submit for Review</Button>
           </div>
         </div>
       </div>

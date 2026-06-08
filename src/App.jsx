@@ -18,7 +18,7 @@ import { NotificationProvider } from './contexts/NotificationContext';
 import { LocationProvider } from './contexts/LocationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FavouritesProvider } from './contexts/FavouritesContext';
-
+import NotificationsPage from './pages/NotificationsPage.jsx';
 // Supabase client — used here only in ProtectedRoute to check the session.
 // Pages import it directly from this same file when they need auth operations.
 import { supabase } from './lib/supabaseClient';
@@ -27,6 +27,10 @@ import { supabase } from './lib/supabaseClient';
 import Navbar from "./components/navbar";
 import Footer from './components/footer';
 import ProfileSetupBanner from './components/ProfileSetupBanner.jsx';
+
+// ─── Admin Dashboard ─────────────────────────────────────────────────────────
+import AdminDashboard from './pages/admin/AdminDashboard.jsx';
+import ClientProfile from './pages/client_profile.jsx';
 
 // ─── Page-level code splitting ────────────────────────────────────────────────
 // Each lazy() call creates a separate chunk. Vite only downloads a chunk when
@@ -224,6 +228,7 @@ function Layout({ children }) {
     '/lucid/account/profile/edit',    // EditProfile (Phase 3)
     '/lucid/account/profile/setup',   // ProviderProfileSetup (Phase 3)
     '/lucid/help',                    // Help & Support (public)
+    '/lucid/admin',                   // Admin Dashboard
     // '/lucid/account/settings',        // AccountSettings (Phase 6)
     // '/lucid/favourites',              // Favourites (Phase 5)
   ];
@@ -294,11 +299,22 @@ function App() {
             <Route path="/lucid/help"          element={<HelpSupport />} />
             {/* Help & support — FAQs, contact form. */}
 
+            {/* Admin Dashboard - Only accessible by admin users */}
+            <Route path="/lucid/admin" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminDashboard />
+              </ProtectedRoute>
+            } />
+
             <Route path="/lucid/become-provider" element={<Signup />} />
             {/* Same sign-up page, different entry point from marketing CTAs.
                 The Signup component can detect this path to pre-select "provider". */}
 
-
+            <Route path="/lucid/account/client-profile" element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientProfile />
+                </ProtectedRoute>
+              } />
             {/* ── SERVICES DISCOVERY (Phase 2) ──────────────────────────────
                 ⚠️  Route ORDER matters in this block.
                 /lucid/services/all MUST be declared before /lucid/services/:category.
@@ -319,6 +335,11 @@ function App() {
             {/* :category = slug from categories.js, e.g. "home-repairs".
                 category.jsx calls getCategoryBySlug(params.category) to find the data. */}
 
+            <Route path="/lucid/notifications" element={
+                <ProtectedRoute>
+                  <NotificationsPage />
+                </ProtectedRoute>
+              } />
             <Route path="/lucid/services/:category/:service" element={<Selected_service />} />
             {/* :service = service slug within the category, e.g. "electrical-repairs".
                 Provider cards here link to /lucid/providers/:id (Phase 3). */}
