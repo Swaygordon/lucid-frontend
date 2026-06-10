@@ -18,7 +18,6 @@ import { NotificationProvider, useNotification } from './contexts/NotificationCo
 import { LocationProvider } from './contexts/LocationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FavouritesProvider } from './contexts/FavouritesContext';
-import NotificationsPage from './pages/NotificationsPage.jsx';
 // Supabase client — used here only in ProtectedRoute to check the session.
 // Pages import it directly from this same file when they need auth operations.
 import { supabase } from './lib/supabaseClient';
@@ -44,9 +43,6 @@ import {
   ChatSkeleton,
 } from './components/route_skeletons.jsx';
 
-// ─── Admin Dashboard ─────────────────────────────────────────────────────────
-import AdminDashboard from './pages/admin/AdminDashboard.jsx';
-import ClientProfile from './pages/client_profile.jsx';
 
 // ─── Page-level code splitting ────────────────────────────────────────────────
 // Each lazy() call creates a separate chunk. Vite only downloads a chunk when
@@ -221,7 +217,7 @@ function Layout({ children }) {
     '/lucid/account/profile/edit',    // EditProfile (Phase 3)
     '/lucid/account/profile/setup',   // ProviderProfileSetup (Phase 3)
     '/lucid/help',                    // Help & Support (public)
-    '/lucid/admin',                   // Admin Dashboard (Phase 8)
+    // '/lucid/admin',                   // Admin Dashboard (Phase 5+, gitignored)
   ];
 
   // Prefix-based hide — catches dynamic segments like /lucid/messages/:id
@@ -294,21 +290,23 @@ function App() {
             {/* Help & support — FAQs, contact form. */}
 
             {/* Admin Dashboard - Only accessible by admin users */}
-            <Route path="/lucid/admin" element={
+            {/* PHASE 5+ — File gitignored; uncomment-in-place when implemented */}
+            {/* <Route path="/lucid/admin" element={
               <ProtectedRoute allowedRoles={['admin']}>
                 <AdminDashboard />
               </ProtectedRoute>
-            } />
+            } /> */}
 
             <Route path="/lucid/become-provider" element={withFallback(<Signup />, AuthFormSkeleton)} />
             {/* Same sign-up page, different entry point from marketing CTAs.
                 The Signup component can detect this path to pre-select "provider". */}
 
-            <Route path="/lucid/account/client-profile" element={
+            {/* PHASE 5+ — File gitignored; uncomment-in-place when implemented */}
+            {/* <Route path="/lucid/account/client-profile" element={
                 <ProtectedRoute allowedRoles={['client']}>
                   <ClientProfile />
                 </ProtectedRoute>
-              } />
+              } /> */}
             {/* ── SERVICES DISCOVERY (Phase 2) ──────────────────────────────
                 ⚠️  Route ORDER matters in this block.
                 /lucid/services/all MUST be declared before /lucid/services/:category.

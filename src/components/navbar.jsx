@@ -250,29 +250,22 @@ function Navbar() {
     { to: "/lucid/services",        label: "Services",          icon: Hammer },
     { to: "/lucid/about",           label: "About",             icon: Info },
   ];
-  
-  // Add My Bookings link for logged-in users
-  if (isLoggedIn) {
-    navLinks.push({ to: getBookingsPath(), label: "My Bookings", icon: CalendarCheck });
-  }
-  
+
   if (isAdmin) {
     navLinks.push({ to: "/lucid/admin", label: "Admin", icon: Shield });
   }
 
-  // User menu links - now includes Profile for ALL logged-in users
+  // User menu links - includes Profile only for providers
   const userMenuLinks = [
-    { to: getProfilePath(), label: "My Profile", icon: User },  // Added for all users
+    ...(providerProfile ? [{ to: getProfilePath(), label: "My Profile" }] : []),
     { to: getDashboardPath(), label: "Dashboard" },
-    { to: getBookingsPath(),  label: "My Bookings" },
     { to: "/lucid/messages",       label: "Messages",      badge: messageCount },
     { to: "/lucid/notifications",  label: "Notifications", badge: notificationCount },
   ];
 
   const mobileUserLinks = [
-    { to: getProfilePath(),       label: "My Profile",     icon: User },  // Added for all users
+    ...(providerProfile ? [{ to: getProfilePath(),       label: "My Profile",     icon: User }] : []),
     { to: getDashboardPath(),     label: "Dashboard",     icon: LayoutDashboard },
-    { to: getBookingsPath(),      label: "My Bookings",   icon: CalendarCheck },
     { to: "/lucid/messages",      label: "Messages",      icon: MessageCircle, badge: messageCount },
     { to: "/lucid/notifications", label: "Notifications", icon: Bell,          badge: notificationCount },
   ];
