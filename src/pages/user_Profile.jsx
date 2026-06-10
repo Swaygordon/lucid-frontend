@@ -21,7 +21,9 @@ import {
   ChevronDown,
   ArrowLeft,
   Calendar,
-  DollarSign
+  DollarSign,
+  XCircle,
+  AlertCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ImageUploadModal } from "../components/shared";
@@ -39,7 +41,6 @@ const staggerContainer = {
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
 };
 
-// [API] GET /reviews/distribution?providerId={id} → {distribution: [{stars, percentage}]}
 const RATING_DISTRIBUTION = [
   { stars: 5, percentage: 0 },
   { stars: 4, percentage: 0 },
@@ -133,7 +134,7 @@ const EditButton = memo(() => (
 
 const SkillBadge = memo(({ skill, index }) => (
   <motion.span
-    className="px-4 py-2 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium"
+    className="px-4 py-2 bg-blue-50 dark:bg-primary/10 text-blue-600 rounded-lg text-sm font-medium"
     initial={{ opacity: 0, scale: 0.8 }}
     animate={{ opacity: 1, scale: 1 }}
     transition={{ delay: index * 0.1 }}
@@ -245,18 +246,13 @@ const LoadingSkeleton = () => (
 
 const UserProfileSkeleton = () => (
   <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] animate-pulse">
-    {/* Header */}
     <div className="bg-white dark:bg-[#1a1f2e] shadow-sm sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
         <div className="w-10 h-10 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
         <div className="h-4 w-44 bg-gray-200 dark:bg-[#252b3b] rounded" />
       </div>
     </div>
-
-    {/* Hero */}
     <div className="h-60 bg-gray-300 dark:bg-[#252b3b]" />
-
-    {/* Profile card */}
     <div className="relative max-w-7xl mx-auto px-4 -mt-14 z-10">
       <div className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow-lg p-6">
         <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gray-300 dark:bg-[#252b3b] border-4 border-white mb-4" />
@@ -289,79 +285,6 @@ const UserProfileSkeleton = () => (
         </div>
       </div>
     </div>
-
-    {/* Main content */}
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      {/* Stats */}
-      <div className="grid md:grid-cols-3 gap-4 mb-8">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 flex flex-col items-center gap-2">
-            <div className="w-8 h-8 bg-gray-200 dark:bg-[#252b3b] rounded-full" />
-            <div className="h-7 w-16 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            <div className="h-4 w-28 bg-gray-200 dark:bg-[#252b3b] rounded" />
-          </div>
-        ))}
-      </div>
-
-      {/* Info cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-5 h-5 bg-gray-200 dark:bg-[#252b3b] rounded" />
-              <div className="h-5 w-28 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            </div>
-            <div className="space-y-3">
-              {[0, 1, 2, 3].map(j => (
-                <div key={j} className="flex items-center gap-3">
-                  <div className="w-5 h-5 bg-gray-200 dark:bg-[#252b3b] rounded" />
-                  <div className="h-4 w-36 bg-gray-200 dark:bg-[#252b3b] rounded" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Certifications */}
-      <div className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 mb-8">
-        <div className="h-5 w-32 bg-gray-200 dark:bg-[#252b3b] rounded mb-4" />
-        <div className="space-y-3">
-          {[0, 1, 2].map(i => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="w-5 h-5 bg-gray-200 dark:bg-[#252b3b] rounded-full" />
-              <div className="h-4 w-64 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Languages */}
-      <div className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 mb-8">
-        <div className="h-5 w-24 bg-gray-200 dark:bg-[#252b3b] rounded mb-4" />
-        <div className="flex flex-wrap gap-2">
-          {[0, 1, 2, 3].map(i => (
-            <div key={i} className="h-7 w-20 bg-gray-200 dark:bg-[#252b3b] rounded-full" />
-          ))}
-        </div>
-      </div>
-
-      {/* Quick actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-        {[0, 1, 2].map(i => (
-          <div key={i} className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-        ))}
-      </div>
-
-      {/* Portfolio carousel */}
-      <div className="h-64 bg-gray-200 dark:bg-[#252b3b] rounded-lg mb-8" />
-
-      {/* Reviews accordion */}
-      <div className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 flex items-center justify-between">
-        <div className="h-6 w-40 bg-gray-200 dark:bg-[#252b3b] rounded" />
-        <div className="w-6 h-6 bg-gray-200 dark:bg-[#252b3b] rounded" />
-      </div>
-    </div>
   </div>
 );
 
@@ -375,8 +298,6 @@ const UserProfile = () => {
 
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
-
-  // RATING_DISTRIBUTION is declared at module scope above
 
   const [reviewsOpen,   setReviewsOpen]   = useState(false);
   const [notification,  setNotification]  = useState('');
@@ -397,6 +318,22 @@ const UserProfile = () => {
         return;
       }
 
+      // Check user role from profiles table
+      const { data: userProfile, error: userRoleError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (userRoleError) throw userRoleError;
+
+      // If client, redirect to client profile page
+      if (userProfile?.role === 'client') {
+        navigate('/lucid/account/client-profile');
+        return;
+      }
+
+      // For providers (role = 'service_provider'), load provider profile
       const { data, error } = await supabase
         .from('provider_profiles')
         .select('*')
@@ -428,7 +365,6 @@ const UserProfile = () => {
       return item;
     });
 
-  // [API] GET /reviews?providerId={id}&sort=recent&page={n}&limit={n} → {reviews: [{id, author, rating, reviewText, createdAt, verified, replies}]}
   const [REVIEWS, setREVIEWS] = useState([]);
 
   const handlePostReply = () => {
@@ -467,7 +403,6 @@ const UserProfile = () => {
 
   const fullName = `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim();
   const displayName = fullName || 'Provider';
-  // [API] GET /reviews/summary?providerId={id} → {averageRating, reviewCount}
   const rating = profileData.average_rating ?? null;
   const reviewCount = profileData.review_count ?? 0;
 
@@ -490,6 +425,57 @@ const UserProfile = () => {
           </div>
         </div>
       </motion.header>
+
+      {/* Status Banner */}
+      {profileData?.verification_status === 'pending' && (
+        <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <Clock className="w-5 h-5 text-yellow-600" />
+            <div>
+              <p className="text-sm font-medium text-yellow-800">Profile Under Review</p>
+              <p className="text-xs text-yellow-700">Your profile is being reviewed by our team. You'll be notified once approved.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {profileData?.verification_status === 'rejected' && (
+        <div className="bg-red-50 border-b border-red-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">Profile Rejected</p>
+              <p className="text-sm text-red-700">
+                {profileData.verification_notes || 'Please update your profile information.'}
+              </p>
+            </div>
+            <Link to="/lucid/account/profile/edit">
+              <button className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 whitespace-nowrap">
+                Edit Profile
+              </button>
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {profileData?.verification_status === 'revise' && (
+        <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
+          <div className="max-w-7xl mx-auto flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-orange-800">Revision Required</p>
+              <p className="text-sm text-orange-700">
+                {profileData.verification_notes || 'Please update the requested information.'}
+              </p>
+            </div>
+            <Link to="/lucid/account/profile/edit">
+              <button className="px-4 py-2 bg-orange-600 text-white text-sm rounded-lg hover:bg-orange-700 whitespace-nowrap">
+                Make Changes
+              </button>
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Hero */}
       <HeroSection heroUrl={profileData.hero_url} onEditClick={() => navigate('/lucid/account/profile/edit')} />

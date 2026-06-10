@@ -1,16 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { ReviewModal } from './ReviewModal.jsx';
-import { QuotePriceModal, AdjustPriceModal, PaymentModal, PriceAdjustmentBanner } from './PaymentModals.jsx';
-
 import {
   X, Star, Clock, CheckCircle, AlertCircle, User, Phone, Mail,
   FileText, Calendar, MapPin, Navigation, MessageCircle,
   ThumbsUp, ThumbsDown, Edit2, Trash2, Play, AlertTriangle,
   Info, XCircle, DollarSign
 } from 'lucide-react';
-
 
 const BookingDetailsModalComponent = ({
   booking,
@@ -25,36 +21,29 @@ const BookingDetailsModalComponent = ({
   onRequestCancellation,
   onApproveCancellation,
   onRejectCancellation,
-  onRequestCompletion,        // NEW
-  onApproveCompletion,        // NEW
+  onRequestCompletion,
+  onApproveCompletion,
   onRejectCompletion,
-  onSubmitReview,          // NEW
-  // NEW: Payment flow handlers
+  onSubmitReview,
   onSubmitQuote,
   onSubmitPriceAdjustment,
   onApprovePriceAdjustment,
   onRejectPriceAdjustment,
-  onProcessPayment
-
+  onProcessPayment,
+  onMarkInProgress
 }) => {
   const [showCancelRequestModal, setShowCancelRequestModal] = useState(false);
   const [cancellationReason, setCancellationReason] = useState('');
-  const [showCompleteRequestModal, setShowCompleteRequestModal] = useState(false); // NEW
-  const [completionNotes, setCompletionNotes] = useState('');                      // NEW
+  const [showCompleteRequestModal, setShowCompleteRequestModal] = useState(false);
+  const [completionNotes, setCompletionNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false);
-  // NEW: Payment flow state
   const [showQuotePriceModal, setShowQuotePriceModal] = useState(false);
   const [showAdjustPriceModal, setShowAdjustPriceModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-
   if (!booking) return null;
 
-  // [MOCK] booking prop comes from parent component's local state
-  // [API] In production the parent should fetch GET /bookings/:id to populate this prop before opening the modal
-
-  // Normalized helpers
   const provider = booking.provider || {};
   const client = booking.client || {};
   const location = booking.location || {};
@@ -62,34 +51,30 @@ const BookingDetailsModalComponent = ({
   const normalizedStatus = booking.status?.toLowerCase();
   const hasPriceAdjustment = booking.priceAdjustment?.status === 'pending' || booking.priceAdjustment?.status === 'approved';
 
-
-
-  // Contact info based on user type
   const contactLabel = userType === 'provider' ? 'Client' : 'Service Provider';
   const contactName = userType === 'provider' ? client.name : provider.name;
   const contactPhone = userType === 'provider' ? client.phone : provider.phone;
   const contactEmail = userType === 'provider' ? client.email : provider.email;
 
-  // Check if there's a pending cancellation request
   const hasCancellationRequest = booking.cancellationRequest?.status === 'pending';
   const isRequestor = booking.cancellationRequest?.requestedBy === userType;
   const canApproveCancellation = hasCancellationRequest && !isRequestor;
 
-  // NEW: Check if there's a pending completion request
   const hasCompletionRequest = booking.completionRequest?.status === 'pending';
   const isCompletionRequestor = booking.completionRequest?.requestedBy === userType;
   const canApproveCompletion = hasCompletionRequest && !isCompletionRequestor;
 
-  // Status configuration
   const getStatusConfig = (status = 'pending') => {
     const configs = {
       pending: { bg: 'bg-yellow-100 dark:bg-amber-900/20', text: 'text-yellow-700 dark:text-amber-400', icon: Clock, label: 'Pending' },
+      accepted: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400', icon: CheckCircle, label: 'Accepted' },
       confirmed: { bg: 'bg-blue-100 dark:bg-blue-900/20', text: 'text-blue-700 dark:text-blue-400', icon: CheckCircle, label: 'Confirmed' },
+      in_progress: { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400', icon: AlertCircle, label: 'In Progress' },
       'in-progress': { bg: 'bg-purple-100 dark:bg-purple-900/20', text: 'text-purple-700 dark:text-purple-400', icon: AlertCircle, label: 'In Progress' },
       completed: { bg: 'bg-green-100 dark:bg-green-900/20', text: 'text-green-700 dark:text-green-400', icon: CheckCircle, label: 'Completed' },
       cancelled: { bg: 'bg-red-100 dark:bg-red-900/20', text: 'text-red-700 dark:text-red-400', icon: XCircle, label: 'Cancelled' }
     };
-    return configs[status.toLowerCase()] || configs.pending;
+    return configs[status] || configs.pending;
   };
 
   const getUrgencyConfig = (urgency) => {
@@ -107,50 +92,31 @@ const BookingDetailsModalComponent = ({
 
   const mapQuery = [location.address, location.area, location.city].filter(Boolean).join(', ');
 
-  // NEW: Handler for provider accepting booking with quote
-  const handleAcceptWithQuote = () => {
-    setShowQuotePriceModal(true);
-  };
-
-  // NEW: Handler for submitting quote
-  // [API] PATCH /bookings/:id/status — {status: 'confirmed', quotedPrice, breakdown, notes}
   const handleQuoteSubmit = async (quoteData) => {
     await onSubmitQuote?.(quoteData);
     setShowQuotePriceModal(false);
-    onClose(); // Close main modal after successful quote
+    onClose();
   };
 
-  // NEW: Handler for price adjustment approval
-  // [API] PATCH /bookings/:id/price-adjustment — {action: 'approve'} updates bookings.agreedPrice
-  const handleApprovePriceAdjustment = async (booking) => {
-    await onApprovePriceAdjustment?.(booking);
+  const handleApprovePriceAdjustment = async (bookingData) => {
+    await onApprovePriceAdjustment?.(bookingData);
   };
 
-  // [API] PATCH /bookings/:id/price-adjustment — {action: 'reject'} reverts priceAdjustment.status
-  const handleRejectPriceAdjustment = async (booking) => {
-    await onRejectPriceAdjustment?.(booking);
+  const handleRejectPriceAdjustment = async (bookingData) => {
+    await onRejectPriceAdjustment?.(bookingData);
   };
 
-  // NEW: Handler for client marking complete (triggers payment)
   const handleClientMarkComplete = () => {
     setShowPaymentModal(true);
   };
 
-  // NEW: Handler for successful payment
-  // [API] POST /payments — {bookingId, amount, method, phoneNumber} → {reference, status}
-  // [API] PATCH /bookings/:id/status — {status: 'completed'} called after payment confirmed
   const handlePaymentSuccess = async (paymentData) => {
     await onProcessPayment?.(paymentData);
     setShowPaymentModal(false);
-
-    // Now mark as complete
     await onMarkComplete?.(booking);
     onClose();
   };
 
-
-  // NEW: Handle completion request submission
-  // [API] POST /bookings/:id/completion-request — {requestedBy, notes, timestamp}
   const handleSubmitCompletionRequest = async () => {
     if (!completionNotes.trim()) {
       alert('Please provide completion notes');
@@ -174,8 +140,6 @@ const BookingDetailsModalComponent = ({
     }
   };
 
-  // Handle cancellation request submission
-  // [API] POST /bookings/:id/cancel — {reason, requestedBy: 'client'|'provider'}
   const handleSubmitCancellationRequest = async () => {
     if (!cancellationReason.trim()) {
       alert('Please provide a reason for cancellation');
@@ -199,7 +163,6 @@ const BookingDetailsModalComponent = ({
     }
   };
 
-  // Status Banner Component
   const StatusBanner = () => {
     if (normalizedStatus === 'pending' && userType === 'client') {
       return (
@@ -217,13 +180,13 @@ const BookingDetailsModalComponent = ({
       );
     }
 
-    if (normalizedStatus === 'confirmed') {
+    if (normalizedStatus === 'accepted' || normalizedStatus === 'confirmed') {
       return (
         <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-4 rounded-lg">
           <div className="flex items-center gap-3">
             <CheckCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-blue-900 dark:text-blue-300">Booking Confirmed!</p>
+              <p className="font-semibold text-blue-900 dark:text-blue-300">Booking {normalizedStatus === 'accepted' ? 'Accepted!' : 'Confirmed!'}</p>
               <p className="text-sm text-blue-800 dark:text-blue-400">
                 Scheduled for {booking.date} at {booking.time}
                 {userType === 'provider' && " - Don't forget to start the job when you begin work."}
@@ -234,7 +197,7 @@ const BookingDetailsModalComponent = ({
       );
     }
 
-    if (normalizedStatus === 'in-progress') {
+    if (normalizedStatus === 'in_progress' || normalizedStatus === 'in-progress') {
       return (
         <div className="bg-purple-50 dark:bg-purple-900/20 border-l-4 border-purple-400 dark:border-purple-600 p-4 rounded-lg">
           <div className="flex items-center gap-3">
@@ -256,7 +219,6 @@ const BookingDetailsModalComponent = ({
     return null;
   };
 
-  // NEW: Completion Request Banner
   const CompletionRequestBanner = () => {
     if (!hasCompletionRequest) return null;
 
@@ -291,14 +253,12 @@ const BookingDetailsModalComponent = ({
 
           {canApproveCompletion && (
             <div className="flex gap-3 pt-2">
-              {/* [API] PATCH /bookings/:id/status — {status: 'completed'} on approve */}
               <button
                 onClick={() => onApproveCompletion?.(booking)}
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm"
               >
                 Confirm Completion
               </button>
-              {/* [API] PATCH /bookings/:id/completion-request — {action: 'reject'} keeps status as in-progress */}
               <button
                 onClick={() => onRejectCompletion?.(booking)}
                 className="flex-1 px-4 py-2 bg-white dark:bg-[#252b3b] border-2 border-gray-300 dark:border-[#2d3748] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2d3748] transition-colors font-semibold text-sm"
@@ -312,7 +272,6 @@ const BookingDetailsModalComponent = ({
     );
   };
 
-  // Cancellation Request Banner
   const CancellationRequestBanner = () => {
     if (!hasCancellationRequest) return null;
 
@@ -347,14 +306,12 @@ const BookingDetailsModalComponent = ({
 
           {canApproveCancellation && (
             <div className="flex gap-3 pt-2">
-              {/* [API] PATCH /bookings/:id/status — {status: 'cancelled', reason} on approve */}
               <button
                 onClick={() => onApproveCancellation?.(booking)}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold text-sm"
               >
                 Approve Cancellation
               </button>
-              {/* [API] PATCH /bookings/:id/cancellation-request — {action: 'reject'} keeps current status */}
               <button
                 onClick={() => onRejectCancellation?.(booking)}
                 className="flex-1 px-4 py-2 bg-white dark:bg-[#252b3b] border-2 border-gray-300 dark:border-[#2d3748] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2d3748] transition-colors font-semibold text-sm"
@@ -387,7 +344,7 @@ const BookingDetailsModalComponent = ({
           {/* Modal Header */}
           <div className="sticky top-0 bg-white dark:bg-[#1a1f2e] border-b border-gray-200 dark:border-[#1e293b] p-6 flex items-center justify-between z-10">
             <div className="flex-1">
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">{booking.title}</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">{booking.title || 'Service Request'}</h2>
               <div className="flex items-center gap-3 flex-wrap">
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${statusConfig.bg} ${statusConfig.text}`}>
                   <StatusIcon className="w-3 h-3" />
@@ -401,7 +358,6 @@ const BookingDetailsModalComponent = ({
                 {booking.bookingReference && (
                   <span className="text-sm text-gray-500 dark:text-slate-400">#{booking.bookingReference}</span>
                 )}
-                {/* NEW: Show agreed price */}
                 {booking.agreedPrice && (
                   <span className="px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-full text-xs font-semibold flex items-center gap-1">
                     <DollarSign className="w-3 h-3" />
@@ -417,23 +373,39 @@ const BookingDetailsModalComponent = ({
 
           {/* Modal Content */}
           <div className="p-6 space-y-6">
-            {/* Status Banner */}
             <StatusBanner />
-
-            {/* NEW: Price Adjustment Banner */}
-            {/* [API] PATCH /bookings/:id/status — {status, reason?} for any status transition shown here */}
-            <PriceAdjustmentBanner
-              booking={booking}
-              userType={userType}
-              onApprove={handleApprovePriceAdjustment}
-              onReject={handleRejectPriceAdjustment}
-            />
-
-            {/* Cancellation Request Banner */}
             <CancellationRequestBanner />
-
-            {/* NEW: Completion Request Banner */}
             <CompletionRequestBanner />
+
+            {/* Price Adjustment Banner */}
+            {hasPriceAdjustment && booking.priceAdjustment?.status === 'pending' && userType === 'client' && (
+              <div className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-400 dark:border-orange-600 p-4 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <AlertTriangle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="font-semibold text-orange-900 dark:text-orange-300">Price Adjustment Request</p>
+                    <p className="text-sm text-orange-800 dark:text-orange-400 mt-1">
+                      The provider has requested to adjust the price from GH₵{booking.priceAdjustment?.originalPrice} to GH₵{booking.priceAdjustment?.newPrice}.
+                      Reason: {booking.priceAdjustment?.reason}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={() => onApprovePriceAdjustment?.(booking)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold text-sm"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => onRejectPriceAdjustment?.(booking)}
+                    className="px-4 py-2 bg-white dark:bg-[#252b3b] border-2 border-gray-300 dark:border-[#2d3748] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-50 dark:hover:bg-[#2d3748] transition-colors font-semibold text-sm"
+                  >
+                    Reject
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Contact Information */}
             <div>
@@ -444,7 +416,7 @@ const BookingDetailsModalComponent = ({
               <div className="grid md:grid-cols-2 gap-4 bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Name</p>
-                  <p className="font-semibold text-gray-900 dark:text-slate-100">{contactName}</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100">{contactName || 'Not provided'}</p>
                 </div>
                 {contactPhone && (
                   <div>
@@ -477,7 +449,7 @@ const BookingDetailsModalComponent = ({
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <FileText className="w-5 h-5 text-blue-600" />
-                {userType === 'provider' ? 'Job' : 'Service'} Details
+                Service Details
               </h3>
               <div className="space-y-4">
                 {booking.serviceType && (
@@ -488,12 +460,12 @@ const BookingDetailsModalComponent = ({
                 )}
                 <div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Description</p>
-                  <p className="text-gray-900 dark:text-slate-100 bg-gray-50 dark:bg-[#252b3b] rounded-lg p-3">{booking.description}</p>
+                  <p className="text-gray-900 dark:text-slate-100 bg-gray-50 dark:bg-[#252b3b] rounded-lg p-3">{booking.description || 'No description provided'}</p>
                 </div>
                 <div className="grid md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Estimated Duration</p>
-                    <p className="font-semibold text-gray-900 dark:text-slate-100">{booking.duration}</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{booking.duration || 'TBD'}</p>
                   </div>
                   {budget.min && budget.max && (
                     <div>
@@ -502,10 +474,8 @@ const BookingDetailsModalComponent = ({
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">
-                      {userType === 'provider' ? 'Quoted Price' : 'Price'}
-                    </p>
-                    <p className="font-semibold text-green-600 text-lg">GH₵{booking.price}</p>
+                    <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Price</p>
+                    <p className="font-semibold text-green-600 text-lg">GH₵{booking.price || 0}</p>
                   </div>
                 </div>
               </div>
@@ -519,10 +489,8 @@ const BookingDetailsModalComponent = ({
               </h3>
               <div className="grid md:grid-cols-2 gap-4 bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4">
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">
-                    {userType === 'client' ? 'Service' : 'Scheduled'} Date & Time
-                  </p>
-                  <p className="font-semibold text-gray-900 dark:text-slate-100 text-lg">{booking.date} at {booking.time}</p>
+                  <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Scheduled Date & Time</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100">{booking.date || 'TBD'} at {booking.time || 'TBD'}</p>
                 </div>
                 {booking.alternateDate && (
                   <div>
@@ -537,17 +505,17 @@ const BookingDetailsModalComponent = ({
             <div>
               <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4 flex items-center gap-2">
                 <MapPin className="w-5 h-5 text-blue-600" />
-                {userType === 'provider' ? 'Service' : ''} Location
+                Service Location
               </h3>
               <div className="bg-gray-50 dark:bg-[#252b3b] rounded-lg p-4 space-y-3">
                 <div>
                   <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Address</p>
-                  <p className="font-semibold text-gray-900 dark:text-slate-100">{location.address}</p>
+                  <p className="font-semibold text-gray-900 dark:text-slate-100">{location.address || 'Not provided'}</p>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Area</p>
-                    <p className="font-semibold text-gray-900 dark:text-slate-100">{location.area}, {location.city}</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{location.area}, {location.city || 'Accra'}</p>
                   </div>
                   {location.landmark && (
                     <div>
@@ -556,45 +524,31 @@ const BookingDetailsModalComponent = ({
                     </div>
                   )}
                 </div>
-                <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
-                >
-                  <Navigation className="w-4 h-4" />
-                  Open in Google Maps
-                </a>
+                {mapQuery && (
+                  <a
+                    href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapQuery)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    Open in Google Maps
+                  </a>
+                )}
               </div>
             </div>
 
             {/* Additional Notes */}
             {(booking.notes || booking.additionalNotes) && (
               <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">
-                  {userType === 'client' ? 'Your' : 'Additional'} Notes
-                </h3>
+                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">Additional Notes</h3>
                 <p className="text-gray-900 dark:text-slate-100 bg-yellow-50 dark:bg-amber-900/20 rounded-lg p-4 border-l-4 border-yellow-400 dark:border-amber-600">
                   {booking.notes || booking.additionalNotes}
                 </p>
               </div>
             )}
 
-            {/* Attached Images */}
-            {/* [API] GET /bookings/:id/attachments — returns [{id, url, type, uploadedAt}] */}
-            {booking.images && booking.images.length > 0 && (
-              <div>
-                <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">Attached Images</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {booking.images.map((img, index) => (
-                    <img key={index} src={img} alt={`Attachment ${index + 1}`} className="w-full h-32 object-cover rounded-lg" loading="lazy" />
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Review Section */}
-            {/* [MOCK] booking.review — in prod this comes from GET /bookings/:id which joins reviews table */}
             {normalizedStatus === 'completed' && booking.review && (
               <div>
                 <h3 className="text-lg font-bold text-gray-900 dark:text-slate-100 mb-4">
@@ -632,18 +586,15 @@ const BookingDetailsModalComponent = ({
             {/* Provider Actions */}
             {userType === 'provider' && (
               <>
-                {/* UPDATED: Pending status - show quote modal */}
                 {normalizedStatus === 'pending' && (
                   <div className="flex gap-4">
-                    {/* [API] PATCH /bookings/:id/status — {status: 'confirmed', quotedPrice, breakdown} on accept */}
                     <button
-                      onClick={handleAcceptWithQuote}
+                      onClick={() => onAccept?.(booking)}
                       className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
                     >
                       <ThumbsUp className="w-5 h-5" />
-                      Accept & Quote Price
+                      Accept Booking
                     </button>
-                    {/* [API] PATCH /bookings/:id/status — {status: 'declined', reason} */}
                     <button
                       onClick={() => onDecline?.(booking)}
                       className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold"
@@ -654,39 +605,36 @@ const BookingDetailsModalComponent = ({
                   </div>
                 )}
 
-                {normalizedStatus === 'confirmed' && (
+                {normalizedStatus === 'accepted' && (
                   <div className="space-y-3">
-                    {/* [API] PATCH /bookings/:id/status — {status: 'in-progress', startedAt: timestamp} */}
                     <button
-                      onClick={() => onStartJob?.(booking)}
+                      onClick={() => onMarkInProgress?.(booking)}
                       className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
                     >
                       <Play className="w-5 h-5" />
                       Start Job
                     </button>
                     <div className="flex gap-3">
-                      <Link to="/lucid/messages" className="flex-1">
-                      <button className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
-                        <MessageCircle className="w-5 h-5" />
-                        Message Provider
-                      </button>
-                    </Link>
+                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
+                        <button className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
+                          <MessageCircle className="w-5 h-5" />
+                          Message Client
+                        </button>
+                      </Link>
                       <button
-                      onClick={() => onCancel?.(booking)}
-                      className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
-                    >
-                      <Trash2 className="w-5 h-5" />
-                      Cancel
-                    </button>
+                        onClick={() => onCancel?.(booking)}
+                        className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 )}
 
-                {/* UPDATED: In-progress - add adjust price button */}
-                {normalizedStatus === 'in-progress' && (
+                {normalizedStatus === 'in_progress' && (
                   <div className="space-y-3">
                     {!hasCompletionRequest ? (
-                      // [API] POST /bookings/:id/completion-request — {requestedBy: 'provider', notes}
                       <button
                         onClick={() => setShowCompleteRequestModal(true)}
                         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
@@ -702,25 +650,13 @@ const BookingDetailsModalComponent = ({
                       </div>
                     )}
                     <div className="flex gap-3">
-                      {/* NEW: Adjust Price button */}
-                      {/* [API] POST /bookings/:id/price-adjustment — {newPrice, reason, originalPrice} */}
-                      {!hasPriceAdjustment && (
-                        <button
-                          onClick={() => setShowAdjustPriceModal(true)}
-                          className="flex-1 px-4 py-2 bg-white dark:bg-transparent border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors font-semibold flex items-center justify-center gap-2"
-                        >
-                          <Edit2 className="w-4 h-4" />
-                          Adjust Price
-                        </button>
-                      )}
-                      <Link to="/lucid/messages" className="flex-1">
+                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
                         <button className="w-full px-4 py-2 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold">
                           <MessageCircle className="w-4 h-4 inline mr-2" />
                           Message Client
                         </button>
                       </Link>
                       {!hasCancellationRequest && (
-                        // [API] POST /bookings/:id/cancel — {reason, requestedBy: 'provider'}
                         <button
                           onClick={() => setShowCancelRequestModal(true)}
                           className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold"
@@ -754,7 +690,6 @@ const BookingDetailsModalComponent = ({
               <>
                 {normalizedStatus === 'pending' && (
                   <div className="flex gap-4">
-                    {/* [API] PATCH /bookings/:id — {date, time, description, budget} to edit before confirmed */}
                     <button
                       onClick={() => onEdit?.(booking)}
                       className="flex-1 px-4 py-3 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold flex items-center justify-center gap-2"
@@ -762,7 +697,6 @@ const BookingDetailsModalComponent = ({
                       <Edit2 className="w-5 h-5" />
                       Edit Booking
                     </button>
-                    {/* [API] POST /bookings/:id/cancel — {reason, requestedBy: 'client'} */}
                     <button
                       onClick={() => onCancel?.(booking)}
                       className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-semibold flex items-center justify-center gap-2"
@@ -773,15 +707,14 @@ const BookingDetailsModalComponent = ({
                   </div>
                 )}
 
-                {normalizedStatus === 'confirmed' && (
+                {normalizedStatus === 'accepted' && (
                   <div className="flex gap-4">
-                    <Link to="/lucid/messages" className="flex-1">
+                    <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
                       <button className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
                         <MessageCircle className="w-5 h-5" />
                         Message Provider
                       </button>
                     </Link>
-                    {/* [API] POST /bookings/:id/cancel — {reason, requestedBy: 'client'} */}
                     <button
                       onClick={() => onCancel?.(booking)}
                       className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
@@ -792,12 +725,9 @@ const BookingDetailsModalComponent = ({
                   </div>
                 )}
 
-                 {/* UPDATED: Client in-progress - mark complete triggers payment */}
-                {normalizedStatus === 'in-progress' && (
+                {normalizedStatus === 'in_progress' && (
                   <div className="space-y-3">
                     {!hasCompletionRequest ? (
-                      // [API] POST /payments — {bookingId, amount, method, phoneNumber} called via PaymentModal
-                      // [API] PATCH /bookings/:id/status — {status: 'completed'} called after payment success
                       <button
                         onClick={handleClientMarkComplete}
                         className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-semibold"
@@ -813,14 +743,13 @@ const BookingDetailsModalComponent = ({
                       </div>
                     )}
                     <div className="flex gap-3">
-                      <Link to="/lucid/messages" className="flex-1">
+                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
                         <button className="w-full px-4 py-2 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold">
                           <MessageCircle className="w-4 h-4 inline mr-2" />
                           Message Provider
                         </button>
                       </Link>
                       {!hasCancellationRequest && (
-                        // [API] POST /bookings/:id/cancel — {reason, requestedBy: 'client'}
                         <button
                           onClick={() => setShowCancelRequestModal(true)}
                           className="px-6 py-2 bg-white dark:bg-transparent border-2 border-orange-600 text-orange-600 rounded-lg hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors font-semibold"
@@ -839,7 +768,6 @@ const BookingDetailsModalComponent = ({
                       <span className="font-semibold text-lg">Service Completed</span>
                     </div>
                     {!booking.review && (
-                      // [API] POST /reviews — {bookingId, targetUserId, rating, comment} on submit
                       <button
                         onClick={() => setShowReviewModal(true)}
                         className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold"
@@ -856,13 +784,11 @@ const BookingDetailsModalComponent = ({
                       <AlertCircle className="w-6 h-6" />
                       <span className="font-semibold text-lg">Booking Cancelled</span>
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-slate-400">
-                      This booking was cancelled on {booking.bookingDate}
-                    </p>
                   </div>
                 )}
               </>
-            )}</div>
+            )}
+          </div>
         </motion.div>
 
         {/* Cancellation Request Modal */}
@@ -890,13 +816,12 @@ const BookingDetailsModalComponent = ({
 
               <div className="mb-6">
                 <p className="text-gray-600 dark:text-slate-400 mb-4">
-                  You are requesting to cancel this in-progress booking. The {contactLabel.toLowerCase()} must approve your request before the cancellation is finalized.
+                  You are requesting to cancel this booking. The {contactLabel.toLowerCase()} must approve your request.
                 </p>
 
-                {/* [API] GET /bookings/:id/cancellation-policy — shows fee if within cancellation window */}
                 <div className="bg-yellow-50 dark:bg-amber-900/20 border-l-4 border-yellow-400 dark:border-amber-600 p-3 mb-4">
                   <p className="text-sm text-yellow-800 dark:text-amber-300">
-                    <span className="font-semibold">Important:</span> Work will continue until the request is approved. Be sure to communicate with the {contactLabel.toLowerCase()}.
+                    <span className="font-semibold">Important:</span> Work will continue until the request is approved.
                   </p>
                 </div>
 
@@ -907,7 +832,7 @@ const BookingDetailsModalComponent = ({
                   value={cancellationReason}
                   onChange={(e) => setCancellationReason(e.target.value)}
                   rows="4"
-                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200 dark:placeholder-slate-500 rounded-lg focus:border-orange-500 focus:outline-none resize-none"
+                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200 rounded-lg focus:border-orange-500 focus:outline-none resize-none"
                   placeholder="Please provide a detailed reason for requesting cancellation..."
                   required
                 />
@@ -924,7 +849,6 @@ const BookingDetailsModalComponent = ({
                 >
                   Cancel
                 </button>
-                {/* [API] POST /bookings/:id/cancel — {reason, requestedBy: 'client'|'provider'} */}
                 <button
                   onClick={handleSubmitCancellationRequest}
                   disabled={isSubmitting || !cancellationReason.trim()}
@@ -937,7 +861,7 @@ const BookingDetailsModalComponent = ({
           </motion.div>
         )}
 
-        {/* NEW: Completion Request Modal */}
+        {/* Completion Request Modal */}
         {showCompleteRequestModal && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -962,12 +886,12 @@ const BookingDetailsModalComponent = ({
 
               <div className="mb-6">
                 <p className="text-gray-600 dark:text-slate-400 mb-4">
-                  You're marking this job as complete. The {contactLabel.toLowerCase()} will need to confirm before the booking status changes to completed.
+                  You're marking this job as complete. The {contactLabel.toLowerCase()} will need to confirm.
                 </p>
 
                 <div className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-400 dark:border-blue-600 p-3 mb-4">
                   <p className="text-sm text-blue-800 dark:text-blue-300">
-                    <span className="font-semibold">Note:</span> This helps ensure both parties agree the work is satisfactory before finalizing.
+                    <span className="font-semibold">Note:</span> This helps ensure both parties agree the work is satisfactory.
                   </p>
                 </div>
 
@@ -978,9 +902,9 @@ const BookingDetailsModalComponent = ({
                   value={completionNotes}
                   onChange={(e) => setCompletionNotes(e.target.value)}
                   rows="4"
-                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200 dark:placeholder-slate-500 rounded-lg focus:border-green-500 focus:outline-none resize-none"
+                  className="w-full px-4 py-3 border-2 border-gray-300 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200 rounded-lg focus:border-green-500 focus:outline-none resize-none"
                   placeholder={userType === 'provider'
-                    ? "Describe what was completed (e.g., 'Installed new pipes, tested for leaks, cleaned work area')"
+                    ? "Describe what was completed (e.g., 'Installed new pipes, tested for leaks')"
                     : "Confirm the work completed meets your expectations..."
                   }
                   required
@@ -998,7 +922,6 @@ const BookingDetailsModalComponent = ({
                 >
                   Cancel
                 </button>
-                {/* [API] POST /bookings/:id/completion-request — {requestedBy, notes, timestamp} */}
                 <button
                   onClick={handleSubmitCompletionRequest}
                   disabled={isSubmitting || !completionNotes.trim()}
@@ -1010,42 +933,6 @@ const BookingDetailsModalComponent = ({
             </motion.div>
           </motion.div>
         )}
-
-        {/* NEW: Quote Price Modal */}
-        <QuotePriceModal
-          booking={booking}
-          isOpen={showQuotePriceModal}
-          onClose={() => setShowQuotePriceModal(false)}
-          onSubmitQuote={handleQuoteSubmit}
-        />
-
-        {/* NEW: Adjust Price Modal */}
-        <AdjustPriceModal
-          booking={booking}
-          isOpen={showAdjustPriceModal}
-          onClose={() => setShowAdjustPriceModal(false)}
-          onSubmitAdjustment={onSubmitPriceAdjustment}
-        />
-
-        {/* NEW: Payment Modal */}
-        <PaymentModal
-          booking={booking}
-          isOpen={showPaymentModal}
-          onClose={() => setShowPaymentModal(false)}
-          onProcessPayment={handlePaymentSuccess}
-        />
-
-        {/* [API] POST /reviews — {bookingId, targetUserId, rating, comment} */}
-        {/* [DB] Update bookings.rating and create reviews record on submit */}
-        <ReviewModal
-          booking={booking}
-          isOpen={showReviewModal}
-          onClose={() => setShowReviewModal(false)}
-          onSubmit={async (reviewData) => {
-            await onSubmitReview?.(reviewData);
-setShowReviewModal(false);
-          }}
-        />
       </motion.div>
     </AnimatePresence>
   );

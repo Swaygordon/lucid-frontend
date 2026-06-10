@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from "framer-motion";
 import {
   ChevronDown, Hammer, BriefcaseBusiness,
-  LogOut, MessageCircle, Bell, LayoutDashboard, Info, LogIn,
+  LogOut, MessageCircle, Bell, LayoutDashboard, Info, LogIn, Shield, CalendarCheck, User
 } from "lucide-react";
 import { Button } from './ui/Button.jsx';
 import { Avatar } from './ui/Avatar.jsx';
@@ -52,7 +52,6 @@ const NotificationBadge = ({ count = 0, className = "" }) => {
   );
 };
 
-
 function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -63,6 +62,7 @@ function Navbar() {
   const [messageCount, setMessageCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const dropdownRef = useRef(null);
   const { showNotification } = useNotification();
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -77,6 +77,7 @@ function Navbar() {
         fetchUserProfile(session.user.id);
         fetchProviderProfile(session.user.id);
         fetchNotificationCounts(session.user.id);
+        checkAdminStatus(session.user.id);
       }
     });
 
@@ -88,6 +89,7 @@ function Navbar() {
         fetchUserProfile(session.user.id);
         fetchProviderProfile(session.user.id);
         fetchNotificationCounts(session.user.id);
+        checkAdminStatus(session.user.id);
       } else {
         setIsLoggedIn(false);
         setUser(null);
@@ -95,6 +97,7 @@ function Navbar() {
         setProviderProfile(null);
         setNotificationCount(0);
         setMessageCount(0);
+        setIsAdmin(false);
         clearProfileCache();
       }
     });
@@ -126,14 +129,26 @@ function Navbar() {
   };
 
   const fetchProviderProfile = async (userId) => {
-    const { data } = await supabase
-      .from('provider_profiles')
-      .select('avatar_url, first_name, last_name')
-      .eq('user_id', userId)
+    // Only fetch provider profile if the user is a service provider
+    const { data: userProfileData } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
       .single();
-    if (data) {
-      setProviderProfile(data);
-      writeProfileCache(PROVIDER_PROFILE_CACHE_KEY, data);
+
+    // Only fetch provider profile for provider accounts
+    if (userProfileData?.role === 'service_provider') {
+      const { data } = await supabase
+        .from('provider_profiles')
+        .select('avatar_url, first_name, last_name')
+        .eq('user_id', userId)
+        .single();
+      if (data) {
+        setProviderProfile(data);
+        writeProfileCache(PROVIDER_PROFILE_CACHE_KEY, data);
+      }
+    } else {
+      setProviderProfile(null);
     }
   };
 
@@ -167,6 +182,25 @@ function Navbar() {
     navigate('/lucid/', { replace: true });
   };
 
+  const checkAdminStatus = async (userId) => {
+    try {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        setIsAdmin(false);
+        return;
+      }
+
+      setIsAdmin(profileData?.role === 'admin');
+    } catch (error) {
+      setIsAdmin(false);
+    }
+  };
+
   const toggleMenu = () => { setIsOpen(!isOpen); };
   const handleLinkClick = () => { setIsOpen(false); };
 
@@ -194,32 +228,62 @@ function Navbar() {
 
   const getDashboardPath = () => '/lucid/dashboard';
 
+  const getProfilePath = () => {
+    // Check user role to determine which profile page to show
+    if (userProfile?.role === 'service_provider') {
+      return '/lucid/account/profile';
+    } else if (userProfile?.role === 'client') {
+      return '/lucid/account/client-profile';
+    }
+    return '/lucid/account/profile';
+  };
+
+  const getBookingsPath = () => {
+    return '/lucid/bookings';
+  };
+
   const totalNotifications = notificationCount + messageCount;
 
+  // Desktop navigation links
   const navLinks = [
     { to: "/lucid/become-provider", label: "Join as a worker", icon: BriefcaseBusiness },
     { to: "/lucid/services",        label: "Services",          icon: Hammer },
     { to: "/lucid/about",           label: "About",             icon: Info },
   ];
+  
+  // Add My Bookings link for logged-in users
+  if (isLoggedIn) {
+    navLinks.push({ to: getBookingsPath(), label: "My Bookings", icon: CalendarCheck });
+  }
+  
+  if (isAdmin) {
+    navLinks.push({ to: "/lucid/admin", label: "Admin", icon: Shield });
+  }
 
+  // User menu links - now includes Profile for ALL logged-in users
   const userMenuLinks = [
-    ...(userProfile?.role === 'service_provider'
-      ? [{ to: '/lucid/account/profile', label: "My Profile" }]
-      : []),
+    { to: getProfilePath(), label: "My Profile", icon: User },  // Added for all users
     { to: getDashboardPath(), label: "Dashboard" },
+    { to: getBookingsPath(),  label: "My Bookings" },
     { to: "/lucid/messages",       label: "Messages",      badge: messageCount },
     { to: "/lucid/notifications",  label: "Notifications", badge: notificationCount },
   ];
 
   const mobileUserLinks = [
+    { to: getProfilePath(),       label: "My Profile",     icon: User },  // Added for all users
     { to: getDashboardPath(),     label: "Dashboard",     icon: LayoutDashboard },
+    { to: getBookingsPath(),      label: "My Bookings",   icon: CalendarCheck },
     { to: "/lucid/messages",      label: "Messages",      icon: MessageCircle, badge: messageCount },
     { to: "/lucid/notifications", label: "Notifications", icon: Bell,          badge: notificationCount },
   ];
+  
+  if (isAdmin) {
+    mobileUserLinks.push({ to: "/lucid/admin", label: "Admin", icon: Shield });
+  }
 
   return (
     <>
-      <nav className="flex items-center justify-between bg-white dark:bg-[#1a1f2e] h-20 border-b border-gray-200 dark:border-[#1e293b] sticky top-0 z-30" style={{ willChange: 'transform' }}>
+      <nav className="flex items-center justify-between bg-white dark:bg-[#1a1f2e] h-20 border-b border-gray-200 dark:border-[#1e293b] sticky top-0 z-30">
         {/* Logo */}
         <div className="flex items-center ml-4 md:ml-12">
           <Link to="/lucid/" className="flex items-center">
@@ -242,6 +306,16 @@ function Navbar() {
             ))}
           </div>
 
+          {/* Notification Bell */}
+          <Link to="/lucid/notifications" className="relative ml-2 hidden lg:block">
+            <Bell className="w-5 h-5 text-gray-600 dark:text-slate-300" />
+            {notificationCount > 0 && (
+              <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full min-w-[18px] text-center">
+                {notificationCount > 9 ? '9+' : notificationCount}
+              </span>
+            )}
+          </Link>
+
           {/* User Profile / Sign In */}
           {isLoggedIn ? (
             <div ref={dropdownRef} className="relative ml-4 hidden lg:block">
@@ -255,7 +329,6 @@ function Navbar() {
                 onKeyDown={onActivateKey(() => setIsDropdownOpen(prev => !prev))}
                 className="relative flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#252b3b] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
-                <NotificationBadge count={totalNotifications} className="top-1 right-20" />
                 {getAvatarUrl() ? (
                   <img
                     src={getAvatarUrl()}
@@ -278,17 +351,24 @@ function Navbar() {
                         onClick={() => setIsDropdownOpen(false)}
                         className="text-gray-700 dark:text-slate-300 hover:bg-secondary-50 dark:hover:bg-secondary/10 hover:text-secondary rounded-md transition-colors flex items-center justify-between px-3 py-2"
                       >
-                        <span>{link.label}</span>
-                        <NotificationBadge count={link.badge} className="relative top-0 right-0 w-4 h-4 p-2" />
+                        <div className="flex items-center gap-2">
+                          {link.icon && <link.icon className="w-4 h-4" />}
+                          <span>{link.label}</span>
+                        </div>
+                        {link.badge > 0 && (
+                          <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
+                            {link.badge > 99 ? '99+' : link.badge}
+                          </span>
+                        )}
                       </Link>
                     </li>
                   ))}
                   <li className="border-t border-gray-200 dark:border-[#1e293b] mt-2 pt-2">
                     <button
                       onClick={handleLogout}
-                      className="text-error hover:bg-error-50 dark:hover:bg-red-900/20 rounded-md transition-colors w-full text-left px-3 py-2"
+                      className="text-error hover:bg-error-50 dark:hover:bg-red-900/20 rounded-md transition-colors w-full text-left px-3 py-2 flex items-center gap-2"
                     >
-                      <LogOut className="w-4 h-4 inline mr-2" />
+                      <LogOut className="w-4 h-4" />
                       Logout
                     </button>
                   </li>
@@ -321,7 +401,11 @@ function Navbar() {
             className="lg:hidden z-50 p-2 ml-4 bg-secondary text-white rounded-lg hover:bg-secondary-hover active:scale-95 transition-colors shadow-md relative"
             aria-label="Toggle menu"
           >
-            {isLoggedIn && <NotificationBadge count={totalNotifications} />}
+            {isLoggedIn && (notificationCount + messageCount) > 0 && (
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full min-w-[18px] text-center">
+                {notificationCount + messageCount > 9 ? '9+' : notificationCount + messageCount}
+              </span>
+            )}
             <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {isOpen
                 ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -332,7 +416,7 @@ function Navbar() {
         </div>
       </nav>
 
-      {/* Overlay — always mounted, toggled via opacity + pointer-events (CSS, no JS animation) */}
+      {/* Overlay */}
       <div
         onClick={toggleMenu}
         className={`fixed inset-0 bg-black z-40 transition-opacity duration-200 ${
@@ -340,7 +424,7 @@ function Navbar() {
         }`}
       />
 
-      {/* Mobile Drawer — always mounted, toggled via CSS translate (GPU compositor thread) */}
+      {/* Mobile Drawer */}
       <div
         className={`fixed top-0 left-0 h-dvh w-72 bg-white dark:bg-[#1a1f2e] shadow-2xl z-50 transition-transform duration-200 ease-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
@@ -363,15 +447,13 @@ function Navbar() {
                 )}
                 <div>
                   <p className="font-semibold text-gray-900 dark:text-slate-100">{getUserDisplayName()}</p>
-                  {userProfile?.role === 'service_provider' && (
-                    <Link
-                      to="/lucid/account/profile"
-                      onClick={handleLinkClick}
-                      className="text-sm text-primary hover:text-secondary transition-colors"
-                    >
-                      View Profile
-                    </Link>
-                  )}
+                  <Link
+                    to={getProfilePath()}
+                    onClick={handleLinkClick}
+                    className="text-sm text-primary hover:text-secondary transition-colors"
+                  >
+                    View Profile
+                  </Link>
                 </div>
               </div>
             </div>
@@ -406,7 +488,11 @@ function Navbar() {
                   <div className="flex items-center space-x-3 relative">
                     <div className="relative">
                       <Icon className="w-5 h-5" />
-                      <NotificationBadge count={link.badge} className="-top-2 rounded-full left-2 w-3 h-3" />
+                      {link.badge > 0 && (
+                        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5 min-w-[18px] text-center">
+                          {link.badge > 99 ? '99+' : link.badge}
+                        </span>
+                      )}
                     </div>
                     <span className="font-medium">{link.label}</span>
                   </div>

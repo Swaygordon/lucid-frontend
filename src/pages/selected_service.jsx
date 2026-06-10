@@ -78,7 +78,7 @@ const RatingDropdown = ({ value, onChange }) => {
       <button
         type="button"
         onClick={() => setOpen(p => !p)}
-        className={`w-full flex items-center justify-between px-3 py-2.5 border-2 rounded-lg bg-white dark:bg-[#252b3b] text-sm font-medium transition-all ${
+        className={`w-full flex items-center justify-between px-3 py-2.5 border-2 rounded-lg bg-white dark:bg-[#252b3b] text-sm font-medium transition-all ${ 
           open ? 'border-primary text-primary' : 'border-gray-200 dark:border-[#2d3748] text-gray-700 dark:text-slate-300 hover:border-gray-300'
         }`}
       >
@@ -93,7 +93,7 @@ const RatingDropdown = ({ value, onChange }) => {
               key={opt.value}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
-              className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1f2e] ${
+              className={`w-full text-left px-4 py-2.5 text-sm transition-colors hover:bg-gray-50 dark:hover:bg-[#1a1f2e] ${ 
                 value === opt.value ? 'text-primary font-semibold bg-primary/5 dark:bg-primary/10' : 'text-gray-700 dark:text-slate-300'
               }`}
             >
@@ -180,7 +180,6 @@ const SelectedServiceSkeleton = () => (
         <div className="h-4 w-36 bg-gray-200 rounded" />
       </div>
     </div>
-    {/* Breadcrumb — 5 crumbs: Home › Services › All Services › Category › Service */}
     <div className="max-w-6xl mx-auto px-5 pt-4 pb-2 flex items-center gap-2">
       <div className="h-4 w-10 bg-gray-200 rounded" />
       <div className="h-3 w-3 bg-gray-200 rounded" />
@@ -220,8 +219,7 @@ const SelectedServiceSkeleton = () => (
   </div>
 );
 
-// [API] GET /categories/featured?limit=4 → [{id, name, slug, icon}]
-// Hardcoded until admin can configure featured categories
+// Build category data from the database categories
 const _FEATURED_SLUGS = ['home-repairs', 'moving', 'auto-repairs', 'construction'];
 
 const SERVICE_ICONS = _FEATURED_SLUGS.map((slug, i) => {
@@ -281,10 +279,12 @@ const SelectedService = () => {
   const fetchProviders = async () => {
     setLoadingProviders(true);
     try {
+      // Only fetch providers with verification_status = 'approved'
       const { data, error } = await supabase
         .from('provider_profiles')
         .select('*')
-        .eq('is_profile_complete', true);
+        .eq('is_profile_complete', true)
+        .eq('verification_status', 'approved');
 
       if (error) throw error;
 
@@ -304,60 +304,50 @@ const SelectedService = () => {
       };
 
       const serviceSearchTerms = {
-        // home-repairs
         'electrical-repairs': ['electrical', 'electrician', 'wiring', 'circuit', 'electric', 'power'],
         'plumbing':           ['plumbing', 'plumber', 'pipe', 'water heater', 'faucet', 'toilet repair'],
         'painting':           ['painting', 'painter', 'paint', 'house painting', 'wall painting'],
         'tiling':             ['tiling', 'tile', 'flooring', 'floor', 'mosaic', 'ceramics'],
         'handyman':           ['handyman', 'general repair', 'odd jobs', 'fix', 'maintenance'],
-        // moving
         'furniture-moving':   ['furniture moving', 'moving', 'mover', 'relocation', 'furniture'],
         'packing':            ['packing', 'packing services', 'packaging', 'boxes', 'pack'],
         'storage':            ['storage', 'warehouse', 'storage solutions', 'store items'],
         'office-relocation':  ['office relocation', 'office moving', 'commercial moving', 'business relocation'],
-        // auto-repairs
         'engine-repair':      ['engine repair', 'engine', 'auto repair', 'car repair', 'mechanic', 'automotive'],
         'brake-service':      ['brake', 'brakes', 'brake service', 'brake repair', 'brake pad'],
         'oil-change':         ['oil change', 'oil service', 'lubrication', 'oil filter', 'engine oil'],
         'vulcanizing':        ['vulcanizing', 'tyre', 'tire', 'puncture', 'wheel', 'rim'],
         'car-wash':           ['car wash', 'vehicle wash', 'detailing', 'auto detailing', 'car cleaning'],
-        // construction
         'building':           ['building', 'construction', 'contractor', 'structural', 'civil'],
         'roofing':            ['roofing', 'roof', 'roof repair', 'gutter', 'shingles', 'roofing contractor'],
         'renovation':         ['renovation', 'remodel', 'refurbish', 'interior', 'upgrade'],
         'fencing':            ['fencing', 'fence', 'gate', 'boundary wall', 'compound wall'],
         'masonry':            ['masonry', 'plastering', 'bricklaying', 'concrete', 'block'],
-        // beauty
         'hair-braiding':      ['hair braiding', 'braiding', 'cornrows', 'dreadlocks', 'hair stylist'],
         'natural-hair':       ['natural hair', 'natural hair styling', 'loc', 'afro', 'twists'],
         'makeup':             ['makeup', 'beauty', 'cosmetics', 'bridal makeup', 'artist'],
         'tailoring':          ['tailoring', 'tailor', 'seamstress', 'sewing', 'fashion', 'clothes'],
         'barbering':          ['barbering', 'barber', 'haircut', 'shave', 'grooming'],
-        // events
         'event-planning':     ['event planning', 'event planner', 'events', 'coordination', 'organiser'],
         'catering':           ['catering', 'caterer', 'food', 'meals', 'cooking', 'chef'],
         'decoration':         ['decoration', 'decorator', 'decor', 'floral', 'setup', 'backdrop'],
         'photography':        ['photography', 'photographer', 'videography', 'video', 'pictures'],
         'music-dj':           ['dj', 'music', 'disc jockey', 'sound system', 'entertainment', 'band'],
-        // skilled-trades
         'carpentry':          ['carpentry', 'carpenter', 'woodwork', 'cabinet', 'furniture', 'joinery'],
         'welding':            ['welding', 'welder', 'fabrication', 'metalwork', 'steel', 'iron'],
         'solar-installation': ['solar', 'solar panel', 'generator', 'inverter', 'power installation'],
         'ac-repair':          ['ac repair', 'air conditioning', 'ac', 'hvac', 'cooling', 'refrigeration'],
         'furniture-making':   ['furniture making', 'furniture', 'custom furniture', 'woodwork', 'cabinet'],
-        // cleaning
         'house-cleaning':     ['house cleaning', 'home cleaning', 'cleaning', 'janitorial', 'maid', 'housekeep'],
         'office-cleaning':    ['office cleaning', 'commercial cleaning', 'workspace cleaning', 'corporate'],
         'deep-cleaning':      ['deep cleaning', 'thorough cleaning', 'spring cleaning', 'scrubbing'],
         'laundry':            ['laundry', 'ironing', 'washing', 'dry cleaning', 'clothes'],
         'waste-collection':   ['waste', 'garbage', 'trash', 'refuse', 'collection', 'sanitation'],
-        // education
         'math-tutoring':      ['maths', 'math', 'mathematics', 'tutoring', 'tutor', 'algebra', 'calculus'],
         'english-tutoring':   ['english', 'grammar', 'writing', 'reading', 'literature', 'language'],
         'music-lessons':      ['music lessons', 'music', 'instrument', 'piano', 'guitar', 'singing'],
         'driving-lessons':    ['driving', 'driving lessons', 'driving school', 'license', 'road'],
         'computer-training':  ['computer', 'computer training', 'it training', 'software', 'ms office'],
-        // tech
         'phone-repair':       ['phone repair', 'mobile repair', 'smartphone', 'screen repair', 'battery'],
         'laptop-repair':      ['laptop repair', 'computer repair', 'pc repair', 'hardware', 'software fix'],
         'cctv-installation':  ['cctv', 'cctv installation', 'surveillance', 'camera', 'security system'],
@@ -393,7 +383,7 @@ const SelectedService = () => {
 
       // Filter by location
       if (area) {
-        filteredProviders = filteredProviders.filter(provider =>
+        filteredProviders = filteredProviders.filter(provider => 
           provider.location && provider.location.includes(area)
         );
       }
@@ -405,7 +395,7 @@ const SelectedService = () => {
         location: provider.location || 'Accra, Ghana',
         rating: provider.rating ?? null,
         image: provider.avatar_url,
-        verified: provider.verification_status === 'verified',
+        verified: provider.verification_status === 'approved',
         totalJobs: provider.work_experience || 0,
       }));
 
@@ -429,8 +419,8 @@ const SelectedService = () => {
   const stats = useMemo(() => {
     if (filteredProviders.length === 0) return { totalProviders: 0, averageRating: '—' };
     const ratedProviders = filteredProviders.filter(p => p.rating != null);
-    const averageRating = ratedProviders.length === 0
-      ? '—'
+    const averageRating = ratedProviders.length === 0 
+      ? '—' 
       : (ratedProviders.reduce((sum, p) => sum + p.rating, 0) / ratedProviders.length).toFixed(1);
     return { totalProviders: filteredProviders.length, averageRating };
   }, [filteredProviders]);
@@ -483,7 +473,7 @@ const SelectedService = () => {
           <motion.div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6" variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true, margin: "-100px" }}>
             {filteredProviders.map((profile, index) => (
               <motion.div key={profile.id} variants={scaleIn} transition={{ duration: 0.3, delay: index * 0.05 }}>
-                <ProfileCard
+                <ProfileCard 
                   id={profile.id}
                   name={profile.name}
                   role={profile.role}
