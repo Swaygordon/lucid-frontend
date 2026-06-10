@@ -83,7 +83,7 @@ const DashboardPage      = lazy(() => import('./pages/DashboardPage.jsx'));
 const EarningsPayments   = lazy(() => import('./pages/earnings.jsx'));
 const TransactionsPage   = lazy(() => import('./pages/transactions.jsx'));
 const Favourites         = lazy(() => import('./pages/favourites.jsx'));
-
+const ClientProfile = lazy(() => import('./pages/client_profile.jsx'));
 // Account & settings (Phase 6) — gitignored, see note above.
 // Client/Provider account overviews are sub-components of AccountPage.
 const AccountPage          = lazy(() => import('./pages/AccountPage.jsx'));
@@ -302,11 +302,11 @@ function App() {
                 The Signup component can detect this path to pre-select "provider". */}
 
             {/* PHASE 5+ — File gitignored; uncomment-in-place when implemented */}
-            {/* <Route path="/lucid/account/client-profile" element={
+             <Route path="/lucid/account/client-profile" element={
                 <ProtectedRoute allowedRoles={['client']}>
                   <ClientProfile />
                 </ProtectedRoute>
-              } /> */}
+              } /> 
             {/* ── SERVICES DISCOVERY (Phase 2) ──────────────────────────────
                 ⚠️  Route ORDER matters in this block.
                 /lucid/services/all MUST be declared before /lucid/services/:category.

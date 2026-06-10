@@ -229,14 +229,13 @@ function Navbar() {
   const getDashboardPath = () => '/lucid/dashboard';
 
   const getProfilePath = () => {
-    // Check user role to determine which profile page to show
-    if (userProfile?.role === 'service_provider') {
-      return '/lucid/account/profile';
-    } else if (userProfile?.role === 'client') {
-      return '/lucid/account/client-profile';
-    }
+  if (userProfile?.role === 'service_provider') {
     return '/lucid/account/profile';
-  };
+  } else if (userProfile?.role === 'client') {
+    return '/lucid/account/client-profile';
+  }
+  return '/lucid/account/profile';
+};
 
   const getBookingsPath = () => {
     return '/lucid/bookings';
@@ -257,14 +256,14 @@ function Navbar() {
 
   // User menu links - includes Profile only for providers
   const userMenuLinks = [
-    ...(providerProfile ? [{ to: getProfilePath(), label: "My Profile" }] : []),
+  { to: getProfilePath(), label: "My Profile", icon: User },
     { to: getDashboardPath(), label: "Dashboard" },
     { to: "/lucid/messages",       label: "Messages",      badge: messageCount },
     { to: "/lucid/notifications",  label: "Notifications", badge: notificationCount },
   ];
 
   const mobileUserLinks = [
-    ...(providerProfile ? [{ to: getProfilePath(),       label: "My Profile",     icon: User }] : []),
+  { to: getProfilePath(), label: "My Profile", icon: User },
     { to: getDashboardPath(),     label: "Dashboard",     icon: LayoutDashboard },
     { to: "/lucid/messages",      label: "Messages",      icon: MessageCircle, badge: messageCount },
     { to: "/lucid/notifications", label: "Notifications", icon: Bell,          badge: notificationCount },
