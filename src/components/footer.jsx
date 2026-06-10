@@ -99,9 +99,9 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           {/* Brand Statement */}
           <motion.div variants={fadeInUp} className="flex flex-col gap-4">
-            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+            <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">
               Lucid Ltd
-            </h3>
+            </h2>
             <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed max-w-xs">
               Connecting Ghana with trusted local service providers.
             </p>
@@ -117,9 +117,9 @@ const Footer = () => {
 
           {/* Navigation */}
           <motion.nav variants={fadeInUp} className="flex flex-col gap-4">
-            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+            <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">
               Navigation
-            </h3>
+            </h2>
             <div className="flex flex-col gap-2.5">
               {NAVIGATION_LINKS.map((link, i) => (
                 <FooterLink key={i} to={link.to}>{link.label}</FooterLink>
@@ -129,9 +129,9 @@ const Footer = () => {
 
           {/* Company */}
           <motion.nav variants={fadeInUp} className="flex flex-col gap-4">
-            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+            <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">
               Company
-            </h3>
+            </h2>
             <div className="flex flex-col gap-2.5">
               {COMPANY_LINKS.map((link, i) => (
                 <FooterLink key={i} to={link.to}>{link.label}</FooterLink>
@@ -141,9 +141,9 @@ const Footer = () => {
 
           {/* Join Lucid */}
           <motion.div variants={fadeInUp} className="flex flex-col gap-4">
-            <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">
+            <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">
               Join Lucid
-            </h3>
+            </h2>
             <form onSubmit={handleSubscribe} className="relative w-full max-w-sm">
               <input
                 type="email"

@@ -30,12 +30,13 @@ const BookingConfirmation = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [countdown, setCountdown] = useState(30);
+  const [paused, setPaused] = useState(false);
 
   // [MOCK] Replace with GET /bookings/:id using bookingId from navigation state; remove reliance on location.state for direct-URL access
   const { bookingData, provider } = location.state || {};
 
   useEffect(() => {
-    // Auto-redirect countdown
+    if (paused) return;
     const timer = setInterval(() => {
       setCountdown(prev => {
         if (prev <= 1) {
@@ -48,7 +49,7 @@ const BookingConfirmation = () => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, [navigate, paused]);
 
   if (!bookingData || !provider) {
     return (
@@ -273,7 +274,6 @@ const BookingConfirmation = () => {
           {/* Action Buttons */}
           <div className="grid md:grid-cols-3 gap-4">
             <Button
-              variant="outline"
               size="md"
               fullWidth
               onClick={() => navigate('/lucid/bookings')}
@@ -294,6 +294,7 @@ const BookingConfirmation = () => {
             </Button>
 
             <Button
+              variant="outline"
               size="md"
               fullWidth
               onClick={() => navigate('/lucid/')}
@@ -303,14 +304,24 @@ const BookingConfirmation = () => {
             </Button>
           </div>
 
-          {/* Auto-redirect notice */}
+          {/* Auto-redirect notice — pausable so slow readers don't get yanked away */}
           {countdown > 0 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-center text-gray-600 dark:text-slate-400"
+              className="text-center text-gray-600 dark:text-slate-400 flex items-center justify-center gap-3"
             >
-              <p>Redirecting to home page in {countdown} seconds...</p>
+              <p>
+                {paused
+                  ? 'Auto-redirect paused.'
+                  : `Taking you to your bookings in ${countdown}s…`}
+              </p>
+              <button
+                onClick={() => setPaused(p => !p)}
+                className="text-primary hover:underline font-medium"
+              >
+                {paused ? 'Resume' : 'Stay on page'}
+              </button>
             </motion.div>
           )}
         </motion.div>

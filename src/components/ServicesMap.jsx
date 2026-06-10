@@ -313,6 +313,8 @@ const ServicesMap = ({ providers = [], userLocation = [5.6037, -0.1870] }) => {
             key={provider.id}
             position={provider.position}
             icon={createCustomIcon(provider.availability?.status === 'available')}
+            alt={provider.fullName}
+            title={provider.fullName}
             eventHandlers={{
               click: () => handleMarkerClick(provider),
             }}
@@ -332,6 +334,8 @@ const ServicesMap = ({ providers = [], userLocation = [5.6037, -0.1870] }) => {
         <Marker
           position={userLocation}
           icon={createCustomIcon(false, true)}
+          alt="Your location"
+          title="Your location"
         >
           <Popup>
             <div className="p-2 text-center">

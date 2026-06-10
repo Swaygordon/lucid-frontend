@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigateBack } from '../hooks/useNavigateBack.js';
+import { useModalBackButton } from '../hooks/useModalBackButton.js';
 import { useNotification } from '../contexts/NotificationContext.jsx';
 import { PageHeader, FilterBar, EmptyState } from '../components/ui';
 import { BookingCard, BookingDetailsModal, CancelBookingModal } from '../components/shared';
@@ -20,6 +21,10 @@ const ProviderBookings = () => {
   const [selectedTask, setSelectedTask] = useState(null);
 
   const handleBackClick = useNavigateBack('/lucid/dashboard', 400);
+
+  // Browser back / mobile gesture closes the modal instead of leaving the page
+  useModalBackButton(!!selectedTask, () => setSelectedTask(null));
+  useModalBackButton(showCancelModal, () => setShowCancelModal(false));
 
   // [API] GET /bookings?providerId={authenticatedProviderId}&status={filter}&sort=date&page={n}&limit={n}
   const bookings = useMemo(() => [], []);

@@ -11,12 +11,32 @@ import { ALL_CATEGORIES } from '../data/categories';
 import { ImageUploadModal } from '../components/shared';
 import { motion } from 'framer-motion';
 import { Button, Input } from '../components/ui';
+import { onActivateKey } from '../utils/a11y';
 
 // ─── Profile setup completion helper ─────────────────────────────────────────
 // Key shared with ProfileSetupBanner and sign_in so they all read the same flag.
 export const PROFILE_SETUP_KEY = 'lucid_provider_profile_complete';
 export const markProfileComplete = () =>
   localStorage.setItem(PROFILE_SETUP_KEY, 'true');
+
+// A provider profile is "complete" (i.e. discoverable by clients) once the
+// identity + discovery fields exist: first/last name, occupation, location,
+// at least one service category, and some working-hours info. Single source of
+// truth — reuse wherever completeness/discoverability is judged. Pass a
+// `provider_profiles` row.
+export const isProviderProfileComplete = (p) => !!p
+  && !!String(p.first_name ?? '').trim()
+  && !!String(p.last_name ?? '').trim()
+  && !!String(p.occupation ?? '').trim()
+  && !!String(p.location ?? '').trim()
+  && Array.isArray(p.categories) && p.categories.length > 0
+  && (
+    (Array.isArray(p.selected_days) && p.selected_days.length > 0)
+    || !!p.weekdays_time
+    || !!p.weekend_time
+    || (p.custom_days && typeof p.custom_days === 'object'
+        && Object.values(p.custom_days).some((d) => d && d.selected))
+  );
 
 // ============================================
 // CUSTOM HOOK — same form logic as edit.jsx
@@ -130,12 +150,13 @@ const InputField = memo(({ label, ...props }) => (
 const CounterInput = memo(({ label, value, onChange, icon: Icon, min = 0 }) => (
   <div>
     <div className="flex justify-between items-center mb-3">
-      <span className="font-medium text-gray-900 dark:text-slate-100">{label}</span>
+      <span id={`counter-${label.replace(/\s+/g, '-').toLowerCase()}`} className="font-medium text-gray-900 dark:text-slate-100">{label}</span>
       {Icon && <Icon size={20} className="text-blue-600" />}
     </div>
     <div className="flex items-center max-w-[120px]">
       <button
         type="button"
+        aria-label={`Decrease ${label}`}
         onClick={() => onChange(Math.max(min, value - 1))}
         className="px-3 py-2 border-2 border-gray-300 dark:border-[#2d3748] bg-white dark:bg-[#252b3b] hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-l-md transition-all focus:outline-none focus:border-blue-600"
       >
@@ -143,11 +164,13 @@ const CounterInput = memo(({ label, value, onChange, icon: Icon, min = 0 }) => (
       </button>
       <input
         type="number" value={value} min={min}
+        aria-labelledby={`counter-${label.replace(/\s+/g, '-').toLowerCase()}`}
         onChange={(e) => onChange(Math.max(min, parseInt(e.target.value) || min))}
         className="w-16 px-2 py-2 border-t-2 border-b-2 border-gray-300 dark:border-[#2d3748] text-center bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-200 focus:outline-none focus:border-blue-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
       />
       <button
         type="button"
+        aria-label={`Increase ${label}`}
         onClick={() => onChange(value + 1)}
         className="px-3 py-2 border-2 border-gray-300 dark:border-[#2d3748] bg-white dark:bg-[#252b3b] hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-r-md transition-all focus:outline-none focus:border-blue-600"
       >
@@ -159,8 +182,12 @@ const CounterInput = memo(({ label, value, onChange, icon: Icon, min = 0 }) => (
 
 const DayCard = memo(({ selected, label, description, onClick }) => (
   <div
+    role="button"
+    tabIndex={0}
+    aria-pressed={selected}
     onClick={onClick}
-    className={`cursor-pointer rounded-xl p-5 border-2 transition-all duration-300 ${
+    onKeyDown={onActivateKey(onClick)}
+    className={`cursor-pointer rounded-xl p-5 border-2 transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
       selected ? 'border-blue-600 bg-blue-50 shadow-lg scale-105' : 'border-gray-300 dark:border-[#2d3748] bg-white dark:bg-[#1a1f2e] hover:border-blue-400 hover:shadow-md'
     }`}
   >
@@ -227,8 +254,8 @@ const CategoryChipSelector = memo(({ selectedCategories, onChange }) => {
   };
   return (
     <div className="animate-fade-in">
-      <h3 className="text-gray-900 dark:text-slate-100 text-base font-semibold mb-1">Service Categories</h3>
-      <p className="text-sm text-gray-500 dark:text-slate-500 mb-4">Select all categories that match your work.</p>
+      <h2 className="text-gray-900 dark:text-slate-100 text-base font-semibold mb-1">Service Categories</h2>
+      <p className="text-sm text-gray-600 dark:text-slate-400 mb-4">Select all categories that match your work.</p>
       <div className="flex flex-wrap gap-2">
         {ALL_CATEGORIES.map(({ name, icon: Icon }) => {
           const selected = selectedCategories.includes(name);
@@ -283,8 +310,13 @@ const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustom
                 {daysOfWeek.map(day => (
                   <div
                     key={day}
+                    role="checkbox"
+                    tabIndex={0}
+                    aria-checked={profile.customDays[day].selected}
+                    aria-label={dayLabels[day]}
                     onClick={() => onCustomDayChange(day, 'selected', !profile.customDays[day].selected)}
-                    className={`cursor-pointer rounded-lg p-3 border-2 transition-all ${
+                    onKeyDown={onActivateKey(() => onCustomDayChange(day, 'selected', !profile.customDays[day].selected))}
+                    className={`cursor-pointer rounded-lg p-3 border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                       profile.customDays[day].selected ? 'border-blue-600 bg-blue-100 shadow-md' : 'border-gray-300 dark:border-[#2d3748] bg-white dark:bg-[#252b3b] hover:border-blue-400'
                     }`}
                   >
@@ -471,9 +503,10 @@ const ProviderProfileSetup = () => {
         custom_days: formMethods.profile.customDays,
         avatar_url: avatarUrl,
         hero_url: heroUrl,
-        is_profile_complete: true,
         updated_at: new Date().toISOString()
       };
+      // Discoverability flag derived from the same completeness rule the banner uses.
+      profileData.is_profile_complete = isProviderProfileComplete(profileData);
 
       const { error } = await supabase
         .from('provider_profiles')
@@ -481,7 +514,8 @@ const ProviderProfileSetup = () => {
 
       if (error) throw error;
 
-      markProfileComplete();
+      if (profileData.is_profile_complete) markProfileComplete();
+      else localStorage.setItem(PROFILE_SETUP_KEY, 'pending');
       showNotification('Profile saved! Welcome to Lucid.', 'success');
       navigate('/lucid/account/profile', { replace: true });
     } catch (error) {
@@ -532,14 +566,14 @@ const ProviderProfileSetup = () => {
 
       {/* ── Onboarding Header ── */}
       <div className="bg-white dark:bg-[#1a1f2e] border-b border-gray-200 dark:border-[#1e293b] px-4 py-5 text-center">
-        <p className="text-sm text-blue-600 font-semibold tracking-wide uppercase mb-1">Step 2 of 2</p>
+        <p className="text-sm text-blue-700 dark:text-blue-400 font-semibold tracking-wide uppercase mb-1">Step 2 of 2</p>
         <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Set Up Your Provider Profile</h1>
-        <p className="text-gray-500 dark:text-slate-500 text-sm mt-1 max-w-md mx-auto">
+        <p className="text-gray-600 dark:text-slate-400 text-sm mt-1 max-w-md mx-auto">
           Help clients find and trust you. You can always update this later.
         </p>
         <button
           onClick={handleSkip}
-          className="mt-3 text-sm text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 underline underline-offset-2 transition-colors"
+          className="mt-3 text-sm text-gray-600 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-200 underline underline-offset-2 transition-colors"
         >
           Skip for now
         </button>
@@ -623,9 +657,10 @@ const ProviderProfileSetup = () => {
           <div className="animate-fade-in">
             <div className="flex items-center gap-2 mb-2">
               <MapPin className="w-5 h-5 text-blue-600" />
-              <label className="font-medium text-gray-700 dark:text-slate-300">Location</label>
+              <label htmlFor="setup-location" className="font-medium text-gray-700 dark:text-slate-300">Location</label>
             </div>
             <select
+              id="setup-location"
               value={formMethods.profile.location}
               onChange={(e) => formMethods.handleInputChange('location', e.target.value)}
               className="w-full px-3 py-2.5 border-2 border-gray-300 dark:border-[#2d3748] rounded-md text-sm bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-200 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40 transition-all"
@@ -672,7 +707,7 @@ const ProviderProfileSetup = () => {
 
               <div>
                 <h3 className="text-gray-900 dark:text-slate-100 mb-1 text-base font-semibold">Payment Methods</h3>
-                <p className="text-gray-500 dark:text-slate-500 text-sm mb-4">Select all that apply</p>
+                <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Select all that apply</p>
                 <div className="flex flex-col gap-3">
                   {[{ key: 'mobile', label: 'Mobile Money' }, { key: 'bank', label: 'Bank Transfer' }].map(({ key, label }) => (
                     <label key={key} className="flex items-center gap-3 cursor-pointer py-2">
@@ -699,8 +734,12 @@ const ProviderProfileSetup = () => {
                 <h3 className="text-gray-900 dark:text-slate-100 mb-2 text-base font-semibold">Portfolio Projects</h3>
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Upload pictures of previous work done</p>
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload portfolio images"
                   onClick={() => openUpload('portfolio')}
-                  className="border-2 border-dashed border-gray-300 dark:border-[#2d3748] rounded-lg p-10 bg-white dark:bg-[#252b3b] hover:border-blue-600 transition-colors flex justify-center cursor-pointer"
+                  onKeyDown={onActivateKey(() => openUpload('portfolio'))}
+                  className="border-2 border-dashed border-gray-300 dark:border-[#2d3748] rounded-lg p-10 bg-white dark:bg-[#252b3b] hover:border-blue-600 transition-colors flex justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   <SquarePlus size={38} className="text-gray-400 hover:text-blue-600 transition-colors" />
                 </div>

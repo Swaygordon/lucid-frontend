@@ -8,11 +8,20 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Roboto', 'sans-serif'],
-        roboto: ['Roboto', 'sans-serif'],
+        // Body / default — Plus Jakarta Sans across the whole UI
+        sans: ['"Plus Jakarta Sans"', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'sans-serif'],
+        // Display — Plus Jakarta Sans for headings and brand moments
+        display: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
       },
       height: {
         '128': '28rem',
+      },
+      borderRadius: {
+        DEFAULT: '8px',
+        lg: '10px',
+        xl: '12px',
+        '2xl': '16px',
+        '3xl': '24px',
       },
       colors: {
         // Primary brand colors
@@ -41,10 +50,11 @@ export default {
         info: '#3b82f6',
       },
       boxShadow: {
-        sm:  '0 1px 2px 0 rgb(0 0 0 / 0.05)',
-        md:  '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 1px 3px rgb(0 0 0 / 0.05)',
-        lg:  '0 10px 24px -4px rgb(0 0 0 / 0.1), 0 2px 6px rgb(0 0 0 / 0.05)',
-        xl:  '0 20px 40px -8px rgb(0 0 0 / 0.12), 0 4px 12px rgb(0 0 0 / 0.06)',
+        // Softened, slate-tinted, low-alpha multi-layer elevations
+        sm:  '0 1px 2px 0 rgb(15 23 42 / 0.04)',
+        md:  '0 2px 4px -1px rgb(15 23 42 / 0.06), 0 1px 2px rgb(15 23 42 / 0.04)',
+        lg:  '0 8px 20px -4px rgb(15 23 42 / 0.08), 0 2px 6px rgb(15 23 42 / 0.04)',
+        xl:  '0 16px 36px -8px rgb(15 23 42 / 0.10), 0 4px 10px rgb(15 23 42 / 0.05)',
         // Colored glow shadows for buttons and stat cards
         'glow-blue':   '0 4px 18px -2px rgba(37,99,235,0.45)',
         'glow-green':  '0 4px 18px -2px rgba(16,185,129,0.45)',

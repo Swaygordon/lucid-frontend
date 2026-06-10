@@ -8,6 +8,8 @@ export { ReviewThread } from './ReviewThread.jsx';
 export { ReceiptModal } from './ReceiptModal.jsx';
 export { ProfileCard } from './ProfileCard.jsx';
 export { ConfirmActionModal } from './ConfirmActionModal.jsx';
+export { LogoutConfirmModal } from './LogoutConfirmModal.jsx';
+export { SignInRequiredModal } from './SignInRequiredModal.jsx';
 export {
   QuotePriceModal,
   AdjustPriceModal,

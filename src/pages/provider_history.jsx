@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigateBack } from '../hooks/useNavigateBack.js';
+import { useModalBackButton } from '../hooks/useModalBackButton.js';
 import { PageHeader } from '../components/ui';
 import { BookingDetailsModal, ReceiptModal } from '../components/shared';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -31,6 +32,10 @@ const ProviderHistory = () => {
   const [receiptBooking, setReceiptBooking] = useState(null);
 
   const handleBackClick = useNavigateBack('/lucid/dashboard', 400);
+
+  // Browser back / mobile gesture closes the modal instead of leaving the page
+  useModalBackButton(!!selectedBooking, () => setSelectedBooking(null));
+  useModalBackButton(showReceipt, () => setShowReceipt(false));
 
   const filteredHistory = [];
 
@@ -111,12 +116,16 @@ const ProviderHistory = () => {
     <div className="flex gap-2">
       <button
         onClick={() => setViewMode('list')}
+        aria-label="List view"
+        aria-pressed={viewMode === 'list'}
         className={`p-2 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-[#1e293b]'}`}
       >
         <FileText className="w-5 h-5" />
       </button>
       <button
         onClick={() => setViewMode('stats')}
+        aria-label="Stats view"
+        aria-pressed={viewMode === 'stats'}
         className={`p-2 rounded-lg transition-colors ${viewMode === 'stats' ? 'bg-primary text-white' : 'bg-gray-100 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-[#1e293b]'}`}
       >
         <BarChart3 className="w-5 h-5" />

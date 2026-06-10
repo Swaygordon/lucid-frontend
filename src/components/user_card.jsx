@@ -39,11 +39,13 @@ const ProfileCard = ({
     <div className="relative bg-white dark:bg-[#1a1f2e] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 p-3 sm:p-4 md:p-6 w-full">
 
       {/* Favorite */}
-      <button 
+      <button
         onClick={() => setFavorite(!favorite)}
+        aria-label={favorite ? 'Remove from favourites' : 'Add to favourites'}
+        aria-pressed={favorite}
         className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-full transition-colors"
       >
-        <Heart className={`w-5 h-5 ${favorite ? 'fill-red-500 text-red-500' : 'text-gray-400 dark:text-slate-500'}`} />
+        <Heart className={`w-5 h-5 ${favorite ? 'fill-red-500 text-red-500' : 'text-gray-500 dark:text-slate-400'}`} />
       </button>
 
       {/* Profile Image */}

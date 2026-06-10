@@ -17,7 +17,7 @@ const slides = [
     image: efficient,
     buttonText: "Find Workers",
     gradient: "from-blue-600 via-blue-700 to-indigo-800",
-    category1:"/Service",
+    category1:"/lucid/services",
   },
   {
     id: 2,
@@ -28,7 +28,7 @@ const slides = [
     image: hired,
     buttonText: "Join Now",
     gradient: "from-purple-600 via-purple-700 to-pink-700",
-    category1:"/signup",
+    category1:"/lucid/signup",
   },
   {
     id: 3,
@@ -39,7 +39,7 @@ const slides = [
     image: Collaborate,
     buttonText: "Get Started",
     gradient: "from-teal-600 via-cyan-700 to-blue-800",
-    category1:"/signup",
+    category1:"/lucid/signup",
   },
   {
     id: 4,
@@ -50,7 +50,7 @@ const slides = [
     image: unlock,
     buttonText: "Explore Jobs",
     gradient: "from-orange-600 via-red-600 to-pink-700",
-    category1:"/signup",
+    category1:"/lucid/signup",
   },
   {
     id: 5,
@@ -61,7 +61,7 @@ const slides = [
     image: futurework,
     buttonText: "About Lucid",
     gradient: "from-indigo-600 via-violet-700 to-purple-800",
-    category1:"/about",
+    category1:"/lucid/about",
   },
 ];
 
@@ -121,11 +121,12 @@ export default function Carousel() {
                 {slide.description}
               </p>
 
-             <Link to={slide.category1}> 
-              <button className="group mt-4 py-3.5 px-8 rounded-full bg-white text-gray-900 font-semibold shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 flex items-center gap-2">
+             <Link
+                to={slide.category1}
+                className="group mt-4 py-3.5 px-8 rounded-full bg-white text-gray-900 font-semibold shadow-2xl hover:shadow-3xl hover:scale-105 transition-all duration-300 inline-flex items-center gap-2 w-fit"
+              >
                 {slide.buttonText}
                 <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
               </Link>
             </div>
 

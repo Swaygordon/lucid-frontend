@@ -83,6 +83,7 @@ const HeroSection = memo(({ heroUrl, onEditClick }) => (
       className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-300 flex items-center justify-center cursor-pointer"
     >
       <motion.button
+        aria-label="Change profile photo"
         className="opacity-0 group-hover:opacity-100 transform scale-90 group-hover:scale-100 transition-all duration-300 bg-white p-3 rounded-full shadow-lg"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
@@ -109,7 +110,7 @@ const ProfileAvatar = memo(({ avatarUrl }) => (
       <motion.div
         className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all duration-300 flex items-center justify-center rounded-full cursor-pointer"
       >
-        <Link to="/lucid/account/profile/edit">
+        <Link to="/lucid/account/profile/edit" aria-label="Change profile photo">
           <Camera className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </Link>
       </motion.div>
@@ -118,8 +119,9 @@ const ProfileAvatar = memo(({ avatarUrl }) => (
 ));
 
 const EditButton = memo(() => (
-  <Link to="/lucid/account/profile/edit">
+  <Link to="/lucid/account/profile/edit" aria-label="Edit profile">
     <motion.button
+      aria-label="Edit profile"
       className="p-2 rounded-md hover:bg-gray-100 dark:hover:bg-[#252b3b] transition-all duration-200"
       whileHover={{ y: -2, boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
       whileTap={{ scale: 0.95 }}
@@ -479,11 +481,11 @@ const UserProfile = () => {
       >
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <button onClick={handleBack} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
+            <button onClick={handleBack} aria-label="Go back" className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
               <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />
             </button>
             <div className="text-sm text-gray-600 dark:text-slate-400">
-              Viewing as: <span className="font-semibold text-blue-600">Service Provider</span>
+              Viewing as: <span className="font-semibold text-blue-700 dark:text-blue-400">Service Provider</span>
             </div>
           </div>
         </div>
@@ -516,8 +518,8 @@ const UserProfile = () => {
             <div className="flex items-center space-x-4 mb-4 flex-wrap gap-2">
               <div className="flex items-center space-x-1">
                 <Star className="w-4 h-4 fill-blue-600 text-blue-600" />
-                <span className="font-semibold text-blue-600">{rating}</span>
-                <span className="text-gray-500 dark:text-slate-500 text-sm">({reviewCount} reviews)</span>
+                <span className="font-semibold text-blue-700 dark:text-blue-400">{rating}</span>
+                <span className="text-gray-600 dark:text-slate-400 text-sm">({reviewCount} reviews)</span>
               </div>
               <div className="flex items-center space-x-2 text-gray-600 dark:text-slate-400">
                 <Clock className="w-4 h-4 text-blue-600" />

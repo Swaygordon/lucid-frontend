@@ -7,12 +7,34 @@ import {
 } from "lucide-react";
 import { Button } from './ui/Button.jsx';
 import { Avatar } from './ui/Avatar.jsx';
+import { LogoutConfirmModal } from './shared';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { supabase } from '../lib/supabaseClient';
+import { onActivateKey } from '../utils/a11y';
 import { Sun, Moon } from 'lucide-react';
 import Logo from "../assets/Lucid.webp";
 import LogoWhite from "../assets/Lucid white.webp";
+
+// Cache the most recent profile in localStorage so refreshes paint the
+// correct name + initials on the first render instead of flashing the email
+// or a "U" avatar while Supabase round-trips. Cleared on sign-out.
+const USER_PROFILE_CACHE_KEY = 'lucid:userProfile';
+const PROVIDER_PROFILE_CACHE_KEY = 'lucid:providerProfile';
+
+const readProfileCache = (key) => {
+  try { return JSON.parse(localStorage.getItem(key) || 'null'); }
+  catch { return null; }
+};
+const writeProfileCache = (key, value) => {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* quota / private mode — silent */ }
+};
+const clearProfileCache = () => {
+  try {
+    localStorage.removeItem(USER_PROFILE_CACHE_KEY);
+    localStorage.removeItem(PROVIDER_PROFILE_CACHE_KEY);
+  } catch { /* noop */ }
+};
 
 const NotificationBadge = ({ count = 0, className = "" }) => {
   if (!count || count <= 0) return null;
@@ -35,11 +57,12 @@ function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
-  const [userProfile, setUserProfile] = useState(null);
-  const [providerProfile, setProviderProfile] = useState(null);
+  const [userProfile, setUserProfile] = useState(() => readProfileCache(USER_PROFILE_CACHE_KEY));
+  const [providerProfile, setProviderProfile] = useState(() => readProfileCache(PROVIDER_PROFILE_CACHE_KEY));
   const [notificationCount, setNotificationCount] = useState(0);
   const [messageCount, setMessageCount] = useState(0);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const dropdownRef = useRef(null);
   const { showNotification } = useNotification();
   const { isDark, toggle: toggleTheme } = useTheme();
@@ -72,6 +95,7 @@ function Navbar() {
         setProviderProfile(null);
         setNotificationCount(0);
         setMessageCount(0);
+        clearProfileCache();
       }
     });
 
@@ -95,7 +119,10 @@ function Navbar() {
       .select('*')
       .eq('id', userId)
       .single();
-    if (data) setUserProfile(data);
+    if (data) {
+      setUserProfile(data);
+      writeProfileCache(USER_PROFILE_CACHE_KEY, data);
+    }
   };
 
   const fetchProviderProfile = async (userId) => {
@@ -104,7 +131,10 @@ function Navbar() {
       .select('avatar_url, first_name, last_name')
       .eq('user_id', userId)
       .single();
-    if (data) setProviderProfile(data);
+    if (data) {
+      setProviderProfile(data);
+      writeProfileCache(PROVIDER_PROFILE_CACHE_KEY, data);
+    }
   };
 
   const fetchNotificationCounts = async (userId) => {
@@ -124,10 +154,16 @@ function Navbar() {
     setMessageCount(msgCount || 0);
   };
 
-  const handleLogout = async () => {
+  const handleLogout = () => {
+    setIsDropdownOpen(false);
+    setIsOpen(false);
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = async () => {
     await supabase.auth.signOut();
     showNotification('Logged out successfully', 'success');
-    handleLinkClick();
+    setShowLogoutConfirm(false);
     navigate('/lucid/', { replace: true });
   };
 
@@ -137,7 +173,7 @@ function Navbar() {
   const getUserDisplayName = () => {
     if (providerProfile?.first_name) return providerProfile.first_name;
     if (userProfile?.first_name) return userProfile.first_name;
-    return user?.email?.split('@')[0] || 'User';
+    return 'User';
   };
 
   const getFullName = () => {
@@ -156,10 +192,7 @@ function Navbar() {
     return null;
   };
 
-  const getDashboardPath = () => {
-    if (userProfile?.role === 'service_provider') return '/lucid/account/profile';
-    return '/lucid/dashboard';
-  };
+  const getDashboardPath = () => '/lucid/dashboard';
 
   const totalNotifications = notificationCount + messageCount;
 
@@ -214,8 +247,13 @@ function Navbar() {
             <div ref={dropdownRef} className="relative ml-4 hidden lg:block">
               <div
                 role="button"
+                tabIndex={0}
+                aria-haspopup="menu"
+                aria-expanded={isDropdownOpen}
+                aria-label="Account menu"
                 onClick={() => setIsDropdownOpen(prev => !prev)}
-                className="relative flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#252b3b] p-2 rounded-lg transition-colors"
+                onKeyDown={onActivateKey(() => setIsDropdownOpen(prev => !prev))}
+                className="relative flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#252b3b] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 <NotificationBadge count={totalNotifications} className="top-1 right-20" />
                 {getAvatarUrl() ? (
@@ -393,6 +431,12 @@ function Navbar() {
           </div>
         </div>
       </div>
+
+      <LogoutConfirmModal
+        isOpen={showLogoutConfirm}
+        onClose={() => setShowLogoutConfirm(false)}
+        onConfirm={confirmLogout}
+      />
     </>
   );
 }

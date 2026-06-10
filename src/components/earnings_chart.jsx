@@ -1,6 +1,75 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import { TrendingUp, DollarSign, Calendar, Eye, EyeOff } from 'lucide-react';
+import { TrendingUp, DollarSign, Calendar, Eye, EyeOff, ChevronDown } from 'lucide-react';
+
+// Small dropdown used by the controls below. Single-use, so kept inline.
+const Dropdown = ({ value, options, onChange }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const currentLabel = options.find((o) => o.value === value)?.label ?? '';
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex items-center justify-between gap-2 px-4 py-2 min-w-[8.5rem] rounded-lg font-semibold text-sm bg-white dark:bg-[#1a1f2e] border-2 border-blue-600 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+      >
+        <span>{currentLabel}</span>
+        <ChevronDown className={`w-4 h-4 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute left-0 top-full mt-1 z-50 w-full min-w-full bg-white dark:bg-[#1a1f2e] border border-gray-200 dark:border-[#1e293b] rounded-lg shadow-xl overflow-hidden"
+        >
+          {options.map((opt) => (
+            <li key={opt.value}>
+              <button
+                type="button"
+                role="option"
+                aria-selected={value === opt.value}
+                onClick={() => { onChange(opt.value); setOpen(false); }}
+                className={`w-full text-left px-4 py-2 text-sm transition-colors ${
+                  value === opt.value
+                    ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 font-semibold'
+                    : 'text-gray-700 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-[#252b3b]'
+                }`}
+              >
+                {opt.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const TIMEFRAME_OPTIONS = [
+  { value: 'week',  label: 'This Week' },
+  { value: 'month', label: 'This Month' },
+  { value: 'year',  label: 'This Year' },
+];
+
+const CHART_TYPE_OPTIONS = [
+  { value: 'area', label: 'Area' },
+  { value: 'line', label: 'Line' },
+  { value: 'bar',  label: 'Bar' },
+];
 
 // [API] GET /providers/:id/earnings?period=week|month|year
 //   → { data: [{ name: string, earnings: number, jobs: number }], total: number, avg: number }
@@ -56,39 +125,18 @@ const EarningsChart = () => {
   return (
     <div className="space-y-6">
       {/* Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        {/* Timeframe Selector */}
-        <div className="flex gap-2">
-          {['week', 'month', 'year'].map((period) => (
-            <button
-              key={period}
-              onClick={() => setTimeframe(period)}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all ${
-                timeframe === period
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white dark:bg-[#1a1f2e] text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-[#252b3b] border-2 border-gray-200 dark:border-[#2d3748]'
-              }`}
-            >
-              {period === 'week' ? 'This Week' : period === 'month' ? 'This Month' : 'This Year'}
-            </button>
-          ))}
-        </div>
-
-        {/* Chart Type Selector */}
-        <div className="flex gap-2">
-          {['area', 'line', 'bar'].map((type) => (
-            <button
-              key={type}
-              onClick={() => setChartType(type)}
-              className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all capitalize ${
-                chartType === type
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'bg-white dark:bg-[#1a1f2e] text-gray-700 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-[#252b3b] border-2 border-gray-200 dark:border-[#2d3748]'
-              }`}
-            >
-              {type}
-            </button>
-          ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <Dropdown
+            value={timeframe}
+            options={TIMEFRAME_OPTIONS}
+            onChange={setTimeframe}
+          />
+          <Dropdown
+            value={chartType}
+            options={CHART_TYPE_OPTIONS}
+            onChange={setChartType}
+          />
         </div>
 
         {/* Toggle Jobs Display */}

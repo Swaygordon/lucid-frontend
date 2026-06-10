@@ -143,7 +143,7 @@ const Category = () => {
                 <div className="p-4 flex items-center justify-between">
                   <div>
                     <h3 className="font-semibold text-gray-900 dark:text-slate-100">{svc.name}</h3>
-                    <div className="flex items-center gap-1 text-xs text-gray-500 dark:text-slate-500 mt-1">
+                    <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-slate-400 mt-1">
                       <MapPin size={12} />
                       <span>See workers near you</span>
                     </div>

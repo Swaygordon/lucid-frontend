@@ -57,7 +57,7 @@ export const StatCard = ({ icon: Icon, title, value, change, trend, color = 'blu
       transition={{ type: 'spring', stiffness: 300 }}
       className={`
         bg-gradient-to-br ${config.gradient} ${config.glow}
-        rounded-2xl p-6 shadow-lg transition-shadow duration-300 relative overflow-hidden
+        rounded-2xl p-4 sm:p-6 shadow-lg transition-shadow duration-300 relative overflow-hidden
       `}
     >
       {/* Decorative background circle */}
@@ -79,7 +79,7 @@ export const StatCard = ({ icon: Icon, title, value, change, trend, color = 'blu
           )}
         </div>
         <p className="text-white/75 text-sm font-medium mb-1">{title}</p>
-        <p className="text-3xl font-bold text-white">{value}</p>
+        <p className="text-2xl sm:text-3xl font-bold text-white tracking-tight break-words">{value}</p>
       </div>
     </motion.div>
   );

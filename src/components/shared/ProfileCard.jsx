@@ -63,19 +63,21 @@ const ProfileCardComponent = ({
   };
 
   return (
-    <motion.div 
-      className="relative flex flex-col bg-white dark:bg-[#1a1f2e] rounded-lg shadow-sm hover:shadow-md transition-shadow duration-300 p-3 sm:p-4 md:p-6 w-full h-full"
+    <motion.div
+      className="relative flex flex-col bg-white dark:bg-[#1a1f2e] rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm hover:shadow-lg transition-shadow duration-300 p-3 sm:p-4 md:p-6 w-full h-full"
       whileHover={{ y: -2 }}
     >
 
       {/* Favorite */}
       <motion.button
         onClick={handleToggle}
+        aria-label={favorite ? 'Remove from favourites' : 'Add to favourites'}
+        aria-pressed={favorite}
         className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-full transition-colors"
         whileHover={{ scale: 1.1 }}
         whileTap={{ scale: 0.95 }}
       >
-        <Heart className={`w-5 h-5 ${favorite ? 'fill-error text-error' : 'text-gray-400 dark:text-slate-500'}`} />
+        <Heart className={`w-5 h-5 ${favorite ? 'fill-error text-error' : 'text-gray-500 dark:text-slate-400'}`} />
       </motion.button>
 
       {/* Profile Image */}
@@ -113,7 +115,7 @@ const ProfileCardComponent = ({
       {/* FIXED: Removed hardcoded Link, now uses onClick callback */}
       <motion.button
         onClick={handleViewProfile}
-        className="w-full bg-primary text-white py-2 rounded-lg font-semibold hover:bg-primary-hover transition"
+        className="w-full bg-primary text-white py-2 rounded-xl font-semibold hover:bg-primary-hover transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#1a1f2e]"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >

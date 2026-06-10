@@ -36,6 +36,7 @@ const ImageUploadModal = ({
             {/* Close */}
             <motion.button
                onClick={onClose}
+            aria-label="Close"
             className="absolute top-4 right-4 p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-full transition-colors"
             whileHover={{ scale: 1.1, rotate: 90 }}
             whileTap={{ scale: 0.9 }}

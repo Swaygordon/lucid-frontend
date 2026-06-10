@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { ALL_CATEGORIES } from '../data/categories';
+
+// Skeleton card count MUST match real content count or the swap produces a
+// massive CLS (Lighthouse measured 0.9 with mismatched counts).
+const CATEGORY_COUNT = ALL_CATEGORIES.length;
 import Breadcrumb from '../components/Breadcrumb';
 import BackToTop from '../components/back_the_top_btn';
 import LocationPicker from '../components/LocationPicker';
+import SearchAutocomplete from '../components/SearchAutocomplete';
+import { resolveSearch } from '../utils/search';
 import { useSearchLocation, getLocationBackground, buildBackgroundStyle } from '../contexts/LocationContext';
 
 const AllCategoriesSkeleton = () => (
@@ -29,7 +35,7 @@ const AllCategoriesSkeleton = () => (
     {/* Category cards grid */}
     <div className="max-w-6xl mx-auto px-5 py-8">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 9 }).map((_, i) => (
+        {Array.from({ length: CATEGORY_COUNT }).map((_, i) => (
           <div key={i} className="rounded-2xl overflow-hidden border border-gray-100 bg-white">
             <div className="h-44 bg-gray-300" />
             <div className="p-5 space-y-2">
@@ -46,12 +52,9 @@ const AllCategoriesSkeleton = () => (
 
 const AllCategories = () => {
   const [query, setQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const id = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(id);
-  }, []);
+  const navigate = useNavigate();
+  // Data is local (ALL_CATEGORIES); the skeleton was an artificial 800 ms
+  // delay that caused a large CLS when content swapped in. Removed.
   const { searchLocation } = useSearchLocation();
 
   const filtered = query.trim()
@@ -64,8 +67,6 @@ const AllCategories = () => {
 
   const bgValue = getLocationBackground(searchLocation);
   const heroStyle = buildBackgroundStyle(bgValue);
-
-  if (isLoading) return <AllCategoriesSkeleton />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">
@@ -83,20 +84,36 @@ const AllCategories = () => {
           </p>
 
           {/* Search bar + inline location picker */}
-          <div className="max-w-xl mx-auto flex bg-white/15 backdrop-blur-md border border-white/25 rounded-xl shadow-md">
-            <input
-              type="text"
+          <div className="max-w-xl mx-auto flex bg-white/15 backdrop-blur-md border border-white/25 rounded-xl shadow-md focus-within:ring-2 focus-within:ring-white/70">
+            <SearchAutocomplete
               value={query}
-              onChange={e => setQuery(e.target.value)}
-              placeholder="Search services..."
-              className="flex-1 px-5 py-3 text-white outline-none text-base bg-transparent rounded-l-xl placeholder-white/60"
-            />
+              onChange={setQuery}
+              onSelect={(item) => navigate(item.to)}
+              onSubmit={(v) => {
+                const r = resolveSearch(v);
+                if (r) navigate(r);
+              }}
+              panelTheme="dark"
+            >
+              {(inputProps) => (
+                <input
+                  {...inputProps}
+                  type="text"
+                  placeholder="Search services..."
+                  className="w-full px-5 py-3 text-white outline-none text-base bg-transparent rounded-l-xl placeholder-white/60"
+                />
+              )}
+            </SearchAutocomplete>
             <div className="flex items-center border-l border-white/25">
               <LocationPicker inline />
             </div>
             <button
               type="button"
               aria-label="Search"
+              onClick={() => {
+                const r = resolveSearch(query);
+                if (r) navigate(r);
+              }}
               className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-r-xl flex items-center gap-2 transition-colors flex-shrink-0"
             >
               <Search size={18} />

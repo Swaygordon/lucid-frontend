@@ -14,7 +14,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavig
 
 // Global notification system — wraps the whole app so any page can call
 // useNotification() to show toast messages without prop drilling.
-import { NotificationProvider } from './contexts/NotificationContext';
+import { NotificationProvider, useNotification } from './contexts/NotificationContext';
 import { LocationProvider } from './contexts/LocationContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { FavouritesProvider } from './contexts/FavouritesContext';
@@ -27,6 +27,22 @@ import { supabase } from './lib/supabaseClient';
 import Navbar from "./components/navbar";
 import Footer from './components/footer';
 import ProfileSetupBanner from './components/ProfileSetupBanner.jsx';
+import { SignInRequiredModal } from './components/shared';
+
+// ─── Per-route loading skeletons ──────────────────────────────────────────────
+// Each lazy route gets its own Suspense boundary with a tailored fallback,
+// so navigating to /signin doesn't briefly flash a home-shaped skeleton.
+import {
+  HomeSkeleton,
+  AuthFormSkeleton,
+  ServicesSkeleton,
+  ProfileSkeleton,
+  BookingsSkeleton,
+  ContentPageSkeleton,
+  DashboardSkeleton,
+  MessagesListSkeleton,
+  ChatSkeleton,
+} from './components/route_skeletons.jsx';
 
 // ─── Page-level code splitting ────────────────────────────────────────────────
 // Each lazy() call creates a separate chunk. Vite only downloads a chunk when
@@ -61,25 +77,23 @@ const BookingHistoryPage  = lazy(() => import('./pages/BookingHistoryPage.jsx'))
 const BookingRequest      = lazy(() => import('./pages/booking_request.jsx'));
 const BookingConfirmation = lazy(() => import('./pages/booking_confirmation.jsx'));
 
-// Dashboard (Phase 5) — not in scope yet
-// const ClientDashboard    = lazy(() => import('./pages/client_dashboard.jsx'));
-// const ProviderDashboard  = lazy(() => import('./pages/provider_dashboard.jsx'));
-// const DashboardPage      = lazy(() => import('./pages/DashboardPage.jsx'));
-// const EarningsPayments   = lazy(() => import('./pages/earnings.jsx'));
-// const TransactionsPage   = lazy(() => import('./pages/transactions.jsx'));
-// const Favourites         = lazy(() => import('./pages/favourites.jsx'));
+// Dashboard (Phase 5) — page files are gitignored; uncomment-in-place for local prod nav.
+// Client/Provider dashboards are sub-components of DashboardPage and don't need their own routes.
+const DashboardPage      = lazy(() => import('./pages/DashboardPage.jsx'));
+const EarningsPayments   = lazy(() => import('./pages/earnings.jsx'));
+const TransactionsPage   = lazy(() => import('./pages/transactions.jsx'));
+const Favourites         = lazy(() => import('./pages/favourites.jsx'));
 
-// Account & settings (Phase 6) — not in scope yet
-// const ClientAccountOverview   = lazy(() => import('./pages/client_account_overview.jsx'));
-// const ProviderAccountOverview = lazy(() => import('./pages/provider_account_overview.jsx'));
-// const AccountPage             = lazy(() => import('./pages/AccountPage.jsx'));
-// const AccountSettings         = lazy(() => import('./pages/user_info.jsx'));
-// const NotificationsPage       = lazy(() => import('./pages/notification_page.jsx'));
-// const NotificationSettings    = lazy(() => import('./pages/notificationSettings.jsx'));
+// Account & settings (Phase 6) — gitignored, see note above.
+// Client/Provider account overviews are sub-components of AccountPage.
+const AccountPage          = lazy(() => import('./pages/AccountPage.jsx'));
+const AccountSettings      = lazy(() => import('./pages/user_info.jsx'));
+const NotificationsPage    = lazy(() => import('./pages/notification_page.jsx'));
+const NotificationSettings = lazy(() => import('./pages/notificationSettings.jsx'));
 
-// Messaging (Phase 7) — not in scope yet
-// const MessagesListPage  = lazy(() => import('./pages/messagelist.jsx'));
-// const ChatMessagingPage = lazy(() => import('./pages/messaging.jsx'));
+// Messaging (Phase 7) — gitignored, see note above.
+const MessagesListPage  = lazy(() => import('./pages/messagelist.jsx'));
+const ChatMessagingPage = lazy(() => import('./pages/messaging.jsx'));
 
 
 
@@ -91,24 +105,29 @@ const BookingConfirmation = lazy(() => import('./pages/booking_confirmation.jsx'
 //
 // Flow:
 //   1. On mount, asks Supabase for the current session.
-//   2. No session  → redirect to /lucid/signin
+//   2. No session  → show SignInRequiredModal (user picks Go home or Sign in)
 //   3. Session + no role requirement → render children
 //   4. Session + role requirement → fetch role from profiles table
 //        Role matches → render children
-//        Role mismatch → redirect to /lucid/ (home)
+//        Role mismatch → toast + redirect to /lucid/ (home)
 //   5. While checking → render nothing (null) to avoid flash of wrong content
 // ─────────────────────────────────────────────────────────────────────────────
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
   // Status drives what gets rendered. Starts as 'loading' to block render
   // until the async session check resolves.
-  const [status, setStatus] = useState('loading'); // 'loading' | 'allowed' | 'redirect-signin' | 'redirect-home'
+  const [status, setStatus] = useState('loading'); // 'loading' | 'allowed' | 'signin-required' | 'redirect-home'
   const navigate = useNavigate();
+  const { showNotification } = useNotification();
 
   useEffect(() => {
     const check = async () => {
       // Step 1: check if there is an active Supabase session
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { setStatus('redirect-signin'); return; }
+      if (!session) {
+        // No toast — the SignInRequiredModal handles the message instead.
+        setStatus('signin-required');
+        return;
+      }
 
       // Step 2: if no role restriction, allow any authenticated user through
       if (allowedRoles.length === 0) { setStatus('allowed'); return; }
@@ -123,14 +142,28 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
       if (profile && allowedRoles.includes(profile.role)) {
         setStatus('allowed');
       } else {
-        setStatus('redirect-home'); // authenticated but wrong role
+        // Authenticated but wrong role — toast and bounce (no modal needed since
+        // they're already signed in; there's nothing to confirm).
+        const need = allowedRoles.join(' or ');
+        showNotification(`This page is for ${need} accounts only.`, 'warning');
+        setStatus('redirect-home');
       }
     };
     check();
   }, []); // runs once on mount — re-run not needed since navigation remounts the route
 
   if (status === 'loading') return null;                                      // blank while checking
-  if (status === 'redirect-signin') return <Navigate to="/lucid/signin" replace />; // not logged in
+  if (status === 'signin-required') {
+    // Show a confirm prompt instead of redirecting immediately, so users typing
+    // a protected URL or following a stale link have a chance to bail out.
+    return (
+      <SignInRequiredModal
+        isOpen
+        onCancel={() => navigate('/lucid/', { replace: true })}
+        onConfirm={() => navigate('/lucid/signin', { replace: true })}
+      />
+    );
+  }
   if (status === 'redirect-home') return <Navigate to="/lucid/" replace />;   // wrong role
   return children;                                                            // all checks passed
 };
@@ -157,82 +190,41 @@ function ScrollToTop() {
   return null;
 }
 
-// Page-level skeleton shown while a lazy route chunk is loading.
-// Fills the viewport so the Footer doesn't pull up to the top on first paint.
-function PageSkeleton() {
-  return (
-    <div className="min-h-screen bg-white dark:bg-[#0f1117] animate-pulse">
-      {/* Hero — mimics the home hero height and content layout */}
-      <div className="flex flex-col items-center justify-center py-16 sm:py-24 px-4 text-center">
-        {/* CyclingBadge */}
-        <div className="h-9 w-48 bg-gray-200 dark:bg-[#252b3b] rounded-full mb-6" />
-        {/* Heading — two lines */}
-        <div className="h-10 sm:h-12 w-3/4 max-w-lg bg-gray-200 dark:bg-[#252b3b] rounded-lg mb-3" />
-        <div className="h-10 sm:h-12 w-1/2 max-w-xs bg-gray-200 dark:bg-[#252b3b] rounded-lg mb-6" />
-        {/* Paragraph */}
-        <div className="h-4 w-full max-w-md bg-gray-200 dark:bg-[#252b3b] rounded mb-2" />
-        <div className="h-4 w-3/4 max-w-sm bg-gray-200 dark:bg-[#252b3b] rounded mb-8" />
-        {/* Search bar */}
-        <div className="w-full max-w-2xl h-12 bg-gray-200 dark:bg-[#252b3b] rounded-xl mb-14" />
-        {/* Category icons row */}
-        <div className="flex justify-center gap-10">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="flex flex-col items-center gap-2 flex-shrink-0">
-              <div className="w-16 h-16 rounded-lg bg-gray-200 dark:bg-[#252b3b]" />
-              <div className="w-12 h-3 rounded bg-gray-200 dark:bg-[#252b3b]" />
-            </div>
-          ))}
-        </div>
-      </div>
-      {/* ProviderCTA / section stand-in */}
-      <div className="bg-gray-50 dark:bg-[#1a1f2e] px-4 py-16">
-        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <div className="space-y-4">
-            <div className="h-8 w-48 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            <div className="h-4 w-full bg-gray-200 dark:bg-[#252b3b] rounded" />
-            <div className="h-4 w-4/5 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            <div className="h-10 w-36 bg-gray-200 dark:bg-[#252b3b] rounded-lg mt-2" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-28 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+// Helper: wraps a lazy page in its own Suspense boundary with a tailored fallback.
+// This is what stops the home-shaped skeleton from flashing on every route.
+const withFallback = (element, Fallback) => (
+  <Suspense fallback={<Fallback />}>{element}</Suspense>
+);
 
 function Layout({ children }) {
   const location = useLocation(); // current URL — re-evaluates on every navigation
 
   // Pages that manage their own full-screen layout (no shared Navbar/Footer)
   const hideNavAndFooterExact = [
-    // '/lucid/account',                 // AccountPage (Phase 6)
-    // '/lucid/notifications',           // NotificationsPage (Phase 6)
-    // '/lucid/dashboard',               // DashboardPage (Phase 5)
+    '/lucid/dashboard',               // DashboardPage (Phase 5)
+    '/lucid/earnings',                // EarningsPayments (Phase 5)
+    '/lucid/transactions',            // TransactionsPage (Phase 5)
+    '/lucid/favourites',              // Favourites (Phase 5)
+    '/lucid/account',                 // AccountPage (Phase 6)
+    '/lucid/account/settings',        // AccountSettings (Phase 6)
+    '/lucid/notifications',           // NotificationsPage (Phase 6)
+    '/lucid/notifications/settings',  // NotificationSettings (Phase 6)
+    '/lucid/messages',                // MessagesListPage (Phase 7)
     '/lucid/bookings',                // BookingsPage (Phase 4)
     '/lucid/bookings/history',        // BookingHistoryPage (Phase 4)
     '/lucid/bookings/confirmation',   // BookingConfirmation (Phase 4)
-    // '/lucid/bookings/new',         // BookingRequest — now a prefix route, handled below
-    // '/lucid/notifications/settings',  // NotificationSettings (Phase 6)
-    // '/lucid/earnings',                // EarningsPayments (Phase 5)
-    // '/lucid/transactions',            // TransactionsPage (Phase 5)
-    // '/lucid/messages',                // MessagesListPage (Phase 7)
     '/lucid/account/profile',         // UserProfile (Phase 3)
     '/lucid/account/profile/edit',    // EditProfile (Phase 3)
     '/lucid/account/profile/setup',   // ProviderProfileSetup (Phase 3)
     '/lucid/help',                    // Help & Support (public)
-    // '/lucid/account/settings',        // AccountSettings (Phase 6)
-    // '/lucid/favourites',              // Favourites (Phase 5)
   ];
 
-  // Prefix-based hide — catches dynamic segments like /lucid/providers/:id
+  // Prefix-based hide — catches dynamic segments like /lucid/messages/:id
+  // Note: /lucid/providers/:id keeps the navbar — it's a public page where users
+  // benefit from being able to search/browse without losing context.
   const hideNavAndFooterPrefix = [
-    '/lucid/providers/',      // GeneralProfile — any provider UUID or "me" (Phase 3)
     '/lucid/bookings/new/',   // BookingRequest — dynamic :providerId segment (Phase 4)
-    // '/lucid/messages/', // individual chat threads (Phase 7)
+    '/lucid/messages/',       // individual chat threads (Phase 7)
   ];
 
   const shouldHideLayout =
@@ -268,33 +260,35 @@ function App() {
     <NotificationProvider>
       <FavouritesProvider>
       <LocationProvider>
-      <Router>
+      {/* basename matches vite's production base ("/lucid-frontend"), so URLs    */}
+      {/* like /lucid-frontend/lucid/bookings resolve to the /lucid/bookings route. */}
+      {/* In dev (base "/lucid/") import.meta.env.PROD is false → basename is "".   */}
+      <Router basename={import.meta.env.PROD ? '/lucid-frontend' : ''}>
         {/* ScrollToTop resets scroll position on every route change */}
         <ScrollToTop />
         {/* Layout reads location from Router context — must be inside <Router> */}
         <Layout>
-          <Suspense fallback={<PageSkeleton />}>
           <Routes>
 
             {/* ── PUBLIC ROUTES ─────────────────────────────────────────────
                 No authentication needed. Anyone can reach these pages.      */}
 
-            <Route path="/lucid/"              element={<Home />} />
+            <Route path="/lucid/"              element={withFallback(<Home />, HomeSkeleton)} />
             {/* Landing page. Entry point for new visitors. */}
 
-            <Route path="/lucid/signup"        element={<Signup />} />
+            <Route path="/lucid/signup"        element={withFallback(<Signup />, AuthFormSkeleton)} />
             {/* New user registration — both client and provider accounts. */}
 
-            <Route path="/lucid/signin"        element={<Signin />} />
+            <Route path="/lucid/signin"        element={withFallback(<Signin />, AuthFormSkeleton)} />
             {/* Login. ProtectedRoute redirects here when session is missing. */}
 
-            <Route path="/lucid/about"         element={<About />} />
+            <Route path="/lucid/about"         element={withFallback(<About />, ContentPageSkeleton)} />
             {/* Static about page — company info, mission, team. */}
 
-            <Route path="/lucid/help"          element={<HelpSupport />} />
+            <Route path="/lucid/help"          element={withFallback(<HelpSupport />, ContentPageSkeleton)} />
             {/* Help & support — FAQs, contact form. */}
 
-            <Route path="/lucid/become-provider" element={<Signup />} />
+            <Route path="/lucid/become-provider" element={withFallback(<Signup />, AuthFormSkeleton)} />
             {/* Same sign-up page, different entry point from marketing CTAs.
                 The Signup component can detect this path to pre-select "provider". */}
 
@@ -305,21 +299,21 @@ function App() {
                 React Router matches top-to-bottom — if /:category comes first,
                 "all" is treated as a category slug and AllCategories never renders. */}
 
-            <Route path="/lucid/search"                      element={<Service />} />
+            <Route path="/lucid/search"                      element={withFallback(<Service />, ServicesSkeleton)} />
             {/* Alias for /lucid/services — the navbar search bar routes here.
                 Service.jsx handles both paths identically. */}
 
-            <Route path="/lucid/services"                    element={<Service />} />
+            <Route path="/lucid/services"                    element={withFallback(<Service />, ServicesSkeleton)} />
             {/* Services landing page: hero search, popular services, featured categories. */}
 
-            <Route path="/lucid/services/all"                element={<AllCategories />} />
+            <Route path="/lucid/services/all"                element={withFallback(<AllCategories />, ServicesSkeleton)} />
             {/* Grid of all 10 categories. "all" is a literal — must be before /:category. */}
 
-            <Route path="/lucid/services/:category"          element={<Category />} />
+            <Route path="/lucid/services/:category"          element={withFallback(<Category />, ServicesSkeleton)} />
             {/* :category = slug from categories.js, e.g. "home-repairs".
                 category.jsx calls getCategoryBySlug(params.category) to find the data. */}
 
-            <Route path="/lucid/services/:category/:service" element={<Selected_service />} />
+            <Route path="/lucid/services/:category/:service" element={withFallback(<Selected_service />, ServicesSkeleton)} />
             {/* :service = service slug within the category, e.g. "electrical-repairs".
                 Provider cards here link to /lucid/providers/:id (Phase 3). */}
 
@@ -327,7 +321,7 @@ function App() {
             {/* ── PROVIDER PROFILE (Phase 3) ────────────────────────────────
                 Public — a client can view any provider's profile without logging in. */}
 
-            <Route path="/lucid/providers/:id"               element={<GeneralProfile />} />
+            <Route path="/lucid/providers/:id"               element={withFallback(<GeneralProfile />, ProfileSkeleton)} />
             {/* Public provider profile. :id is the provider's Supabase user ID.
                 selected_service.jsx links here after the user picks a provider. */}
 
@@ -336,30 +330,32 @@ function App() {
                 ProtectedRoute checks Supabase session. Redirects to /lucid/signin
                 if the user is not logged in. No role restriction on this group.  */}
 
-            {/* Phase 5 — Dashboard (not in scope yet) */}
-            {/* <Route path="/lucid/dashboard"
-              element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} /> */}
+            {/* Phase 5 — Dashboard */}
+            <Route path="/lucid/dashboard"
+              element={<ProtectedRoute>{withFallback(<DashboardPage />, DashboardSkeleton)}</ProtectedRoute>} />
+            {/* Role-aware: routes to client_dashboard or provider_dashboard based on profile.role. */}
 
-            {/* Phase 6 — Account overview (not in scope yet) */}
-            {/* <Route path="/lucid/account"
-              element={<ProtectedRoute><AccountPage /></ProtectedRoute>} /> */}
+            {/* Phase 6 — Account overview */}
+            <Route path="/lucid/account"
+              element={<ProtectedRoute>{withFallback(<AccountPage />, ProfileSkeleton)}</ProtectedRoute>} />
+            {/* Role-aware hub: client_account_overview or provider_account_overview. */}
 
-            {/* Phase 6 — Account settings (not in scope yet) */}
-            {/* <Route path="/lucid/account/settings"
-              element={<ProtectedRoute><AccountSettings /></ProtectedRoute>} /> */}
+            {/* Phase 6 — Account settings */}
+            <Route path="/lucid/account/settings"
+              element={<ProtectedRoute>{withFallback(<AccountSettings />, AuthFormSkeleton)}</ProtectedRoute>} />
 
             <Route path="/lucid/account/profile"
-              element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
+              element={<ProtectedRoute>{withFallback(<UserProfile />, ProfileSkeleton)}</ProtectedRoute>} />
             {/* Provider's own profile view (what they see, not what clients see).
                 Edit button links to /lucid/account/profile/edit. */}
 
             <Route path="/lucid/account/profile/edit"
-              element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
-            {/* Provider edits their profile. On save, navigates to /lucid/dashboard. */}
+              element={<ProtectedRoute>{withFallback(<EditProfile />, ProfileSkeleton)}</ProtectedRoute>} />
+            {/* Provider edits their profile. On save, navigates to /lucid/account/profile. */}
 
             <Route path="/lucid/account/profile/setup"
-              element={<ProtectedRoute><ProviderProfileSetup /></ProtectedRoute>} />
-            {/* Post-signup onboarding step for providers. Back → /lucid/. Save → /lucid/dashboard. */}
+              element={<ProtectedRoute>{withFallback(<ProviderProfileSetup />, ProfileSkeleton)}</ProtectedRoute>} />
+            {/* Post-signup onboarding step for providers. Skip → /lucid/. Save → /lucid/account/profile. */}
 
             {/* ── BOOKINGS (Phase 4) ────────────────────────────────────
                 Order matters: /bookings/new, /bookings/confirmation,
@@ -367,59 +363,59 @@ function App() {
                 they are not shadowed by the parent route.            */}
 
             <Route path="/lucid/bookings/new/:providerId"
-              element={<ProtectedRoute><BookingRequest /></ProtectedRoute>} />
+              element={<ProtectedRoute>{withFallback(<BookingRequest />, BookingsSkeleton)}</ProtectedRoute>} />
 
             <Route path="/lucid/bookings/confirmation"
-              element={<ProtectedRoute><BookingConfirmation /></ProtectedRoute>} />
+              element={<ProtectedRoute>{withFallback(<BookingConfirmation />, BookingsSkeleton)}</ProtectedRoute>} />
 
             <Route path="/lucid/bookings/history"
-              element={<ProtectedRoute><BookingHistoryPage /></ProtectedRoute>} />
+              element={<ProtectedRoute>{withFallback(<BookingHistoryPage />, BookingsSkeleton)}</ProtectedRoute>} />
 
             <Route path="/lucid/bookings"
-              element={<ProtectedRoute><BookingsPage /></ProtectedRoute>} />
+              element={<ProtectedRoute>{withFallback(<BookingsPage />, BookingsSkeleton)}</ProtectedRoute>} />
 
-            {/* Phase 5 — Favourites (not in scope yet) */}
-            {/* <Route path="/lucid/favourites"
+            {/* Phase 5 — Favourites (client only) */}
+            <Route path="/lucid/favourites"
               element={
                 <ProtectedRoute allowedRoles={['client']}>
-                  <Favourites />
+                  {withFallback(<Favourites />, ServicesSkeleton)}
                 </ProtectedRoute>
-              } /> */}
+              } />
 
-            {/* Phase 7 — Messaging (not in scope yet) */}
-            {/* <Route path="/lucid/messages"
-              element={<ProtectedRoute><MessagesListPage /></ProtectedRoute>} /> */}
+            {/* Phase 7 — Messaging */}
+            <Route path="/lucid/messages"
+              element={<ProtectedRoute>{withFallback(<MessagesListPage />, MessagesListSkeleton)}</ProtectedRoute>} />
 
-            {/* <Route path="/lucid/messages/:id"
-              element={<ProtectedRoute><ChatMessagingPage /></ProtectedRoute>} /> */}
+            <Route path="/lucid/messages/:id"
+              element={<ProtectedRoute>{withFallback(<ChatMessagingPage />, ChatSkeleton)}</ProtectedRoute>} />
 
-            {/* Phase 6 — Notifications (not in scope yet) */}
-            {/* <Route path="/lucid/notifications"
-              element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} /> */}
+            {/* Phase 6 — Notifications */}
+            <Route path="/lucid/notifications"
+              element={<ProtectedRoute>{withFallback(<NotificationsPage />, BookingsSkeleton)}</ProtectedRoute>} />
 
-            {/* <Route path="/lucid/notifications/settings"
-              element={<ProtectedRoute><NotificationSettings /></ProtectedRoute>} /> */}
+            <Route path="/lucid/notifications/settings"
+              element={<ProtectedRoute>{withFallback(<NotificationSettings />, AuthFormSkeleton)}</ProtectedRoute>} />
 
 
             {/* ── PROTECTED — SERVICE_PROVIDER ONLY ─────────────────────────
                 ProtectedRoute checks session AND role.
-                Clients hitting this route are redirected to /lucid/ (home). */}
+                Clients hitting this route are bounced to /lucid/ with a toast. */}
 
-            {/* Phase 5 — Earnings (not in scope yet) */}
-            {/* <Route path="/lucid/earnings"
+            {/* Phase 5 — Earnings (provider only) */}
+            <Route path="/lucid/earnings"
               element={
                 <ProtectedRoute allowedRoles={['service_provider']}>
-                  <EarningsPayments />
+                  {withFallback(<EarningsPayments />, DashboardSkeleton)}
                 </ProtectedRoute>
-              } /> */}
+              } />
 
-            {/* Phase 5 — Transactions (not in scope yet) */}
-            {/* <Route path="/lucid/transactions"
+            {/* Phase 5 — Transactions (provider only) */}
+            <Route path="/lucid/transactions"
               element={
                 <ProtectedRoute allowedRoles={['service_provider']}>
-                  <TransactionsPage />
+                  {withFallback(<TransactionsPage />, BookingsSkeleton)}
                 </ProtectedRoute>
-              } /> */}
+              } />
 
 
             {/* ── CATCH-ALL ─────────────────────────────────────────────────
@@ -429,7 +425,6 @@ function App() {
             <Route path="*" element={<Navigate to="/lucid/" replace />} />
 
           </Routes>
-          </Suspense>
         </Layout>
       </Router>
       </LocationProvider>

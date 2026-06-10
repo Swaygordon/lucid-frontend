@@ -453,6 +453,7 @@ const BookingRequest = () => {
           <div className="flex items-center gap-4">
             <button
               onClick={handleBackClick}
+              aria-label="Go back"
               className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors"
             >
               <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />

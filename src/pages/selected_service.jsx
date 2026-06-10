@@ -112,18 +112,18 @@ const FilterSection = React.memo(({ onFilterChange, activeFilters }) => {
 
   return (
     <motion.div
-      className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow-sm p-4 mb-6"
+      className="bg-white dark:bg-[#1a1f2e] rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-4 mb-6"
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
+        <h2 className="font-semibold text-gray-900 dark:text-slate-100 flex items-center gap-2">
           <Filter className="w-5 h-5" />
           Filters
-        </h3>
+        </h2>
         <button
           onClick={() => setShowFilters(!showFilters)}
-          className="text-blue-600 hover:text-blue-700 font-medium text-sm"
+          className="text-blue-700 dark:text-blue-400 hover:text-blue-800 font-medium text-sm"
         >
           {showFilters ? 'Hide' : 'Show'} Filters
         </button>

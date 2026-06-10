@@ -84,7 +84,7 @@ const Signin = () => {
         .eq('user_id', data.user.id)
         .single();
       const setupDone = !!providerProfile?.first_name;
-      navigate(setupDone ? '/lucid/account/profile' : '/lucid/account/profile/setup', { replace: true });
+      navigate(setupDone ? '/lucid/dashboard' : '/lucid/account/profile/setup', { replace: true });
     } else {
       navigate('/lucid/', { replace: true });
     }

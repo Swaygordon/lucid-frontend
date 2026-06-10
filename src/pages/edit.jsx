@@ -11,6 +11,8 @@ import { ALL_CATEGORIES } from '../data/categories';
 import { ImageUploadModal } from "../components/shared";
 import { motion } from "framer-motion";
 import { Button, Input } from '../components/ui';
+import { onActivateKey } from '../utils/a11y';
+import { isProviderProfileComplete, PROFILE_SETUP_KEY } from './provider_profile_setup';
 
 
 // ============================================
@@ -212,8 +214,12 @@ const CounterInput = memo(({ label, value, onChange, icon: Icon, min = 0 }) => (
 
 const DayCard = memo(({ selected, label, description, onClick }) => (
   <div
+    role="button"
+    tabIndex={0}
+    aria-pressed={selected}
     onClick={onClick}
-    className={`cursor-pointer rounded-xl p-5 border-2 transition-all duration-300 transform hover:scale-102 ${
+    onKeyDown={onActivateKey(onClick)}
+    className={`cursor-pointer rounded-xl p-5 border-2 transition-all duration-300 transform hover:scale-102 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
       selected
         ? 'border-blue-600 bg-blue-50 shadow-lg scale-105'
         : 'border-gray-300 dark:border-[#2d3748] bg-white dark:bg-[#1a1f2e] hover:border-blue-400 hover:shadow-md'
@@ -390,8 +396,13 @@ const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustom
                 {daysOfWeek.map(day => (
                   <div
                     key={day}
+                    role="checkbox"
+                    tabIndex={0}
+                    aria-checked={profile.customDays[day].selected}
+                    aria-label={dayLabels[day]}
                     onClick={() => onCustomDayChange(day, 'selected', !profile.customDays[day].selected)}
-                    className={`cursor-pointer rounded-lg p-3 border-2 transition-all ${
+                    onKeyDown={onActivateKey(() => onCustomDayChange(day, 'selected', !profile.customDays[day].selected))}
+                    className={`cursor-pointer rounded-lg p-3 border-2 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 ${
                       profile.customDays[day].selected
                         ? 'border-blue-600 bg-blue-100 shadow-md'
                         : 'border-gray-300 dark:border-[#2d3748] bg-white dark:bg-[#252b3b] hover:border-blue-400'
@@ -579,9 +590,10 @@ const EditProfile = () => {
         hero_url: heroUrl,
         total_completed_jobs: formMethods.profile.totalCompletedJobs || 0,
         rating_average: formMethods.profile.ratingAverage || 0,
-        is_profile_complete: true,
         updated_at: new Date().toISOString()
       };
+      // Discoverability flag derived from the same completeness rule the banner uses.
+      profileData.is_profile_complete = isProviderProfileComplete(profileData);
 
       const { error } = await supabase
         .from('provider_profiles')
@@ -589,6 +601,7 @@ const EditProfile = () => {
 
       if (error) throw error;
 
+      localStorage.setItem(PROFILE_SETUP_KEY, profileData.is_profile_complete ? 'true' : 'pending');
       showNotification('Profile saved successfully!', 'success');
       navigate('/lucid/account/profile', { replace: true });
     } catch (error) {
@@ -940,8 +953,12 @@ const EditProfile = () => {
                 <h3 className="text-gray-900 dark:text-slate-100 mb-2 text-base font-semibold">Portfolio Projects</h3>
                 <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Upload pictures of previous work done</p>
                 <div
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Upload portfolio images"
                   onClick={() => openUpload('portfolio')}
-                  className="border-2 border-dashed border-gray-300 dark:border-[#2d3748] rounded-lg p-10 bg-white dark:bg-[#252b3b] hover:border-blue-600 transition-colors flex justify-center cursor-pointer"
+                  onKeyDown={onActivateKey(() => openUpload('portfolio'))}
+                  className="border-2 border-dashed border-gray-300 dark:border-[#2d3748] rounded-lg p-10 bg-white dark:bg-[#252b3b] hover:border-blue-600 transition-colors flex justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
                 >
                   <SquarePlus size={38} className="text-gray-400 hover:text-blue-600 transition-colors" />
                 </div>

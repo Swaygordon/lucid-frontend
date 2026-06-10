@@ -70,7 +70,7 @@ const staggerContainer = {
 // Hero Section
 const HeroSection = memo(({ heroUrl }) => (
   <motion.div
-    className="relative overflow-hidden"
+    className="relative max-h-64 lg:min-h-72 h-60 overflow-hidden group"
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     transition={{ duration: 0.6 }}
@@ -109,7 +109,7 @@ const ProfileAvatar = memo(({ avatarUrl, name }) => (
 // Skill Badge
 const SkillBadge = memo(({ skill, index }) => (
   <motion.span
-    className="px-4 py-2 bg-blue-50 dark:bg-primary/10 text-blue-600 rounded-lg text-sm font-medium"
+    className="px-4 py-2 bg-blue-50 dark:bg-primary/10 text-blue-600 rounded-full ring-1 ring-blue-200/70 dark:ring-blue-800/40 text-sm font-medium"
     initial={{ opacity: 0, scale: 0.8 }}
     animate={{ opacity: 1, scale: 1 }}
     transition={{ delay: index * 0.1 }}
@@ -122,7 +122,7 @@ const SkillBadge = memo(({ skill, index }) => (
 // Info Card
 const InfoCard = memo(({ title, children, icon: Icon, delay = 0 }) => (
   <motion.div
-    className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow p-6 hover:shadow-xl transition-shadow duration-200"
+    className="bg-white dark:bg-[#1a1f2e] rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-sm p-6 hover:shadow-lg transition-shadow duration-200"
     variants={scaleIn}
     initial="hidden"
     whileInView="visible"
@@ -190,9 +190,9 @@ const InfoItem = memo(({ icon: Icon, text }) => (
 // Action Button
 const ActionButton = memo(({ icon: Icon, text, onClick, variant = 'primary' }) => (
   <motion.button
-    className={`py-4 rounded-lg flex items-center justify-center space-x-2 transition-colors font-semibold ${
+    className={`py-4 rounded-xl flex items-center justify-center space-x-2 transition-all font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0f1117] ${
       variant === 'primary'
-        ? 'bg-blue-600 text-white hover:bg-blue-700'
+        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-glow-blue'
         : 'bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 hover:bg-blue-50 dark:hover:bg-primary/10'
     }`}
     whileHover={{ scale: 1.02 }}
@@ -553,14 +553,14 @@ const GeneralProfile = () => {
       >
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <button onClick={handleBack} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
+            <button onClick={handleBack} aria-label="Go back" className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
               <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />
             </button>
             <div className="flex gap-2">
-              <button onClick={handleShare} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
+              <button onClick={handleShare} aria-label="Share profile" className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
                 <Share2 className="w-5 h-5 text-gray-700 dark:text-slate-300" />
               </button>
-              <button onClick={toggleFavoriteHandler} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
+              <button onClick={toggleFavoriteHandler} aria-label={isFavorite ? 'Remove from favourites' : 'Add to favourites'} aria-pressed={isFavorite} className="p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b] rounded-lg transition-colors">
                 <Heart className={`w-5 h-5 ${isFavorite ? 'fill-red-500 text-red-500' : 'text-gray-700 dark:text-slate-300'}`} />
               </button>
             </div>
@@ -574,7 +574,7 @@ const GeneralProfile = () => {
       {/* Profile Card */}
       <div className="relative z-10 max-w-7xl mx-auto px-4 -mt-14">
         <motion.div
-          className="bg-white dark:bg-[#1a1f2e] rounded-lg shadow-lg p-6"
+          className="bg-white dark:bg-[#1a1f2e] rounded-2xl ring-1 ring-black/5 dark:ring-white/10 shadow-lg p-6"
           initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}

@@ -2,6 +2,20 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+/* ── Typography ─────────────────────────────────────────────────────────────── */
+/* Plus Jakarta Sans across the whole UI (body + headings).                     */
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4 {
+  font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
 /* ── Page background: subtle dot grid ─────────────────────────────────────── */
 /* SVG data URL lets the browser cache this as a GPU image texture.           */
 /* radial-gradient() on body was recalculated by the CPU on every scroll frame */

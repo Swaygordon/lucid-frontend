@@ -9,8 +9,11 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ALL_CATEGORIES } from '../data/categories';
 import Section1 from "./home_sections.jsx";
 import LocationPicker from '../components/LocationPicker.jsx';
+import SearchAutocomplete from '../components/SearchAutocomplete.jsx';
 import BackToTop from '../components/back_the_top_btn';
 import { useTheme } from '../contexts/ThemeContext';
+import { resolveSearch } from '../utils/search.js';
+import { onActivateKey } from '../utils/a11y';
 
 // Animation variants
 const fadeInUp = {
@@ -49,12 +52,16 @@ const ServiceIcon = memo(
         whileHover={{ scale: 1.05 }}
       >
         <div
-          className="relative w-16 h-16 cursor-pointer"
+          role="button"
+          tabIndex={0}
+          aria-label={name}
+          className="relative w-16 h-16 cursor-pointer rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
           onClick={() => navigate(to)}
+          onKeyDown={onActivateKey(() => navigate(to))}
         >
           <div className="absolute top-0 left-6 right-2 w-12 h-12 rounded-lg bg-blue-300" />
           <motion.div
-            className="absolute top-3 left-3 w-12 h-12 rounded-lg flex items-center justify-center bg-blue-700 hover:bg-blue-300"
+            className="absolute top-3 left-3 w-12 h-12 rounded-lg flex items-center justify-center bg-blue-700 hover:bg-blue-600"
             whileHover={{ rotate: 5, scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
@@ -70,30 +77,33 @@ const ServiceIcon = memo(
 );
 
 // Search Bar Component
-const SearchBar = ({ onSearch, isLoading }) => {
+const SearchBar = ({ onSearch, onSelect, isLoading }) => {
   const [searchTerm, setSearchTerm] = useState('');
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter') onSearch(searchTerm);
-  };
 
   return (
     <motion.div
-      className="mt-8 sm:mt-12 flex justify-center px-4"
+      className="relative z-30 mt-8 sm:mt-12 flex justify-center px-4"
       variants={fadeInUp}
       initial={false}
       animate="visible"
       transition={{ duration: 0.6, delay: 0.4 }}
     >
-      <div className="flex w-full max-w-2xl bg-white dark:bg-white/10 dark:backdrop-blur-md border border-gray-300 dark:border-white/20 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-200">
-        <input
-          type="text"
+      <div className="relative flex w-full max-w-2xl bg-white dark:bg-white/10 dark:backdrop-blur-md border border-gray-300 dark:border-white/20 rounded-xl shadow-md hover:shadow-xl transition-shadow duration-200 focus-within:ring-2 focus-within:ring-blue-500">
+        <SearchAutocomplete
           value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="What service do you need?"
-          className="flex-1 px-5 py-3 text-sm sm:text-base text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 bg-transparent focus:outline-none rounded-l-xl"
-        />
+          onChange={setSearchTerm}
+          onSelect={onSelect}
+          onSubmit={onSearch}
+        >
+          {(inputProps) => (
+            <input
+              {...inputProps}
+              type="text"
+              placeholder="What service do you need?"
+              className="w-full px-5 py-3 text-sm sm:text-base text-gray-800 dark:text-slate-200 placeholder-gray-400 dark:placeholder-slate-500 bg-transparent focus:outline-none rounded-l-xl"
+            />
+          )}
+        </SearchAutocomplete>
         {/* Divider + inline location picker */}
         <div className="flex items-center border-l border-gray-200 dark:border-[#2d3748]">
           <LocationPicker inline />
@@ -291,15 +301,19 @@ function Home() {
 
   const handleSearch = (searchTerm) => {
     if (!searchTerm.trim()) return;
-    navigate(`/lucid/search?q=${encodeURIComponent(searchTerm.trim())}`);
+    // Try to resolve directly to a category/service page before falling back
+    // to the Services search-handoff route.
+    const resolved = resolveSearch(searchTerm);
+    navigate(resolved ?? `/lucid/search?q=${encodeURIComponent(searchTerm.trim())}`);
   };
+
+  const handleSelectSuggestion = (item) => navigate(item.to);
 
   return (
     <>
-      <main>
-      <div className="flex flex-col lg:min-h-screen bg-white dark:bg-[#0f1117]">
+      <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1117]">
         <div
-          className="flex flex-col items-center justify-center flex-1 w-full relative z-10 transition-colors duration-700"
+          className="flex flex-col items-center justify-start lg:justify-center flex-1 w-full relative z-10 transition-colors duration-700 pt-8 lg:pt-0"
           style={{
             background: isDark ? [
               'radial-gradient(ellipse at 62% 18%, rgba(29, 78, 216, 0.55) 0%, transparent 52%)',
@@ -339,18 +353,20 @@ function Home() {
                   style={{ willChange: 'transform, opacity' }}
                   className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-64 bg-blue-700/25 blur-[80px] rounded-full"
                 />
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)',
-                    backgroundSize: '28px 28px',
-                  }}
-                />
               </>
             )}
+
+            {/* Dot grid — both themes (white dots on dark, slate dots on light) */}
+            <div
+              className="absolute inset-0"
+              style={{
+                backgroundImage: `radial-gradient(circle, ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.08)'} 1px, transparent 1px)`,
+                backgroundSize: '28px 28px',
+              }}
+            />
           </div>
 
-          <div className="relative z-10 w-full text-center px-4 sm:px-6 py-16 sm:py-20">
+          <div className="relative z-20 w-full text-center px-4 sm:px-6 py-16 sm:py-20">
             <div className="w-full max-w-3xl mx-auto">
               {/* Cycling word badge */}
               <CyclingBadge />
@@ -383,7 +399,7 @@ function Home() {
               </motion.p>
 
               {/* Search Bar */}
-              <SearchBar onSearch={handleSearch} isLoading={searchLoading} />
+              <SearchBar onSearch={handleSearch} onSelect={handleSelectSuggestion} isLoading={searchLoading} />
 
               {/* Desktop/Tablet Category Grid */}
               <div className="hidden md:block mt-14 pb-6 w-full">
@@ -439,7 +455,6 @@ function Home() {
 
       <ProviderCTA />
       <Section1 />
-      </main>
       <BackToTop />
     </>
   );

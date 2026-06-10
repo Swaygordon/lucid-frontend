@@ -6,6 +6,11 @@ import Review from '../assets/Ratings.webp';
 import Book from '../assets/book.webp';
 import InstantQuotes from '../assets/instant_qoutes.webp';
 
+import SearchDark from '../assets/search_options-black.webp';
+import ReviewDark from '../assets/Ratings-black.webp';
+import BookDark from '../assets/book-black.webp';
+import InstantQuotesDark from '../assets/instant_qoutes-black.webp';
+
 // Lazy load heavy components
 const Carousel = lazy(() => import('../components/carousal_slider.jsx'));
 
@@ -38,12 +43,12 @@ const staggerContainer = {
 // Memoized Icon Wrapper Component
 const IconWrapper = memo(({ children }) => (
   <motion.div 
-    className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 rounded-full p-1"
+    className="flex items-center justify-center w-20 h-20 bg-gradient-to-br from-blue-400 via-blue-600 to-indigo-600 rounded-full p-1"
     whileHover={{ rotate: 360, scale: 1.1 }}
     transition={{ duration: 0.6 }}
   >
     <div className="w-full h-full bg-white rounded-full flex items-center justify-center">
-      <div className="bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500 p-2 rounded-full">
+      <div className="bg-gradient-to-br from-blue-400 via-blue-600 to-indigo-600 p-2 rounded-full">
         {children}
       </div>
     </div>
@@ -53,7 +58,7 @@ const IconWrapper = memo(({ children }) => (
 // Memoized Feature Card Component
 const FeatureCard = memo(({ icon: Icon, title, description, index }) => (
   <motion.div
-    className="flex flex-col rounded-3xl w-full bg-white dark:bg-[#1a1f2e] shadow-2xl hover:shadow-[0_25px_50px_-12px_rgba(0,0,0,0.25)] transition-shadow duration-200"
+    className="flex flex-col rounded-3xl w-full bg-white dark:bg-[#1a1f2e] ring-1 ring-black/5 dark:ring-white/10 shadow-md hover:shadow-lg transition-shadow duration-200"
     variants={fadeInUp}
     initial="hidden"
     whileInView="visible"
@@ -74,7 +79,7 @@ const FeatureCard = memo(({ icon: Icon, title, description, index }) => (
 // Memoized Platform Feature Card
 const PlatformFeatureCard = memo(({ title, description, index }) => (
   <motion.div 
-    className="flex flex-col w-full bg-white dark:bg-[#1a1f2e] shadow-2xl rounded-3xl hover:shadow-xl transition-shadow"
+    className="flex flex-col w-full bg-white dark:bg-[#1a1f2e] ring-1 ring-black/5 dark:ring-white/10 shadow-sm rounded-3xl hover:shadow-md transition-shadow"
     variants={scaleIn}
     initial="hidden"
     whileInView="visible"
@@ -101,15 +106,21 @@ const HowItWorksStep = memo(({ step, index }) => (
     viewport={{ once: true, margin: "-100px" }}
     transition={{ duration: 0.5, delay: index * 0.15 }}
   >
-    <motion.div 
-      className="w-full h-44 mt-2 bg-blue-700 rounded-2xl transition-all duration-300 overflow-hidden flex items-center justify-center flex-shrink-0"
+    <motion.div
+      className="w-full h-44 mt-2 bg-blue-700 dark:bg-[#1a1f2e] rounded-2xl transition-all duration-300 overflow-hidden flex items-center justify-center flex-shrink-0"
       whileHover={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)" }}
       transition={{ duration: 0.3 }}
     >
       <img
         src={step.imageUrl}
         alt={step.alt}
-        className="object-cover w-full h-full"
+        className="object-cover w-full h-full dark:hidden"
+        loading="lazy"
+      />
+      <img
+        src={step.darkImageUrl}
+        alt={step.alt}
+        className="object-cover w-full h-full hidden dark:block"
         loading="lazy"
       />
     </motion.div>
@@ -234,36 +245,40 @@ const PLATFORM_FEATURES_DATA = [
 const STEPS_DATA = [
   {
     id: 1,
-    alt: "pic",
+    alt: "Search for a service",
     num: "1",
     title: "Search",
     description: "Search for your desired service or browse through our diverse categories.",
-    imageUrl: Search
+    imageUrl: Search,
+    darkImageUrl: SearchDark,
   },
   {
     id: 2,
-    alt: "pic",
+    alt: "Get instant quotes",
     num: "2",
     title: "Get Instant Quotes",
     description: "Receive offers from local workers within minutes. Compare prices, reviews, and availability.",
-    imageUrl: InstantQuotes
+    imageUrl: InstantQuotes,
+    darkImageUrl: InstantQuotesDark,
   },
   {
     id: 3,
-    alt: "pic",
+    alt: "Choose and book a provider",
     num: "3",
     title: "Choose & Book",
     description: "Select the best worker for your task based on reviews, ratings, and price. Book instantly through our secure platform.",
-    imageUrl: Book
+    imageUrl: Book,
+    darkImageUrl: BookDark,
   },
   {
     id: 4,
-    alt: "pic",
+    alt: "Leave feedback and review",
     num: "4",
     title: "Feedback & Review",
     description: "Leave feedback to help future customers and build our trusted community network.",
-    imageUrl: Review
-  }
+    imageUrl: Review,
+    darkImageUrl: ReviewDark,
+  },
 ];
 
 const FAQ_DATA = [
@@ -296,7 +311,7 @@ const FAQ_DATA = [
 
 const Section1 = () => {
   return (
-    <div className="flex flex-col min-h-screen bg-gray-300 dark:bg-[#0f1117]">
+    <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1117]">
       {/* Top 3 Feature Cards */}
       <motion.div 
         className="max-w-[1240px] mx-auto grid md:grid-cols-3 gap-8 mt-16 px-6 mb-6 py-4"

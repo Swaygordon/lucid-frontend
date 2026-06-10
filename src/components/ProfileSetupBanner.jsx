@@ -3,7 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { AlertCircle } from 'lucide-react';
 import { useRole } from '../hooks/useRole';
 import { useNotification } from '../contexts/NotificationContext';
-import { PROFILE_SETUP_KEY } from '../pages/provider_profile_setup';
+import { supabase } from '../lib/supabaseClient';
+import { PROFILE_SETUP_KEY, markProfileComplete, isProviderProfileComplete } from '../pages/provider_profile_setup';
 
 // Pages where this banner should never render
 const EXCLUDED_PATHS = [
@@ -19,18 +20,47 @@ const ProfileSetupBanner = () => {
   const { pathname } = useLocation();
   const { showNotification } = useNotification();
 
-  // Re-read localStorage on every route change so banner hides as soon as setup completes
-  const [isComplete, setIsComplete] = useState(
-    () => localStorage.getItem(PROFILE_SETUP_KEY) === 'true'
-  );
+  const flagComplete = localStorage.getItem(PROFILE_SETUP_KEY) === 'true';
+  const [isComplete, setIsComplete] = useState(flagComplete);
+  // `verified` gates rendering/toast until completeness is confirmed (flag OR DB),
+  // so a provider whose profile is complete in Supabase never sees a wrong flash.
+  const [verified, setVerified] = useState(flagComplete);
 
+  // Re-read localStorage on every route change so banner hides as soon as setup completes
   useEffect(() => {
-    setIsComplete(localStorage.getItem(PROFILE_SETUP_KEY) === 'true');
+    if (localStorage.getItem(PROFILE_SETUP_KEY) === 'true') {
+      setIsComplete(true);
+      setVerified(true);
+    }
   }, [pathname]);
 
-  // Show one toast per browser session — fires when role resolves and profile is incomplete
+  // Authoritative check: the localStorage flag is only set by the setup flow, so a
+  // provider who completed their profile another way (or on another device) still
+  // has first_name in provider_profiles. Mirror sign_in's check and self-heal the flag.
   useEffect(() => {
     if (role !== 'service_provider' || isComplete) return;
+    let cancelled = false;
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled || !session?.user) return;
+      const { data } = await supabase
+        .from('provider_profiles')
+        .select('first_name, last_name, occupation, location, categories, selected_days, weekdays_time, weekend_time, custom_days')
+        .eq('user_id', session.user.id)
+        .single();
+      if (cancelled) return;
+      if (isProviderProfileComplete(data)) {
+        markProfileComplete();
+        setIsComplete(true);
+      }
+      setVerified(true);
+    })();
+    return () => { cancelled = true; };
+  }, [role, isComplete]);
+
+  // Show one toast per browser session — only once completeness is verified as incomplete
+  useEffect(() => {
+    if (role !== 'service_provider' || isComplete || !verified) return;
     if (sessionStorage.getItem('lucid_profile_reminder_shown')) return;
     sessionStorage.setItem('lucid_profile_reminder_shown', 'true');
     showNotification(
@@ -38,11 +68,12 @@ const ProfileSetupBanner = () => {
       'warning',
       6000
     );
-  }, [role, isComplete]);
+  }, [role, isComplete, verified]);
 
   if (
     role !== 'service_provider' ||
     isComplete ||
+    !verified ||
     EXCLUDED_PATHS.some(p => pathname.startsWith(p))
   ) return null;
 
