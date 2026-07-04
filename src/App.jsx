@@ -217,6 +217,7 @@ function Layout({ children }) {
     '/lucid/account/profile/edit',    // EditProfile (Phase 3)
     '/lucid/account/profile/setup',   // ProviderProfileSetup (Phase 3)
     '/lucid/help',                    // Help & Support (public)
+    '/lucid/account/client-profile',          // ClientProfile (Phase 5+)
     // '/lucid/admin',                   // Admin Dashboard (Phase 5+, gitignored)
   ];
 
@@ -397,10 +398,10 @@ function App() {
               } />
 
             {/* Phase 7 — Messaging */}
-            <Route path="/lucid/messages"
-              element={<ProtectedRoute>{withFallback(<MessagesListPage />, MessagesListSkeleton)}</ProtectedRoute>} />
+           {/* <Route path="/lucid/messages"
+              element={<ProtectedRoute>{withFallback(<MessagesListPage />, MessagesListSkeleton)}</ProtectedRoute>} />*/}
 
-            <Route path="/lucid/messages/:id"
+            <Route path="/lucid/messages"
               element={<ProtectedRoute>{withFallback(<ChatMessagingPage />, ChatSkeleton)}</ProtectedRoute>} />
 
             {/* Phase 6 — Notifications */}

@@ -298,14 +298,19 @@ function Navbar() {
             ))}
           </div>
 
-          {/* Notification Bell */}
-          <Link to="/lucid/notifications" className="relative ml-2 hidden lg:block">
-            <Bell className="w-5 h-5 text-gray-600 dark:text-slate-300" />
-            {notificationCount > 0 && (
-              <span className="absolute -top-2 -right-2 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full min-w-[18px] text-center">
-                {notificationCount > 9 ? '9+' : notificationCount}
-              </span>
-            )}
+          {/* Desktop Notifications */}
+          <Link
+            to="/lucid/notifications"
+            className="ml-2 hidden lg:block px-4 py-2 text-gray-700 dark:text-slate-300 hover:text-secondary font-medium transition-colors rounded-lg hover:bg-secondary-50 dark:hover:bg-secondary/10 whitespace-nowrap"
+          >
+            <span className="relative inline-block">
+              Notifications
+              {notificationCount > 0 && (
+                <span className="absolute -top-2 -right-4 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full min-w-[18px] text-center leading-none">
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </span>
+              )}
+            </span>
           </Link>
 
           {/* User Profile / Sign In */}
