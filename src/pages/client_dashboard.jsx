@@ -334,7 +334,7 @@ const ClientDashboard = () => {
   // The `time` field should use a relative-time formatter (e.g. date-fns formatDistanceToNow).
   const recentActivities = [
     { icon: CheckCircle, title: 'Service Completed', description: 'Plumbing repair at Osu completed successfully', time: '2 hours ago', actionLabel: 'Leave Review', to: '/lucid/bookings' },
-    { icon: MessageSquare, title: 'New Message', description: 'Gabriel replied to your inquiry', time: '4 hours ago', actionLabel: 'View Message', to: '/lucid/messages' },
+   
     { icon: Calendar, title: 'Booking Confirmed', description: 'Electrical installation scheduled for tomorrow', time: '1 day ago', actionLabel: null, to: '/lucid/bookings' },
     { icon: Star, title: 'Review Posted', description: 'Your review for John Mensah has been published', time: '2 days ago', actionLabel: null, to: '/lucid/providers/me' }
   ];
@@ -344,7 +344,7 @@ const ClientDashboard = () => {
     { icon: Calendar, label: 'Bookings', to: '/lucid/bookings', badgeCount: unreadBookings },
     { icon: Heart, label: 'Favourites', to: '/lucid/favourites' },
     { icon: User, label: 'Account', to: '/lucid/account' },
-    { icon: MessageSquare, label: 'Messages', to: '/lucid/messages', badgeCount: unreadMessages }
+   
   ];
 
   return (

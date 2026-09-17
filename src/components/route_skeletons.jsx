@@ -190,31 +190,7 @@ export function DashboardSkeleton() {
   );
 }
 
-export function MessagesListSkeleton() {
-  return (
-    <div className={`${baseShell} bg-gray-50`}>
-      <div className="bg-white dark:bg-[#1a1f2e] border-b dark:border-[#1e293b] px-6 py-5 flex items-center gap-4">
-        <div className={`w-8 h-8 rounded-lg ${block}`} />
-        <div className={`h-6 w-32 ${block} rounded-lg`} />
-      </div>
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 py-4 space-y-2">
-        <div className={`h-11 w-full ${block} rounded-lg mb-4`} />
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="bg-white dark:bg-[#1a1f2e] rounded-xl border dark:border-[#1e293b] p-4 flex gap-3 items-center">
-            <div className={`w-12 h-12 rounded-full ${block} flex-shrink-0`} />
-            <div className="flex-1 space-y-2">
-              <div className="flex justify-between">
-                <div className={`h-4 w-32 ${block}`} />
-                <div className={`h-3 w-12 ${block}`} />
-              </div>
-              <div className={`h-3 w-2/3 ${block}`} />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+
 
 export function ChatSkeleton() {
   return (

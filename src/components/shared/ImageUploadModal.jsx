@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Upload } from 'lucide-react';
 import { Modal } from '../ui';
@@ -7,21 +7,36 @@ import { Modal } from '../ui';
  * ImageUploadModal Component
  * @param {boolean} isOpen - Controls modal visibility
  * @param {function} onClose - Called when modal is closed
- * @param {function} onUpload - Called when file is successfully uploaded
+ * @param {function} onUpload - Async function(file, onProgress) that performs the real upload.
+ *                              Must resolve on success or throw on failure.
  * @param {string} title - Modal title
- * @returns {JSX.Element}
+ * @param {string} accept - Accepted file types
  */
-export const ImageUploadModal = ({ 
-  isOpen, 
-  onClose, 
-  onUpload, 
+export const ImageUploadModal = ({
+  isOpen,
+  onClose,
+  onUpload,
   title = "Upload Image",
-  accept = ".png,.jpg,.jpeg,.webp" 
+  accept = ".png,.jpg,.jpeg,.webp"
 }) => {
   const [dragActive, setDragActive] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState(null);
+
+  // Reset state every time the modal opens.
+  // This was the #1 cause of the duplicate-key warning:
+  // reopening the modal kept the previous `selectedFile` and re-uploaded it.
+  useEffect(() => {
+    if (isOpen) {
+      setDragActive(false);
+      setSelectedFile(null);
+      setUploadProgress(0);
+      setIsUploading(false);
+      setErrorMsg(null);
+    }
+  }, [isOpen]);
 
   const handleDrag = (e) => {
     e.preventDefault();
@@ -37,43 +52,51 @@ export const ImageUploadModal = ({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       setSelectedFile(e.dataTransfer.files[0]);
+      setErrorMsg(null);
     }
   };
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
+      setErrorMsg(null);
     }
   };
 
-  const handleSave = () => {
-    if (!selectedFile) return;
-    
+  const handleSave = async () => {
+    if (!selectedFile || isUploading) return;
+
     setIsUploading(true);
     setUploadProgress(0);
-    
-    const interval = setInterval(() => {
-      setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(() => {
-            onUpload(selectedFile);
-            handleCancel();
-          }, 500);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
+    setErrorMsg(null);
+
+    try {
+      // Call the parent uploader, which performs the ACTUAL upload.
+      // The parent receives an onProgress callback to report progress.
+      await onUpload(selectedFile, (p) => setUploadProgress(p));
+      setUploadProgress(100);
+      // Small delay so the user can see 100%
+      setTimeout(() => {
+        handleCancel(true);
+      }, 300);
+    } catch (err) {
+      console.error('Upload failed:', err);
+      setErrorMsg(err?.message || 'Upload failed. Please try again.');
+      setIsUploading(false);
+      setUploadProgress(0);
+    }
   };
 
-  const handleCancel = () => {
+  // `force` allows closing during the brief 100% delay after a successful upload
+  const handleCancel = (force = false) => {
+    if (isUploading && !force) return;
     setSelectedFile(null);
     setUploadProgress(0);
     setIsUploading(false);
+    setErrorMsg(null);
+    setDragActive(false);
     onClose();
   };
 
@@ -99,9 +122,9 @@ export const ImageUploadModal = ({
             >
               <Upload className="w-16 h-16 text-blue-600 mx-auto mb-4" />
             </motion.div>
-            
+
             <label htmlFor="file-upload" className="cursor-pointer">
-              <motion.div 
+              <motion.div
                 className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors mb-4"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -118,9 +141,9 @@ export const ImageUploadModal = ({
             </label>
 
             <p className="text-gray-600 dark:text-slate-400 text-lg mb-2">Drop a file here</p>
-            
-            {selectedFile && !isUploading && (
-              <motion.p 
+
+            {selectedFile && (
+              <motion.p
                 className="text-green-600 font-semibold mt-4"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -128,40 +151,36 @@ export const ImageUploadModal = ({
                 Selected: {selectedFile.name}
               </motion.p>
             )}
+
+            {errorMsg && (
+              <p className="text-red-600 font-semibold mt-4">{errorMsg}</p>
+            )}
           </>
         ) : (
-          <motion.div 
-            className="w-full max-w-md mx-auto"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
+          <div className="w-full max-w-md mx-auto">
             <div className="flex items-center space-x-4">
               <div className="flex-1 bg-gray-300 dark:bg-[#252b3b] rounded-full h-3 overflow-hidden">
-                <motion.div
-                  className="bg-blue-600 h-3 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ width: `${uploadProgress}%` }}
-                  transition={{ duration: 0.3 }}
+                <div
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-200"
+                  style={{ width: `${uploadProgress}%` }}
                 />
               </div>
               <span className="text-xl font-semibold text-gray-700 dark:text-slate-300 min-w-[3rem]">
                 {uploadProgress}%
               </span>
             </div>
-          </motion.div>
+            <p className="text-sm text-gray-500 dark:text-slate-500 mt-4">
+              Uploading... please wait
+            </p>
+          </div>
         )}
-        
+
         <p className="text-sm text-gray-500 dark:text-slate-500 mt-6">
           <span className="text-red-500">*</span> Files supported {accept}
         </p>
       </motion.div>
 
-      <motion.div 
-        className="flex items-center justify-center space-x-4 mt-8"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-      >
+      <div className="flex items-center justify-center space-x-4 mt-8">
         <motion.button
           onClick={handleSave}
           disabled={!selectedFile || isUploading}
@@ -173,10 +192,10 @@ export const ImageUploadModal = ({
           whileHover={selectedFile && !isUploading ? { scale: 1.05 } : {}}
           whileTap={selectedFile && !isUploading ? { scale: 0.95 } : {}}
         >
-          Save
+          {isUploading ? 'Uploading…' : 'Save'}
         </motion.button>
         <motion.button
-          onClick={handleCancel}
+          onClick={() => handleCancel()}
           disabled={isUploading}
           className={`px-12 py-3 rounded-lg font-semibold border-2 transition-colors ${
             isUploading
@@ -188,7 +207,7 @@ export const ImageUploadModal = ({
         >
           Cancel
         </motion.button>
-      </motion.div>
+      </div>
     </Modal>
   );
 };

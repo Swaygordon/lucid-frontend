@@ -81,7 +81,7 @@ const ClientProfile = () => {
         return;
       }
 
-      // Get client profile from profiles table
+      // Base profile
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
@@ -90,7 +90,33 @@ const ClientProfile = () => {
 
       if (profileError) throw profileError;
 
-      // Get client stats (bookings)
+      // Client-specific profile (may or may not exist yet)
+      const { data: clientData } = await supabase
+        .from('client_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      // Merge: client_profiles wins for display fields; profiles is the fallback
+      const merged = {
+        ...profileData,
+        full_name:
+          [clientData?.first_name, clientData?.last_name]
+            .filter(Boolean).join(' ') ||
+          [profileData?.first_name, profileData?.last_name]
+            .filter(Boolean).join(' ') ||
+          'Client',
+        avatar_url: clientData?.avatar_url || profileData?.avatar_url || null,
+        location:
+          clientData?.location ||
+          profileData?.city ||
+          profileData?.state ||
+          null,
+        phone: clientData?.phone_number || profileData?.phone_number || null,
+        bio:   clientData?.bio || profileData?.bio || null,
+      };
+
+      // Stats
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('status, total_amount')
@@ -103,7 +129,7 @@ const ClientProfile = () => {
         setStats({ totalBookings, completedBookings, totalSpent });
       }
 
-      setProfile(profileData);
+      setProfile(merged);
     } catch (error) {
       console.error('Error loading client profile:', error);
       showNotification('Failed to load profile', 'error');
@@ -164,12 +190,21 @@ const ClientProfile = () => {
           className="bg-white dark:bg-[#1a1f2e] rounded-2xl shadow-lg p-6 mb-8"
         >
           <div className="flex flex-col items-center text-center">
-            <div className="w-32 h-32 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold mb-4">
-              {fullName.charAt(0).toUpperCase()}
+            <div className="w-32 h-32 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-4xl font-bold mb-4">
+              {profile.avatar_url ? (
+                <img
+                  src={profile.avatar_url}
+                  alt={fullName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ) : (
+                fullName.charAt(0).toUpperCase()
+              )}
             </div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{fullName}</h1>
             <p className="text-gray-500 dark:text-slate-400 mt-1">Member since {joinedDate}</p>
-            
+
             <div className="flex flex-wrap gap-4 mt-4 justify-center">
               {profile.email && (
                 <div className="flex items-center gap-2 text-gray-600 dark:text-slate-400">

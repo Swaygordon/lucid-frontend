@@ -22,11 +22,16 @@ import { FavouritesProvider } from './contexts/FavouritesContext';
 // Pages import it directly from this same file when they need auth operations.
 import { supabase } from './lib/supabaseClient';
 
+import Messages from './pages/messages';
+
 // ─── Shared layout components — eagerly loaded (present on every page) ────────
 import Navbar from "./components/navbar";
 import Footer from './components/footer';
 import ProfileSetupBanner from './components/ProfileSetupBanner.jsx';
 import { SignInRequiredModal } from './components/shared';
+
+// ─── Admin Dashboard ─────────────────────────────────────────────────────────
+import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 
 // ─── Per-route loading skeletons ──────────────────────────────────────────────
 // Each lazy route gets its own Suspense boundary with a tailored fallback,
@@ -39,8 +44,8 @@ import {
   BookingsSkeleton,
   ContentPageSkeleton,
   DashboardSkeleton,
-  MessagesListSkeleton,
-  ChatSkeleton,
+  // MessagesListSkeleton,
+  // ChatSkeleton,
 } from './components/route_skeletons.jsx';
 
 
@@ -92,8 +97,8 @@ const NotificationsPage    = lazy(() => import('./pages/notification_page.jsx'))
 const NotificationSettings = lazy(() => import('./pages/notificationSettings.jsx'));
 
 // Messaging (Phase 7) — gitignored, see note above.
-const MessagesListPage  = lazy(() => import('./pages/messagelist.jsx'));
-const ChatMessagingPage = lazy(() => import('./pages/messaging.jsx'));
+// const MessagesListPage  = lazy(() => import('./pages/messagelist.jsx'));
+// const ChatMessagingPage = lazy(() => import('./pages/messaging.jsx'));
 
 
 
@@ -209,7 +214,7 @@ function Layout({ children }) {
     '/lucid/account/settings',        // AccountSettings (Phase 6)
     '/lucid/notifications',           // NotificationsPage (Phase 6)
     '/lucid/notifications/settings',  // NotificationSettings (Phase 6)
-    '/lucid/messages',                // MessagesListPage (Phase 7)
+    // '/lucid/messages',                // MessagesListPage (Phase 7)
     '/lucid/bookings',                // BookingsPage (Phase 4)
     '/lucid/bookings/history',        // BookingHistoryPage (Phase 4)
     '/lucid/bookings/confirmation',   // BookingConfirmation (Phase 4)
@@ -218,15 +223,16 @@ function Layout({ children }) {
     '/lucid/account/profile/setup',   // ProviderProfileSetup (Phase 3)
     '/lucid/help',                    // Help & Support (public)
     '/lucid/account/client-profile',          // ClientProfile (Phase 5+)
-    // '/lucid/admin',                   // Admin Dashboard (Phase 5+, gitignored)
+    '/lucid/admin',                   // Admin Dashboard (Phase 5+, gitignored)
   ];
 
   // Prefix-based hide — catches dynamic segments like /lucid/messages/:id
   // Note: /lucid/providers/:id keeps the navbar — it's a public page where users
   // benefit from being able to search/browse without losing context.
   const hideNavAndFooterPrefix = [
+    '/lucid/providers/',      // GeneralProfile — any provider UUID or "me" (Phase 3)
     '/lucid/bookings/new/',   // BookingRequest — dynamic :providerId segment (Phase 4)
-    '/lucid/messages/',       // individual chat threads (Phase 7)
+    // '/lucid/messages/',       // individual chat threads (Phase 7)
   ];
 
   const shouldHideLayout =
@@ -278,6 +284,8 @@ function App() {
             <Route path="/lucid/"              element={withFallback(<Home />, HomeSkeleton)} />
             {/* Landing page. Entry point for new visitors. */}
 
+            <Route path="/lucid/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
+            
             <Route path="/lucid/signup"        element={withFallback(<Signup />, AuthFormSkeleton)} />
             {/* New user registration — both client and provider accounts. */}
 
@@ -291,12 +299,11 @@ function App() {
             {/* Help & support — FAQs, contact form. */}
 
             {/* Admin Dashboard - Only accessible by admin users */}
-            {/* PHASE 5+ — File gitignored; uncomment-in-place when implemented */}
-            {/* <Route path="/lucid/admin" element={
+            <Route path="/lucid/admin" element={
               <ProtectedRoute allowedRoles={['admin']}>
-                <AdminDashboard />
+                {withFallback(<AdminDashboard />, DashboardSkeleton)}
               </ProtectedRoute>
-            } /> */}
+            } />
 
             <Route path="/lucid/become-provider" element={withFallback(<Signup />, AuthFormSkeleton)} />
             {/* Same sign-up page, different entry point from marketing CTAs.
@@ -305,7 +312,7 @@ function App() {
             {/* PHASE 5+ — File gitignored; uncomment-in-place when implemented */}
              <Route path="/lucid/account/client-profile" element={
                 <ProtectedRoute allowedRoles={['client']}>
-                  <ClientProfile />
+                  {withFallback(<ClientProfile />, ProfileSkeleton)}
                 </ProtectedRoute>
               } /> 
             {/* ── SERVICES DISCOVERY (Phase 2) ──────────────────────────────
@@ -401,8 +408,8 @@ function App() {
            {/* <Route path="/lucid/messages"
               element={<ProtectedRoute>{withFallback(<MessagesListPage />, MessagesListSkeleton)}</ProtectedRoute>} />*/}
 
-            <Route path="/lucid/messages"
-              element={<ProtectedRoute>{withFallback(<ChatMessagingPage />, ChatSkeleton)}</ProtectedRoute>} />
+            {/* <Route path="/lucid/messages"
+              element={<ProtectedRoute>{withFallback(<ChatMessagingPage />, ChatSkeleton)}</ProtectedRoute>} /> */}
 
             {/* Phase 6 — Notifications */}
             <Route path="/lucid/notifications"

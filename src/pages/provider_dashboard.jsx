@@ -278,7 +278,6 @@ const ProviderDashboard = () => {
   //       title, description, timestamp, relatedId, relatedRoute, status }]
   const recentActivities = [
     { icon: CheckCircle, title: 'Job Completed', description: 'Electrical service at Spintex', time: '2 hours ago', status: 'completed', to: '/lucid/bookings' },
-    { icon: MessageSquare, title: 'New Message', description: 'Client inquiry about electrical work', time: '4 hours ago', status: 'new', to: '/lucid/messages' },
     { icon: Star, title: 'New Review', description: 'Nana Kofi left a 5-star review', time: '1 day ago', status: 'new', to: '/lucid/providers/me' },
     { icon: Calendar, title: 'Booking Confirmed', description: 'Security lights job scheduled for next week', time: '2 days ago', status: 'pending', to: '/lucid/bookings' }
   ];
@@ -287,7 +286,6 @@ const ProviderDashboard = () => {
 
   const quickActions = [
     { icon: Calendar, label: 'Tasks', to: '/lucid/bookings', badgeCount: unreadBookings },
-    { icon: MessageSquare, label: 'Messages', to: '/lucid/messages', badgeCount: unreadMessages },
     { icon: User, label: 'Account', to: '/lucid/account' },
     { icon: Activity, label: 'Analytics', to: '/lucid/earnings' }
   ];

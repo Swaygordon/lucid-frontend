@@ -64,6 +64,9 @@ const BookingDetailsModalComponent = ({
   const isCompletionRequestor = booking.completionRequest?.requestedBy === userType;
   const canApproveCompletion = hasCompletionRequest && !isCompletionRequestor;
 
+  // ✅ Check if chat is allowed (only for accepted, in_progress, or completed)
+  const isChatAllowed = ['accepted', 'in_progress', 'completed'].includes(normalizedStatus);
+
   const getStatusConfig = (status = 'pending') => {
     const configs = {
       pending: { bg: 'bg-yellow-100 dark:bg-amber-900/20', text: 'text-yellow-700 dark:text-amber-400', icon: Clock, label: 'Pending' },
@@ -191,6 +194,9 @@ const BookingDetailsModalComponent = ({
                 Scheduled for {booking.date} at {booking.time}
                 {userType === 'provider' && " - Don't forget to start the job when you begin work."}
               </p>
+              <p className="text-sm text-blue-800 dark:text-blue-400 mt-1">
+                💬 You can now chat with the {userType === 'provider' ? 'client' : 'provider'}.
+              </p>
             </div>
           </div>
         </div>
@@ -209,6 +215,9 @@ const BookingDetailsModalComponent = ({
                   ? "Mark as complete when finished. To cancel, you'll need client approval."
                   : "The provider is currently working on your request. To cancel, you'll need provider approval."
                 }
+              </p>
+              <p className="text-sm text-purple-800 dark:text-purple-400 mt-1">
+                💬 You can chat with the {userType === 'provider' ? 'client' : 'provider'} for updates.
               </p>
             </div>
           </div>
@@ -607,20 +616,22 @@ const BookingDetailsModalComponent = ({
 
                 {normalizedStatus === 'accepted' && (
                   <div className="space-y-3">
-                    <button
-                      onClick={() => onMarkInProgress?.(booking)}
-                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
-                    >
-                      <Play className="w-5 h-5" />
-                      Start Job
-                    </button>
+                    <div className="flex gap-4">
+                      {/* ✅ Chat Button - Only shown for accepted bookings */}
+                      {isChatAllowed && (
+                        <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
+                          
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => onMarkInProgress?.(booking)}
+                        className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-semibold"
+                      >
+                        <Play className="w-5 h-5" />
+                        Start Job
+                      </button>
+                    </div>
                     <div className="flex gap-3">
-                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
-                        <button className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
-                          <MessageCircle className="w-5 h-5" />
-                          Message Client
-                        </button>
-                      </Link>
                       <button
                         onClick={() => onCancel?.(booking)}
                         className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
@@ -650,12 +661,15 @@ const BookingDetailsModalComponent = ({
                       </div>
                     )}
                     <div className="flex gap-3">
-                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
-                        <button className="w-full px-4 py-2 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold">
-                          <MessageCircle className="w-4 h-4 inline mr-2" />
-                          Message Client
-                        </button>
-                      </Link>
+                      {/* ✅ Chat Button - Only shown for in_progress bookings */}
+                      {isChatAllowed && (
+                        <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
+                          <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
+                            <MessageCircle className="w-4 h-4" />
+                            Chat with Client
+                          </button>
+                        </Link>
+                      )}
                       {!hasCancellationRequest && (
                         <button
                           onClick={() => setShowCancelRequestModal(true)}
@@ -679,6 +693,15 @@ const BookingDetailsModalComponent = ({
                         Client rated: {booking.rating}.0
                         <Star className="w-4 h-4 fill-blue-600 text-blue-600" />
                       </p>
+                    )}
+                    {/* ✅ Chat Button - Still available for completed bookings */}
+                    {isChatAllowed && (
+                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="block mt-3">
+                        <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
+                          <MessageCircle className="w-4 h-4" />
+                          Chat with Client
+                        </button>
+                      </Link>
                     )}
                   </div>
                 )}
@@ -709,12 +732,15 @@ const BookingDetailsModalComponent = ({
 
                 {normalizedStatus === 'accepted' && (
                   <div className="flex gap-4">
-                    <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
-                      <button className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
-                        <MessageCircle className="w-5 h-5" />
-                        Message Provider
-                      </button>
-                    </Link>
+                    {/* ✅ Chat Button - Only shown for accepted bookings */}
+                    {isChatAllowed && (
+                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
+                        <button className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
+                          <MessageCircle className="w-5 h-5" />
+                          Chat with Provider
+                        </button>
+                      </Link>
+                    )}
                     <button
                       onClick={() => onCancel?.(booking)}
                       className="px-6 py-2 bg-white dark:bg-transparent border-2 border-red-600 text-red-600 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors font-semibold flex items-center gap-2"
@@ -743,12 +769,15 @@ const BookingDetailsModalComponent = ({
                       </div>
                     )}
                     <div className="flex gap-3">
-                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
-                        <button className="w-full px-4 py-2 bg-white dark:bg-transparent border-2 border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors font-semibold">
-                          <MessageCircle className="w-4 h-4 inline mr-2" />
-                          Message Provider
-                        </button>
-                      </Link>
+                      {/* ✅ Chat Button - Only shown for in_progress bookings */}
+                      {isChatAllowed && (
+                        <Link to={`/lucid/messages?bookingId=${booking.id}`} className="flex-1">
+                          <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
+                            <MessageCircle className="w-4 h-4" />
+                            Chat with Provider
+                          </button>
+                        </Link>
+                      )}
                       {!hasCancellationRequest && (
                         <button
                           onClick={() => setShowCancelRequestModal(true)}
@@ -774,6 +803,15 @@ const BookingDetailsModalComponent = ({
                       >
                         Leave a Review
                       </button>
+                    )}
+                    {/* ✅ Chat Button - Still available for completed bookings */}
+                    {isChatAllowed && (
+                      <Link to={`/lucid/messages?bookingId=${booking.id}`} className="block mt-3">
+                        <button className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2">
+                          <MessageCircle className="w-4 h-4" />
+                          Chat with Provider
+                        </button>
+                      </Link>
                     )}
                   </div>
                 )}

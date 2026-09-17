@@ -1,3 +1,4 @@
+// C:\Users\hp\Documents\Current works\lucidddd\6\lucid-frontend\src\pages\user_Profile.jsx
 import React, { memo, lazy, Suspense, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -23,7 +24,7 @@ import {
   Calendar,
   DollarSign,
   XCircle,
-  AlertCircle
+  AlertCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ImageUploadModal } from "../components/shared";
@@ -298,6 +299,7 @@ const UserProfile = () => {
 
   const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null); // ✅ store user id in state
 
   const [reviewsOpen,   setReviewsOpen]   = useState(false);
   const [notification,  setNotification]  = useState('');
@@ -318,7 +320,9 @@ const UserProfile = () => {
         return;
       }
 
-      // Check user role from profiles table
+      // ✅ Save user id so we can use it during render without calling getUser()
+      setCurrentUserId(user.id);
+
       const { data: userProfile, error: userRoleError } = await supabase
         .from('profiles')
         .select('role')
@@ -327,13 +331,11 @@ const UserProfile = () => {
 
       if (userRoleError) throw userRoleError;
 
-      // If client, redirect to client profile page
       if (userProfile?.role === 'client') {
         navigate('/lucid/account/client-profile');
         return;
       }
 
-      // For providers (role = 'service_provider'), load provider profile
       const { data, error } = await supabase
         .from('provider_profiles')
         .select('*')
@@ -349,7 +351,20 @@ const UserProfile = () => {
         throw error;
       }
 
-      setProfileData(data);
+      // ✅ Fetch stats from provider_performance and merge in.
+      // Use .maybeSingle() because brand-new providers may not have a row yet.
+      const { data: perf } = await supabase
+        .from('provider_performance')
+        .select('rating_average, total_reviews, total_completed_jobs')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      setProfileData({
+        ...data,
+        average_rating:       perf?.rating_average       ?? null,
+        review_count:         perf?.total_reviews        ?? 0,
+        total_completed_jobs: perf?.total_completed_jobs ?? 0,
+      });
     } catch (error) {
       console.error('Error loading profile:', error);
       showNotification('Failed to load profile', 'error');
@@ -405,6 +420,10 @@ const UserProfile = () => {
   const displayName = fullName || 'Provider';
   const rating = profileData.average_rating ?? null;
   const reviewCount = profileData.review_count ?? 0;
+  const providerId = profileData.user_id;
+
+  // ✅ Use state instead of calling supabase.auth.getUser() during render
+  const isOwnProfile = currentUserId === providerId;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">
@@ -420,14 +439,14 @@ const UserProfile = () => {
               <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-slate-300" />
             </button>
             <div className="text-sm text-gray-600 dark:text-slate-400">
-              Viewing as: <span className="font-semibold text-blue-700 dark:text-blue-400">Service Provider</span>
+              {isOwnProfile ? 'Viewing as: Service Provider' : 'Viewing: Provider Profile'}
             </div>
           </div>
         </div>
       </motion.header>
 
       {/* Status Banner */}
-      {profileData?.verification_status === 'pending' && (
+      {isOwnProfile && profileData?.verification_status === 'pending' && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-3">
           <div className="max-w-7xl mx-auto flex items-center gap-3">
             <Clock className="w-5 h-5 text-yellow-600" />
@@ -439,7 +458,7 @@ const UserProfile = () => {
         </div>
       )}
 
-      {profileData?.verification_status === 'rejected' && (
+      {isOwnProfile && profileData?.verification_status === 'rejected' && (
         <div className="bg-red-50 border-b border-red-200 px-4 py-3">
           <div className="max-w-7xl mx-auto flex items-center gap-3">
             <XCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
@@ -458,7 +477,7 @@ const UserProfile = () => {
         </div>
       )}
 
-      {profileData?.verification_status === 'revise' && (
+      {isOwnProfile && profileData?.verification_status === 'revise' && (
         <div className="bg-orange-50 border-b border-orange-200 px-4 py-3">
           <div className="max-w-7xl mx-auto flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
@@ -478,7 +497,10 @@ const UserProfile = () => {
       )}
 
       {/* Hero */}
-      <HeroSection heroUrl={profileData.hero_url} onEditClick={() => navigate('/lucid/account/profile/edit')} />
+      <HeroSection 
+        heroUrl={profileData.hero_url} 
+        onEditClick={() => isOwnProfile ? navigate('/lucid/account/profile/edit') : null} 
+      />
 
       {/* Profile Card */}
       <div className="relative max-w-7xl mx-auto px-4 -mt-14 z-10">
@@ -493,7 +515,7 @@ const UserProfile = () => {
           <motion.div variants={fadeInUp} initial="hidden" animate="visible" transition={{ delay: 0.2 }}>
             <div className="flex items-start justify-start space-x-3 mb-2">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{displayName}</h1>
-              <EditButton />
+              {isOwnProfile && <EditButton />}
             </div>
 
             <div className="flex items-center space-x-2 mb-1">
@@ -504,7 +526,7 @@ const UserProfile = () => {
             <div className="flex items-center space-x-4 mb-4 flex-wrap gap-2">
               <div className="flex items-center space-x-1">
                 <Star className="w-4 h-4 fill-blue-600 text-blue-600" />
-                <span className="font-semibold text-blue-700 dark:text-blue-400">{rating}</span>
+                <span className="font-semibold text-blue-700 dark:text-blue-400">{rating || 'New'}</span>
                 <span className="text-gray-600 dark:text-slate-400 text-sm">({reviewCount} reviews)</span>
               </div>
               <div className="flex items-center space-x-2 text-gray-600 dark:text-slate-400">
@@ -526,7 +548,7 @@ const UserProfile = () => {
             </div>
 
             {(profileData.categories || []).length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-2 mb-4">
                 {profileData.categories.map((cat, index) => (
                   <span
                     key={index}
@@ -550,7 +572,7 @@ const UserProfile = () => {
           variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }}
         >
           <StatsCard icon={CheckCircle} value={profileData.total_completed_jobs || 0} label="Jobs Completed" delay={0} />
-          <StatsCard icon={Award}       value={rating}  label="Average Rating"  delay={0.1} />
+          <StatsCard icon={Award}       value={rating || 'New'}  label="Average Rating"  delay={0.1} />
           <StatsCard icon={TrendingUp}  value="98%" label="Success Rate" delay={0.2} />
         </motion.div>
 
@@ -559,16 +581,16 @@ const UserProfile = () => {
           className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8"
           variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }}
         >
-          <InfoCard title="Overview" icon={Trophy} editable>
+          <InfoCard title="Overview" icon={Trophy} editable={isOwnProfile}>
             <div className="space-y-4">
               <InfoItem icon={Trophy}      text={`Hired ${profileData.total_completed_jobs || 0} Times`} />
-              <InfoItem icon={CheckCircle} text="User has been verified" />
+              <InfoItem icon={CheckCircle} text={profileData.verification_status === 'approved' ? "User has been verified" : "Not verified"} />
               <InfoItem icon={Users}       text={`${profileData.employees || 1} employees`} />
               <InfoItem icon={Clock}       text={`${profileData.work_experience || 0} years experience`} />
             </div>
           </InfoCard>
 
-          <InfoCard title="Payment Methods" delay={0.1} editable>
+          <InfoCard title="Payment Methods" delay={0.1} editable={isOwnProfile}>
             <div className="space-y-1">
               {(profileData.payment_methods || []).map((method, i) => (
                 <p key={i} className="text-gray-700 dark:text-slate-300">
@@ -581,7 +603,7 @@ const UserProfile = () => {
             </div>
           </InfoCard>
 
-          <InfoCard title="Working Hours" icon={Clock} delay={0.2} editable>
+          <InfoCard title="Working Hours" icon={Clock} delay={0.2} editable={isOwnProfile}>
             <WorkingHoursDisplay
               selectedDays={profileData.selected_days}
               weekdaysTime={profileData.weekdays_time}
@@ -596,7 +618,7 @@ const UserProfile = () => {
           initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-8"
         >
-          <InfoCard title="Certifications" editable>
+          <InfoCard title="Certifications" editable={isOwnProfile}>
             <div className="space-y-2">
               {(profileData.certifications || []).map((cert, index) => (
                 <div key={index} className="flex items-center gap-2">
@@ -616,7 +638,7 @@ const UserProfile = () => {
           initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }} transition={{ duration: 0.6 }} className="mb-8"
         >
-          <InfoCard title="Languages" editable>
+          <InfoCard title="Languages" editable={isOwnProfile}>
             <div className="flex flex-wrap gap-2">
               {(profileData.languages || []).map((lang, index) => (
                 <span key={index} className="px-3 py-1 bg-gray-100 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 rounded-full text-sm font-medium">
@@ -631,38 +653,40 @@ const UserProfile = () => {
         </motion.div>
 
         {/* Quick Actions */}
-        <motion.div
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
-          variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }}
-        >
-          <Link to="/lucid/bookings">
-            <motion.button
-              className="w-full bg-blue-600 text-white py-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-blue-700 transition-colors font-semibold"
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            >
-              <Calendar className="w-5 h-5" />
-              <span>View My Bookings</span>
-            </motion.button>
-          </Link>
-          <Link to="/lucid/earnings">
-            <motion.button
-              className="w-full bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 py-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-blue-50 transition-colors font-semibold"
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            >
-              <DollarSign className="w-5 h-5" />
-              <span>View Earnings</span>
-            </motion.button>
-          </Link>
-          <Link to="/lucid/account/profile/edit">
-            <motion.button
-              className="w-full bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 py-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-blue-50 transition-colors font-semibold"
-              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-            >
-              <Pencil className="w-5 h-5" />
-              <span>Edit Profile</span>
-            </motion.button>
-          </Link>
-        </motion.div>
+        {isOwnProfile && (
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
+            variants={staggerContainer} initial="hidden" whileInView="visible" viewport={{ once: true }}
+          >
+            <Link to="/lucid/bookings">
+              <motion.button
+                className="w-full bg-blue-600 text-white py-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-blue-700 transition-colors font-semibold"
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              >
+                <Calendar className="w-5 h-5" />
+                <span>View My Bookings</span>
+              </motion.button>
+            </Link>
+            <Link to="/lucid/earnings">
+              <motion.button
+                className="w-full bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 py-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-blue-50 transition-colors font-semibold"
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              >
+                <DollarSign className="w-5 h-5" />
+                <span>View Earnings</span>
+              </motion.button>
+            </Link>
+            <Link to="/lucid/account/profile/edit">
+              <motion.button
+                className="w-full bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 py-4 rounded-lg flex items-center justify-center space-x-2 hover:bg-blue-50 transition-colors font-semibold"
+                whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+              >
+                <Pencil className="w-5 h-5" />
+                <span>Edit Profile</span>
+              </motion.button>
+            </Link>
+          </motion.div>
+        )}
 
         {/* Portfolio */}
         <motion.div
@@ -704,10 +728,10 @@ const UserProfile = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }}>
                     <div className="text-center mb-6">
-                      <div className="text-5xl font-bold text-gray-900 dark:text-slate-100">Great {rating}</div>
+                      <div className="text-5xl font-bold text-gray-900 dark:text-slate-100">Great {rating || 'New'}</div>
                       <div className="flex justify-center space-x-1 my-2">
                         {[...Array(5)].map((_, i) => (
-                          <Star key={i} className={`w-6 h-6 ${i < Math.floor(rating) ? 'fill-blue-600 text-blue-600' : 'text-gray-300'}`} />
+                          <Star key={i} className={`w-6 h-6 ${i < Math.floor(rating || 0) ? 'fill-blue-600 text-blue-600' : 'text-gray-300'}`} />
                         ))}
                       </div>
                       <div className="text-gray-600 dark:text-slate-400">{reviewCount} reviews</div>

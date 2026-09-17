@@ -1,6 +1,6 @@
 import React, { memo, useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Zap, Sparkles, Truck, Droplets, Car, Scissors, Shirt, PaintRoller, ChevronRight } from 'lucide-react';
+import { Search, Zap, Sparkles, Truck, Droplets, Car, Scissors, Shirt, PaintRoller, ChevronRight, MessageCircle } from 'lucide-react';
 import ServicesCarousel from '../components/servicePage_carousel.jsx';
 import BackToTop from '../components/back_the_top_btn.jsx';
 import LocationPicker from '../components/LocationPicker.jsx';
@@ -11,7 +11,7 @@ import Breadcrumb from '../components/Breadcrumb.jsx';
 import SearchAutocomplete from '../components/SearchAutocomplete.jsx';
 import { resolveSearch } from '../utils/search.js';
 import { Hammer, Truck as TruckIcon, Car as CarIcon, HardHat } from 'lucide-react';
-
+import { supabase } from '../lib/supabaseClient';
 
 // [API] GET /services/popular?region={region}&limit=8 → [{name, slug, icon}]
 // Hardcoded until API provides trending/most-searched data
@@ -151,12 +151,77 @@ const ServiceCard = memo(({ service }) => {
   );
 });
 
+// 🔥 NEW: Service card with chat button
+// In Services.jsx - Find ServiceWithChatCard and replace with this
+
+const ServiceWithChatCard = memo(({ service }) => {
+  const navigate = useNavigate();
+
+  const handleChat = async (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    // Get the provider ID - try multiple sources
+    const providerId = service.providerId || service.id || service.user_id;
+    
+    console.log('🔵 CHAT BUTTON CLICKED - Services page');
+    console.log('🔵 service data:', service);
+    console.log('🔵 providerId extracted:', providerId);
+    
+    if (!providerId) {
+      console.error('🔴 No provider ID for this service');
+      return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      sessionStorage.setItem('pendingChatProviderId', providerId);
+      navigate('/lucid/signin', { 
+        state: { from: `/lucid/messages?providerId=${providerId}` }
+      });
+      return;
+    }
+
+    console.log('🔵 Navigating to chat with providerId:', providerId);
+    navigate(`/lucid/messages?providerId=${providerId}`);
+  };
+
+  return (
+    <div className="bg-white dark:bg-[#1a1f2e] border border-gray-200 dark:border-[#1e293b] rounded-2xl overflow-hidden hover:border-blue-500 hover:shadow-md transition-all duration-200">
+      <Link to={`/lucid/services/${service.slug}`} className="block">
+        <div className="relative h-40 overflow-hidden">
+          <img 
+            src={service.image} 
+            alt={service.name} 
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">
+            <h3 className="text-white font-semibold text-sm truncate">{service.name}</h3>
+          </div>
+        </div>
+      </Link>
+      <div className="p-3">
+        <p className="text-xs text-gray-500 dark:text-slate-400 truncate">{service.subtitle}</p>
+        <button
+          onClick={handleChat}
+          className="w-full mt-2 flex items-center justify-center gap-2 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition-colors duration-200"
+        >
+          <MessageCircle className="w-3.5 h-3.5" />
+          Chat with Provider
+        </button>
+      </div>
+    </div>
+  );
+});
+
 // All services flattened from every category, for the carousels
 const ALL_SERVICES_POOL = ALL_CATEGORIES.flatMap(cat =>
   cat.services.map(svc => ({
     name:  svc.name,
     image: svc.image,
     slug:  `/lucid/services/${cat.slug}/${svc.slug}`,
+    providerId: svc.providerId || null, // You'll need to add this from your data
   }))
 );
 
@@ -328,7 +393,14 @@ const Services = () => {
 
       {/* ── Carousel 1 ── */}
       <div className="bg-white dark:bg-[#1a1f2e]">
-        <ServicesCarousel services={carousel1} />
+        <div className="max-w-6xl mx-auto px-5 py-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-5">Trending Services</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {carousel1.map((service, index) => (
+              <ServiceWithChatCard key={index} service={service} />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ── Download ── */}
@@ -336,7 +408,14 @@ const Services = () => {
 
       {/* ── Carousel 2 ── */}
       <div className="bg-white dark:bg-[#1a1f2e]">
-        <ServicesCarousel services={carousel2} />
+        <div className="max-w-6xl mx-auto px-5 py-8">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-5">More Services</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {carousel2.map((service, index) => (
+              <ServiceWithChatCard key={index} service={service} />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* ── Featured Category Section ── */}

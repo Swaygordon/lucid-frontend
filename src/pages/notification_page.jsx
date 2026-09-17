@@ -212,7 +212,7 @@ const resolveLink = (row) => {
   if (row.link) return row.link;
   switch (row.type) {
     case 'booking': return '/lucid/bookings';
-    case 'message': return '/lucid/messages';
+   
     case 'profile': return '/lucid/account/profile';
     case 'verification': return '/lucid/account/profile';
     case 'payment': return '/lucid/payments';

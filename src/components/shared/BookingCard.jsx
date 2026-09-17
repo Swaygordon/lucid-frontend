@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, MapPin, DollarSign, Eye, MessageCircle, Star, FileText, Mail, Phone, User } from 'lucide-react';
+import { Calendar, Clock, MapPin, DollarSign, Eye, Star, FileText, Mail, Phone, User } from 'lucide-react';
 import { Avatar, Button } from '../ui';
 import { StatusBadge } from '../ui/StatusBadge';
 
@@ -154,13 +154,14 @@ export const BookingCard = ({ booking, viewAs = 'client', onView, onCancel }) =>
               Details
             </Button>
           )}
-          {isActive && (
-            <Button 
-              size="sm" 
-              onClick={() => navigate(`/lucid/messages?bookingId=${booking.id}`)}
+          {isActive && onCancel && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onCancel(booking)}
+              className="text-red-600 hover:text-red-700"
             >
-              <MessageCircle className="w-4 h-4" />
-              Chat
+              Cancel
             </Button>
           )}
         </div>

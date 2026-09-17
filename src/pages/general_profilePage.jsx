@@ -188,16 +188,19 @@ const InfoItem = memo(({ icon: Icon, text }) => (
 ));
 
 // Action Button
-const ActionButton = memo(({ icon: Icon, text, onClick, variant = 'primary' }) => (
+const ActionButton = memo(({ icon: Icon, text, onClick, variant = 'primary', disabled = false }) => (
   <motion.button
-    className={`py-4 rounded-xl flex items-center justify-center space-x-2 transition-all font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0f1117] ${
-      variant === 'primary'
-        ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-glow-blue'
-        : 'bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 hover:bg-blue-50 dark:hover:bg-primary/10'
+    disabled={disabled}
+    className={`py-4 rounded-xl flex items-center justify-center space-x-2 transition-all font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-[#0f1117] ${
+      disabled
+        ? 'bg-gray-200 dark:bg-[#252b3b] text-gray-400 dark:text-slate-500 cursor-not-allowed'
+        : variant === 'primary'
+          ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-glow-blue cursor-pointer'
+          : 'bg-white dark:bg-[#1a1f2e] text-blue-600 border-2 border-blue-600 hover:bg-blue-50 dark:hover:bg-primary/10 cursor-pointer'
     }`}
-    whileHover={{ scale: 1.02 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={onClick}
+    whileHover={disabled ? {} : { scale: 1.02 }}
+    whileTap={disabled ? {} : { scale: 0.98 }}
+    onClick={disabled ? undefined : onClick}
   >
     <Icon className="w-5 h-5" />
     <span>{text}</span>
@@ -339,8 +342,22 @@ const GeneralProfile = () => {
   const [showCallModal, setShowCallModal] = useState(null);
   const [replyTarget, setReplyTarget] = useState(null);
   const [replyText, setReplyText] = useState("");
+  const [currentUserId, setCurrentUserId] = useState(null);
 
   const isFavorite = isFavourite(id);
+
+  // Get current user id (for self-profile detection)
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser()
+      .then(({ data }) => {
+        if (mounted) setCurrentUserId(data?.user?.id ?? null);
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  }, []);
+
+  const isOwnProfile = !!(currentUserId && profileData && currentUserId === profileData.id);
 
   // Handle back navigation
   const handleBack = () => {
@@ -488,9 +505,33 @@ const GeneralProfile = () => {
     navigate(`/lucid/bookings/new/${profileData.id}`);
   };
 
-  const handleMessage = () => {
-    showNotification('Opening chat...', 'info');
-    navigate('/lucid/messages');
+  // ✅ CHAT HANDLER — was missing, caused ReferenceError
+  const handleMessage = async () => {
+    if (!profileData?.id) return;
+
+    // Prevent chatting with yourself
+    if (isOwnProfile) {
+      showNotification("You can't message your own profile.", 'info');
+      return;
+    }
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        // Stash intended provider so we can redirect back after login
+        sessionStorage.setItem('pendingChatProviderId', profileData.id);
+        navigate('/lucid/signin', {
+          state: { from: `/lucid/messages?providerId=${profileData.id}` }
+        });
+        return;
+      }
+
+      navigate(`/lucid/messages?providerId=${profileData.id}`);
+    } catch (err) {
+      console.error('handleMessage failed:', err);
+      showNotification('Could not open chat. Please try again.', 'error');
+    }
   };
 
   const handleShare = () => {
@@ -760,9 +801,10 @@ const GeneralProfile = () => {
           />
           <ActionButton 
             icon={MessageCircle} 
-            text="Send Message" 
+            text={isOwnProfile ? 'This is you' : 'Send Message'} 
             onClick={handleMessage}
             variant="secondary"
+            disabled={isOwnProfile}
           />
           <ActionButton 
             icon={Phone} 

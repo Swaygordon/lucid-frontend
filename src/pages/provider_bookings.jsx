@@ -1,3 +1,4 @@
+// provider_bookings.jsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigateBack } from '../hooks/useNavigateBack.js';
@@ -25,12 +26,9 @@ const ProviderBookings = () => {
   const [currentUser, setCurrentUser] = useState(null);
 
   const handleBackClick = useNavigateBack('/lucid/dashboard', 600);
-
-  // Browser back / mobile gesture closes the modal instead of leaving the page
   useModalBackButton(!!selectedTask, () => setSelectedTask(null));
   useModalBackButton(showCancelModal, () => setShowCancelModal(false));
 
-  // Get current user
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -42,12 +40,10 @@ const ProviderBookings = () => {
     getUser();
   }, []);
 
-  // Fetch bookings for provider with complete client details
   const fetchBookings = async (providerId) => {
     try {
       setLoading(true);
       
-      // Get all bookings for the provider
       const { data: bookingsData, error: bookingsError } = await supabase
         .from('bookings')
         .select('*')
@@ -61,34 +57,41 @@ const ProviderBookings = () => {
         return;
       }
 
-      // Get unique client IDs from bookings
       const clientIds = [...new Set(bookingsData.map(b => b.client_id).filter(Boolean))];
       
-      // Fetch client profiles (from profiles table)
       let clientsMap = {};
       if (clientIds.length > 0) {
-        const { data: clientsData, error: clientsError } = await supabase
-          .from('profiles')
-          .select('id, full_name, email, phone, user_type')
-          .in('id', clientIds);
-        
-        if (!clientsError && clientsData) {
-          clientsMap = clientsData.reduce((map, c) => {
-            map[c.id] = {
-              name: c.full_name || 'Client',
-              email: c.email || '',
-              phone: c.phone || '',
-              user_type: c.user_type || 'client'
+        // ✅ FIXED: correct column names + maybeSingle
+        const clientPromises = clientIds.map(id =>
+          supabase
+            .from('profiles')
+            .select('id, first_name, last_name, other_name, email, phone_number, user_type')
+            .eq('id', id)
+            .maybeSingle()
+        );
+        const clientResults = await Promise.all(clientPromises);
+
+        clientResults.forEach(result => {
+          if (result.data) {
+            const p = result.data;
+            const fullName =
+              [p.first_name, p.last_name].filter(Boolean).join(' ') || 'Client';
+            clientsMap[p.id] = {
+              name: fullName,
+              email: p.email || '',
+              phone: p.phone_number || '',
+              user_type: p.user_type || 'client',
             };
-            return map;
-          }, {});
-        }
+          }
+        });
       }
 
-      // Transform data with ALL client details
       const transformedBookings = bookingsData.map(booking => ({
         id: booking.id,
-        title: booking.service_type || booking.description?.substring(0, 50) || 'Service Request',
+        title:
+          booking.service_type ||
+          booking.description?.substring(0, 50) ||
+          'Service Request',
         serviceType: booking.service_type,
         status: booking.status || 'pending',
         date: booking.service_date,
@@ -96,43 +99,41 @@ const ProviderBookings = () => {
         alternateDate: booking.alternate_date,
         alternateTime: booking.alternate_time,
         price: booking.total_amount || 0,
-        duration: booking.duration_hours ? `${booking.duration_hours} hours` : 'TBD',
+        duration: booking.duration_hours
+          ? `${booking.duration_hours} hours`
+          : 'TBD',
         urgency: booking.urgency || 'normal',
         description: booking.description,
         cancellation_reason: booking.cancellation_reason,
         created_at: booking.created_at,
         updated_at: booking.updated_at,
-        
-        // Client details (what the client filled in the form)
         client: {
           id: booking.client_id,
-          name: clientsMap[booking.client_id]?.name || 'Client',
-          email: clientsMap[booking.client_id]?.email || booking.contact_email,
-          phone: clientsMap[booking.client_id]?.phone || booking.contact_phone,
+          name:
+            clientsMap[booking.client_id]?.name ||
+            booking.contact_name ||
+            'Client',
+          email:
+            clientsMap[booking.client_id]?.email || booking.contact_email,
+          phone:
+            clientsMap[booking.client_id]?.phone || booking.contact_phone,
           contact_name: booking.contact_name,
           contact_phone: booking.contact_phone,
           contact_email: booking.contact_email
         },
-        
-        // Location details
-        location: { 
+        location: {
           full: booking.location,
-          address: booking.street_address,
+          address: booking.street_address || booking.address,
           area: booking.area,
-          city: 'Accra',
+          city: booking.city || 'Accra',
           landmark: booking.landmark,
           postalCode: booking.postal_code
         },
-        
-        // Budget
         budget: {
           min: booking.budget_min,
           max: booking.budget_max
         },
-        
-        // Additional notes
         additionalNotes: booking.additional_notes,
-        
         bookingReference: `BK${booking.id.slice(0, 8)}`
       }));
 
@@ -145,37 +146,133 @@ const ProviderBookings = () => {
     }
   };
 
-  // Update booking status
+  // ✅ Create or get conversation for a booking (called when provider accepts)
+  const createConversationForBooking = async (bookingId, clientId, providerId) => {
+    try {
+      // Check if conversation already exists for this booking
+      const { data: existing, error: existingError } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('booking_id', bookingId)
+        .maybeSingle();
+
+      if (existingError && existingError.code !== 'PGRST116') {
+        console.error('Error checking existing conversation:', existingError);
+      }
+
+      if (existing) {
+        console.log('✅ Existing conversation found:', existing.id);
+        return existing.id;
+      }
+
+      // Create new conversation
+      const { data: newConv, error: createError } = await supabase
+        .from('conversations')
+        .insert({
+          booking_id: bookingId,
+          client_id: clientId,
+          provider_id: providerId,
+        })
+        .select('id')
+        .single();
+
+      if (createError) {
+        console.error('Error creating conversation:', createError);
+        return null;
+      }
+
+      console.log('✅ New conversation created:', newConv.id);
+      return newConv.id;
+    } catch (error) {
+      console.error('Error in createConversationForBooking:', error);
+      return null;
+    }
+  };
+
+  // Update booking status - NOW WORKS WITH ENUM
   const updateBookingStatus = async (bookingId, status, notificationMessage) => {
     try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({ status, updated_at: new Date().toISOString() })
-        .eq('id', bookingId);
+      const validStatuses = ['pending', 'accepted', 'in_progress', 'completed', 'cancelled'];
+      if (!validStatuses.includes(status)) {
+        showNotification(`Invalid status: ${status}`, 'error');
+        return false;
+      }
 
-      if (error) throw error;
-
-      // Get the booking to find client_id
-      const { data: booking } = await supabase
+      // Get booking details first
+      const { data: booking, error: bookingError } = await supabase
         .from('bookings')
-        .select('client_id, contact_name, service_type')
+        .select('client_id, provider_id, service_type')
         .eq('id', bookingId)
         .single();
 
+      if (bookingError) {
+        console.error('Error fetching booking:', bookingError);
+        throw bookingError;
+      }
+
+      const { error } = await supabase
+        .from('bookings')
+        .update({
+          status: status,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', bookingId);
+
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
+
+      // ✅ If status is 'accepted', create a conversation for chat
+      if (status === 'accepted' && booking) {
+        const conversationId = await createConversationForBooking(
+          bookingId,
+          booking.client_id,
+          booking.provider_id
+        );
+
+        if (conversationId) {
+          console.log('✅ Conversation created for accepted booking:', conversationId);
+          // Send a welcome message in the conversation
+          const { error: msgError } = await supabase
+            .from('messages')
+            .insert({
+              conversation_id: conversationId,
+              sender_id: booking.provider_id,
+              receiver_id: booking.client_id,
+              message: `Your booking has been accepted! Feel free to chat here for any updates or questions.`,
+              created_at: new Date().toISOString()
+            });
+
+          if (msgError) {
+            console.error('Error sending welcome message:', msgError);
+          }
+        }
+      }
+
+      // Create notification for client
       if (booking) {
-        // Create notification for client
+        const statusMessages = {
+          accepted: `Your booking has been accepted by the service provider. They will contact you shortly. You can now chat with them.`,
+          in_progress: `The service provider has started working on your booking.`,
+          completed: `Your booking has been marked as complete. Please confirm completion and leave a review.`,
+          cancelled: `Your booking has been cancelled by the service provider.`
+        };
+
         await supabase.from('notifications').insert({
           user_id: booking.client_id,
           type: 'booking',
-          title: `Booking ${status === 'accepted' ? 'Accepted' : status === 'in_progress' ? 'In Progress' : 'Completed'}`,
-          message: notificationMessage,
+          title: `Booking ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+          message:
+            notificationMessage ||
+            statusMessages[status] ||
+            `Your booking status has been updated to ${status}.`,
           metadata: { booking_id: bookingId, status: status },
           created_at: new Date().toISOString(),
           is_read: false
         });
       }
 
-      // Refresh bookings
       if (currentUser) {
         await fetchBookings(currentUser.id);
       }
@@ -192,10 +289,13 @@ const ProviderBookings = () => {
     const success = await updateBookingStatus(
       task.id,
       'accepted',
-      `Your booking has been accepted by the service provider. They will contact you shortly.`
+      `Your booking has been accepted by the service provider. They will contact you shortly. You can now chat with them.`
     );
     if (success) {
-      showNotification('Booking accepted successfully!', 'success');
+      showNotification(
+        'Booking accepted successfully! You can now chat with the client.',
+        'success'
+      );
       setSelectedTask(null);
     }
   };
@@ -255,7 +355,6 @@ const ProviderBookings = () => {
     }
   };
 
-  // Count bookings by status
   const statusCounts = useMemo(() => {
     const counts = {
       pending: bookings.filter(b => b.status === 'pending').length,
@@ -279,11 +378,9 @@ const ProviderBookings = () => {
 
   const filteredBookings = useMemo(() => {
     let filtered = [...bookings];
-
     if (activeFilter !== 'all') {
       filtered = filtered.filter(task => task.status === activeFilter);
     }
-
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(task =>
@@ -293,7 +390,6 @@ const ProviderBookings = () => {
         task.description?.toLowerCase().includes(lowerQuery)
       );
     }
-
     return filtered;
   }, [bookings, activeFilter, searchQuery]);
 

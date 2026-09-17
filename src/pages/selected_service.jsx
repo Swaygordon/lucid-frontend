@@ -408,6 +408,13 @@ const SelectedService = () => {
     }
   };
 
+  // 🔥 NEW: Handle chat with provider
+  // In selected_service.jsx - Update the handleChatWithProvider function
+// In selected_service.jsx - Update handleChatWithProvider
+// In selected_service.jsx - Update the handleChatWithProvider function
+// Find this function and replace it with the updated version below
+
+
   const filteredProviders = useMemo(() => {
     let filtered = [...providers];
     if (filters.rating > 0) {
@@ -484,6 +491,7 @@ const SelectedService = () => {
                   totalJobs={profile.totalJobs}
                   onViewProfile={() => navigate(`/lucid/providers/${profile.id}`)}
                 />
+                
               </motion.div>
             ))}
           </motion.div>

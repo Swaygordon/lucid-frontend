@@ -20,6 +20,7 @@ import {
   Download
 } from 'lucide-react';
 import { Button, Card } from '../components/ui';
+import ChatButton from '../components/chat/ChatButton';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -263,7 +264,7 @@ const BookingConfirmation = () => {
                   <li>• You will receive notifications about your booking status</li>
                   {/* [DB] provider.responseTime should be stored on the provider record and returned by GET /providers/:id */}
                   <li>• The service provider typically responds within {provider.responseTime || '2 hours'}</li>
-                  <li>• You can message the provider directly if you have questions</li>
+                  <li>• You can message the provider directly once your booking is accepted</li>
                   {/* [API] POST /notifications/email — {bookingId, recipientEmail, templateId: 'booking_confirmation'} triggered server-side after booking creation */}
                   <li>• A confirmation email has been sent to {bookingData.client.email || 'your email'}</li>
                 </ul>
@@ -282,16 +283,16 @@ const BookingConfirmation = () => {
               View My Bookings
             </Button>
 
-            {/* [API] Navigating to messages should include conversationId or bookingId as context: GET /conversations?bookingId={id} */}
-            <Button
-              variant="outline"
-              size="md"
-              fullWidth
-              onClick={() => navigate('/lucid/messages')}
-            >
-              <MessageCircle className="w-5 h-5" />
-              Message Provider
-            </Button>
+            {/* Chat button — enabled only once the provider accepts the booking.
+                Until then it shows an info toast explaining when chat unlocks. */}
+            <ChatButton
+              booking={{
+                id: bookingData.id,
+                status: bookingData.status || 'pending',
+              }}
+              currentUserId={bookingData.client?.id}
+              className="w-full justify-center"
+            />
 
             <Button
               variant="outline"

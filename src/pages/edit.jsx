@@ -1,4 +1,4 @@
-import React, { useState, useCallback, memo, useEffect } from 'react';
+import React, { useState, useCallback, memo, useEffect, useRef } from 'react';
 import { useNavigate } from "react-router-dom";
 import { GHANA_LOCATIONS } from '../contexts/LocationContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -13,6 +13,33 @@ import { motion } from "framer-motion";
 import { Button, Input } from '../components/ui';
 import { onActivateKey } from '../utils/a11y';
 import { isProviderProfileComplete, PROFILE_SETUP_KEY } from './provider_profile_setup';
+
+
+// ============================================
+// HELPERS
+// ============================================
+const makeFileName = (file) => {
+  const ext  = file.name.split('.').pop();
+  const ts   = Date.now();
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${ts}-${rand}.${ext}`;
+};
+
+// Extract storage path from a public URL (used when deleting).
+// Example:
+//   https://xxx.supabase.co/storage/v1/object/public/avatars/providers/portfolio/123-ab.jpg
+// → 'providers/portfolio/123-ab.jpg'
+const pathFromPublicUrl = (publicUrl, bucket = 'avatars') => {
+  if (!publicUrl) return null;
+  try {
+    const marker = `/storage/v1/object/public/${bucket}/`;
+    const idx = publicUrl.indexOf(marker);
+    if (idx === -1) return null;
+    return publicUrl.slice(idx + marker.length);
+  } catch {
+    return null;
+  }
+};
 
 
 // ============================================
@@ -38,13 +65,13 @@ const useProfileForm = () => {
     weekdaysTime: { start: '09:00', end: '17:00' },
     weekendTime: { start: '10:00', end: '16:00' },
     customDays: {
-      sunday: { selected: false, start: '09:00', end: '17:00' },
-      monday: { selected: false, start: '09:00', end: '17:00' },
-      tuesday: { selected: false, start: '09:00', end: '17:00' },
+      sunday:    { selected: false, start: '09:00', end: '17:00' },
+      monday:    { selected: false, start: '09:00', end: '17:00' },
+      tuesday:   { selected: false, start: '09:00', end: '17:00' },
       wednesday: { selected: false, start: '09:00', end: '17:00' },
-      thursday: { selected: false, start: '09:00', end: '17:00' },
-      friday: { selected: false, start: '09:00', end: '17:00' },
-      saturday: { selected: false, start: '09:00', end: '17:00' }
+      thursday:  { selected: false, start: '09:00', end: '17:00' },
+      friday:    { selected: false, start: '09:00', end: '17:00' },
+      saturday:  { selected: false, start: '09:00', end: '17:00' }
     }
   });
 
@@ -128,7 +155,7 @@ const useProfileForm = () => {
       otherName: data.other_name || '',
       occupation: data.occupation || '',
       location: data.location || '',
-      description: data.description || '',
+      description: data.description || data.bio || '',
       categories: data.categories || [],
       skills: data.skills || [],
       certifications: data.certifications || [],
@@ -140,13 +167,13 @@ const useProfileForm = () => {
       weekdaysTime: data.weekdays_time || { start: '09:00', end: '17:00' },
       weekendTime: data.weekend_time || { start: '10:00', end: '16:00' },
       customDays: data.custom_days || {
-        sunday: { selected: false, start: '09:00', end: '17:00' },
-        monday: { selected: false, start: '09:00', end: '17:00' },
-        tuesday: { selected: false, start: '09:00', end: '17:00' },
+        sunday:    { selected: false, start: '09:00', end: '17:00' },
+        monday:    { selected: false, start: '09:00', end: '17:00' },
+        tuesday:   { selected: false, start: '09:00', end: '17:00' },
         wednesday: { selected: false, start: '09:00', end: '17:00' },
-        thursday: { selected: false, start: '09:00', end: '17:00' },
-        friday: { selected: false, start: '09:00', end: '17:00' },
-        saturday: { selected: false, start: '09:00', end: '17:00' }
+        thursday:  { selected: false, start: '09:00', end: '17:00' },
+        friday:    { selected: false, start: '09:00', end: '17:00' },
+        saturday:  { selected: false, start: '09:00', end: '17:00' }
       },
       showCustomDays: false,
     });
@@ -166,17 +193,14 @@ const useProfileForm = () => {
   };
 };
 
+
 // ============================================
 // REUSABLE COMPONENTS
 // ============================================
-
 const InputField = memo(({ label, ...props }) => (
   <div className="flex flex-col">
     <label className="mb-2 font-medium text-gray-700 dark:text-slate-300">{label}</label>
-    <Input
-      type="text"
-      {...props}
-    />
+    <Input type="text" {...props} />
   </div>
 ));
 
@@ -240,11 +264,7 @@ const DayCard = memo(({ selected, label, description, onClick }) => (
 const TimeInput = memo(({ label, value, onChange }) => (
   <div className="flex-1">
     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{label}</label>
-    <Input
-      type="time"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    />
+    <Input type="time" value={value} onChange={(e) => onChange(e.target.value)} />
   </div>
 ));
 
@@ -267,7 +287,7 @@ const ArrayInputSection = memo(({ title, items, onAdd, onRemove, icon: Icon, pla
 
       <div className="space-y-3">
         {items.map((item, index) => (
-          <div key={index} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 px-4 py-2.5 rounded-lg group hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
+          <div key={`${item}-${index}`} className="flex items-center gap-2 bg-blue-100 dark:bg-blue-900/30 px-4 py-2.5 rounded-lg group hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors">
             <span className="flex-1 text-gray-900 dark:text-slate-100">{item}</span>
             <button
               type="button"
@@ -343,6 +363,35 @@ const CategoryChipSelector = memo(({ selectedCategories, onChange }) => {
 });
 
 // ============================================
+// PORTFOLIO GRID
+// ============================================
+const PortfolioGrid = memo(({ urls, onRemove }) => {
+  if (!urls || urls.length === 0) return null;
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+      {urls.map((url, index) => (
+        <div key={url} className="relative group aspect-square rounded-lg overflow-hidden border-2 border-gray-200 dark:border-[#2d3748]">
+          <img
+            src={url}
+            alt={`Portfolio ${index + 1}`}
+            className="w-full h-full object-cover"
+            loading="lazy"
+          />
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1.5 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg hover:bg-red-700"
+            aria-label={`Remove portfolio image ${index + 1}`}
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+});
+
+// ============================================
 // WORKING HOURS SECTION
 // ============================================
 const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustomDayChange, onToggleCustom }) => {
@@ -361,24 +410,9 @@ const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustom
         <div className="mb-6">
           <h4 className="text-base font-semibold mb-4 text-gray-800 dark:text-slate-200">Select Working Days</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <DayCard
-              selected={profile.selectedDays.weekdays}
-              label="Weekdays"
-              description="Mon - Fri"
-              onClick={() => onDaySelect('weekdays')}
-            />
-            <DayCard
-              selected={profile.selectedDays.weekend}
-              label="Weekend"
-              description="Sat - Sun"
-              onClick={() => onDaySelect('weekend')}
-            />
-            <DayCard
-              selected={profile.selectedDays.custom}
-              label="Custom Days"
-              description="Pick specific days"
-              onClick={() => onDaySelect('custom')}
-            />
+            <DayCard selected={profile.selectedDays.weekdays} label="Weekdays" description="Mon - Fri" onClick={() => onDaySelect('weekdays')} />
+            <DayCard selected={profile.selectedDays.weekend} label="Weekend" description="Sat - Sun" onClick={() => onDaySelect('weekend')} />
+            <DayCard selected={profile.selectedDays.custom} label="Custom Days" description="Pick specific days" onClick={() => onDaySelect('custom')} />
           </div>
         </div>
 
@@ -494,25 +528,35 @@ const WorkingHoursSection = memo(({ profile, onDaySelect, onTimeChange, onCustom
   );
 });
 
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
 const EditProfile = () => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [userRole, setUserRole] = useState(null);
   const { showNotification } = useNotification();
   const formMethods = useProfileForm();
   const navigate = useNavigate();
 
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [heroUrl, setHeroUrl] = useState(null);
+
+  // ⭐ NEW: Portfolio URLs array (from provider_profiles.portfolio_urls)
+  const [portfolioUrls, setPortfolioUrls] = useState([]);
+
   const [uploadTarget, setUploadTarget] = useState(null);
 
+  const uploadingRef = useRef(false);
+  const uploadTargetRef = useRef(null);
+
   useEffect(() => {
-    loadProviderProfile();
+    loadProfile();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadProviderProfile = async () => {
+  const loadProfile = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -520,18 +564,62 @@ const EditProfile = () => {
         return;
       }
 
-      const { data, error } = await supabase
-        .from('provider_profiles')
-        .select('*')
-        .eq('user_id', user.id)
+      const { data: baseProfile } = await supabase
+        .from('profiles')
+        .select('role, first_name, last_name, other_name, phone_number, avatar_url')
+        .eq('id', user.id)
         .single();
 
-      if (error && error.code !== 'PGRST116') throw error;
+      const role = baseProfile?.role || 'client';
+      setUserRole(role);
 
-      if (data) {
-        formMethods.setProfileData(data);
-        setAvatarUrl(data.avatar_url);
-        setHeroUrl(data.hero_url);
+      if (role === 'service_provider') {
+        const { data, error } = await supabase
+          .from('provider_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        if (data) {
+          formMethods.setProfileData(data);
+          setAvatarUrl(data.avatar_url || baseProfile?.avatar_url || null);
+          setHeroUrl(data.hero_url);
+          // ⭐ Load portfolio URLs from DB
+          setPortfolioUrls(Array.isArray(data.portfolio_urls) ? data.portfolio_urls : []);
+        } else {
+          formMethods.setProfileData({
+            first_name: baseProfile?.first_name,
+            last_name:  baseProfile?.last_name,
+            other_name: baseProfile?.other_name,
+          });
+          setAvatarUrl(baseProfile?.avatar_url || null);
+          setPortfolioUrls([]);
+        }
+      } else {
+        // client
+        const { data, error } = await supabase
+          .from('client_profiles')
+          .select('*')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (error && error.code !== 'PGRST116') throw error;
+
+        if (data) {
+          formMethods.setProfileData(data);
+          setAvatarUrl(data.avatar_url || baseProfile?.avatar_url || null);
+          setHeroUrl(data.hero_url);
+        } else {
+          formMethods.setProfileData({
+            first_name: baseProfile?.first_name,
+            last_name:  baseProfile?.last_name,
+            other_name: baseProfile?.other_name,
+          });
+          setAvatarUrl(baseProfile?.avatar_url || null);
+        }
+        setPortfolioUrls([]);
       }
     } catch (error) {
       console.error('Error loading profile:', error);
@@ -542,13 +630,13 @@ const EditProfile = () => {
   };
 
   const uploadImage = async (file, type) => {
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `providers/${type}/${fileName}`;
+    const fileName = makeFileName(file);
+    const folder   = userRole === 'service_provider' ? 'providers' : 'clients';
+    const filePath = `${folder}/${type}/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file);
+      .upload(filePath, file, { upsert: false, cacheControl: '3600' });
 
     if (uploadError) throw uploadError;
 
@@ -559,6 +647,16 @@ const EditProfile = () => {
     return publicUrl;
   };
 
+  const deleteImageByUrl = async (publicUrl) => {
+    const path = pathFromPublicUrl(publicUrl, 'avatars');
+    if (!path) return;
+    try {
+      await supabase.storage.from('avatars').remove([path]);
+    } catch (err) {
+      console.warn('Could not delete storage file:', err);
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -567,43 +665,102 @@ const EditProfile = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
-      const profileData = {
-        user_id: user.id,
-        first_name: formMethods.profile.firstName,
-        last_name: formMethods.profile.lastName,
-        other_name: formMethods.profile.otherName,
-        occupation: formMethods.profile.occupation,
-        location: formMethods.profile.location,
-        description: formMethods.profile.description,
-        categories: formMethods.profile.categories,
-        skills: formMethods.profile.skills,
-        certifications: formMethods.profile.certifications,
-        languages: formMethods.profile.languages,
-        work_experience: formMethods.profile.workExperience,
-        employees: formMethods.profile.employees,
-        payment_methods: formMethods.profile.paymentMethods,
-        selected_days: formMethods.profile.selectedDays,
-        weekdays_time: formMethods.profile.weekdaysTime,
-        weekend_time: formMethods.profile.weekendTime,
-        custom_days: formMethods.profile.customDays,
-        avatar_url: avatarUrl,
-        hero_url: heroUrl,
-        total_completed_jobs: formMethods.profile.totalCompletedJobs || 0,
-        rating_average: formMethods.profile.ratingAverage || 0,
-        updated_at: new Date().toISOString()
-      };
-      // Discoverability flag derived from the same completeness rule the banner uses.
-      profileData.is_profile_complete = isProviderProfileComplete(profileData);
+      const p = formMethods.profile;
 
-      const { error } = await supabase
-        .from('provider_profiles')
-        .upsert(profileData, { onConflict: 'user_id' });
+      // 1) ALWAYS update profiles table
+      const { error: baseErr } = await supabase
+        .from('profiles')
+        .update({
+          first_name: p.firstName,
+          last_name:  p.lastName,
+          other_name: p.otherName,
+          avatar_url: avatarUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user.id);
+      if (baseErr) throw baseErr;
 
-      if (error) throw error;
+      // 2) Role-specific upsert
+      if (userRole === 'service_provider') {
+        const profileData = {
+          user_id:          user.id,
+          first_name:       p.firstName,
+          last_name:        p.lastName,
+          other_name:       p.otherName,
+          occupation:       p.occupation,
+          location:         p.location,
+          description:      p.description,
+          categories:       p.categories,
+          skills:           p.skills,
+          certifications:   p.certifications,
+          languages:        p.languages,
+          work_experience:  p.workExperience,
+          employees:        p.employees,
+          payment_methods:  p.paymentMethods,
+          selected_days:    p.selectedDays,
+          weekdays_time:    p.weekdaysTime,
+          weekend_time:     p.weekendTime,
+          custom_days:      p.customDays,
+          avatar_url:       avatarUrl,
+          hero_url:         heroUrl,
+          // ⭐ Persist portfolio images
+          portfolio_urls:   portfolioUrls,
+          updated_at:       new Date().toISOString(),
+        };
+        profileData.is_profile_complete = isProviderProfileComplete(profileData);
 
-      localStorage.setItem(PROFILE_SETUP_KEY, profileData.is_profile_complete ? 'true' : 'pending');
+        const { error } = await supabase
+          .from('provider_profiles')
+          .upsert(profileData, { onConflict: 'user_id' });
+        if (error) throw error;
+      } else {
+        const clientData = {
+          user_id:     user.id,
+          first_name:  p.firstName,
+          last_name:   p.lastName,
+          other_name:  p.otherName,
+          location:    p.location,
+          bio:         p.description,
+          avatar_url:  avatarUrl,
+          hero_url:    heroUrl,
+          updated_at:  new Date().toISOString(),
+        };
+
+        const { error } = await supabase
+          .from('client_profiles')
+          .upsert(clientData, { onConflict: 'user_id' });
+        if (error) throw error;
+      }
+
+      try {
+        localStorage.removeItem('lucid:userProfile');
+        localStorage.removeItem('lucid:providerProfile');
+        localStorage.removeItem('lucid:clientProfile');
+      } catch {}
+
+      if (userRole === 'service_provider') {
+        const isComplete = isProviderProfileComplete({
+          first_name: p.firstName,
+          last_name: p.lastName,
+          occupation: p.occupation,
+          location: p.location,
+          description: p.description,
+          categories: p.categories,
+          skills: p.skills,
+          languages: p.languages,
+          work_experience: p.workExperience,
+          avatar_url: avatarUrl,
+        });
+        localStorage.setItem(PROFILE_SETUP_KEY, isComplete ? 'true' : 'pending');
+      }
+
       showNotification('Profile saved successfully!', 'success');
-      navigate('/lucid/account/profile', { replace: true });
+      navigate(
+        userRole === 'service_provider'
+          ? '/lucid/account/profile'
+          : '/lucid/account/client-profile',
+        { replace: true }
+      );
     } catch (error) {
       console.error('Save error:', error);
       showNotification(error.message || 'Failed to save profile', 'error');
@@ -613,111 +770,104 @@ const EditProfile = () => {
   };
 
   const handleCancel = () => {
-    navigate('/lucid/account/profile', { replace: true });
+    navigate(
+      userRole === 'service_provider'
+        ? '/lucid/account/profile'
+        : '/lucid/account/client-profile',
+      { replace: true }
+    );
   };
 
-  const openUpload = (target) => setUploadTarget(target);
-  const closeUpload = () => setUploadTarget(null);
+  const openUpload = (target) => {
+    if (uploadingRef.current) return;
+    uploadTargetRef.current = target;
+    setUploadTarget(target);
+  };
 
-  const handleUploadComplete = async (file) => {
-    try {
-      const url = await uploadImage(file, uploadTarget);
-      if (uploadTarget === 'avatar') {
-        setAvatarUrl(url);
-      } else if (uploadTarget === 'hero') {
-        setHeroUrl(url);
-      }
-      showNotification('Image uploaded successfully!', 'success');
-    } catch (error) {
-      showNotification('Failed to upload image', 'error');
+  const closeUpload = () => {
+    uploadTargetRef.current = null;
+    setUploadTarget(null);
+  };
+
+  const handleUploadComplete = async (file, onProgress) => {
+    if (uploadingRef.current) {
+      throw new Error('An upload is already in progress');
     }
-    closeUpload();
+    uploadingRef.current = true;
+
+    const target = uploadTargetRef.current;
+
+    try {
+      let p = 0;
+      const tick = setInterval(() => {
+        p = Math.min(p + 8, 90);
+        if (onProgress) onProgress(p);
+      }, 150);
+
+      const url = await uploadImage(file, target);
+      clearInterval(tick);
+      if (onProgress) onProgress(100);
+
+      if (target === 'avatar') {
+        setAvatarUrl(url);
+      } else if (target === 'hero') {
+        setHeroUrl(url);
+      } else if (target === 'portfolio') {
+        // ⭐ THIS is what was missing: append URL to portfolio array
+        setPortfolioUrls(prev => [...prev, url]);
+      }
+
+      showNotification('Image uploaded successfully!', 'success');
+    } catch (err) {
+      console.error('Upload error:', err);
+      showNotification(err?.message || 'Failed to upload image', 'error');
+      throw err;
+    } finally {
+      uploadingRef.current = false;
+    }
+  };
+
+  // ⭐ Remove a portfolio image locally + delete from storage
+  const handleRemovePortfolio = async (index) => {
+    const url = portfolioUrls[index];
+    if (!url) return;
+    // Update local state immediately for snappy UX
+    setPortfolioUrls(prev => prev.filter((_, i) => i !== index));
+    // Fire-and-forget storage delete; on Save the DB will reflect the new array
+    deleteImageByUrl(url);
   };
 
   if (loadingData) {
     return (
       <div className="bg-gray-50 dark:bg-[#0f1117] min-h-screen pb-32 animate-pulse">
-        {/* Hero banner */}
         <div className="w-full h-44 md:h-56 bg-gray-300 dark:bg-[#252b3b]" />
-
-        {/* Avatar + buttons */}
         <div className="flex flex-col items-center -mt-14 mb-6 gap-3">
           <div className="w-24 h-24 md:w-28 md:h-28 rounded-full bg-gray-300 dark:bg-[#252b3b] border-4 border-white dark:border-[#0f1117]" />
           <div className="flex gap-2">
             <div className="h-8 w-28 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
           </div>
         </div>
-
         <div className="max-w-7xl mx-auto px-5 space-y-6">
-          {/* Name row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
             <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
           </div>
-          {/* Occupation / Other name row */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
             <div className="h-14 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
           </div>
-          {/* Location dropdown */}
           <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-
-          {/* Category chips */}
           <div className="flex flex-wrap gap-2">
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="h-9 w-28 bg-gray-200 dark:bg-[#252b3b] rounded-full" />
             ))}
           </div>
-
-          {/* Two-column section */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-5">
-            {/* Left: description + overview + payment */}
-            <div className="space-y-8">
-              <div className="h-28 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-              <div className="space-y-4">
-                <div className="h-5 w-24 bg-gray-200 dark:bg-[#252b3b] rounded" />
-                <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-                <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-                <div className="h-12 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-              </div>
-              <div className="space-y-3">
-                <div className="h-5 w-32 bg-gray-200 dark:bg-[#252b3b] rounded" />
-                <div className="h-8 bg-gray-200 dark:bg-[#252b3b] rounded" />
-                <div className="h-8 bg-gray-200 dark:bg-[#252b3b] rounded" />
-              </div>
-            </div>
-            {/* Right: skills + certs + languages + portfolio */}
-            <div className="space-y-8">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="space-y-3">
-                  <div className="h-5 w-28 bg-gray-200 dark:bg-[#252b3b] rounded" />
-                  <div className="h-10 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-                </div>
-              ))}
-              {/* Portfolio upload area */}
-              <div className="h-28 bg-gray-200 dark:bg-[#252b3b] rounded-lg border-2 border-dashed border-gray-300 dark:border-[#2d3748]" />
-            </div>
-          </div>
-
-          {/* Working hours */}
-          <div className="space-y-4">
-            <div className="h-6 w-36 bg-gray-200 dark:bg-[#252b3b] rounded" />
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[0, 1, 2].map(i => (
-                <div key={i} className="h-24 bg-gray-200 dark:bg-[#252b3b] rounded-xl" />
-              ))}
-            </div>
-          </div>
-
-          {/* Save / Cancel buttons */}
-          <div className="flex gap-4 justify-center pt-8 border-t border-gray-200 dark:border-[#1e293b]">
-            <div className="h-11 flex-1 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-            <div className="h-11 flex-1 bg-gray-200 dark:bg-[#252b3b] rounded-lg" />
-          </div>
         </div>
       </div>
     );
   }
+
+  const isProvider = userRole === 'service_provider';
 
   return (
     <div className="bg-gray-50 dark:bg-[#0f1117] min-h-screen pb-32">
@@ -796,29 +946,15 @@ const EditProfile = () => {
 
           {/* Basic Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <InputField
-              label="First Name"
-              value={formMethods.profile.firstName}
-              onChange={(e) => formMethods.handleInputChange('firstName', e.target.value)}
-            />
-            <InputField
-              label="Last Name"
-              value={formMethods.profile.lastName}
-              onChange={(e) => formMethods.handleInputChange('lastName', e.target.value)}
-            />
+            <InputField label="First Name" value={formMethods.profile.firstName} onChange={(e) => formMethods.handleInputChange('firstName', e.target.value)} />
+            <InputField label="Last Name"  value={formMethods.profile.lastName}  onChange={(e) => formMethods.handleInputChange('lastName', e.target.value)} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            <InputField
-              label="Other Name"
-              value={formMethods.profile.otherName}
-              onChange={(e) => formMethods.handleInputChange('otherName', e.target.value)}
-            />
-            <InputField
-              label="Occupation"
-              value={formMethods.profile.occupation}
-              onChange={(e) => formMethods.handleInputChange('occupation', e.target.value)}
-            />
+            <InputField label="Other Name" value={formMethods.profile.otherName} onChange={(e) => formMethods.handleInputChange('otherName', e.target.value)} />
+            {isProvider && (
+              <InputField label="Occupation" value={formMethods.profile.occupation} onChange={(e) => formMethods.handleInputChange('occupation', e.target.value)} />
+            )}
           </div>
 
           <div className="animate-fade-in">
@@ -842,21 +978,22 @@ const EditProfile = () => {
             </select>
           </div>
 
-          {/* Service Categories */}
-          <CategoryChipSelector
-            selectedCategories={formMethods.profile.categories}
-            onChange={(cats) => formMethods.handleInputChange('categories', cats)}
-          />
+          {isProvider && (
+            <CategoryChipSelector
+              selectedCategories={formMethods.profile.categories}
+              onChange={(cats) => formMethods.handleInputChange('categories', cats)}
+            />
+          )}
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 mt-5">
-            {/* LEFT COLUMN */}
+            {/* LEFT */}
             <div className="space-y-8">
-
-              {/* Description */}
               <div>
-                <label className="block mb-2 text-lg font-bold text-gray-900 dark:text-slate-100">Description</label>
+                <label className="block mb-2 text-lg font-bold text-gray-900 dark:text-slate-100">
+                  {isProvider ? 'Description' : 'Bio'}
+                </label>
                 <textarea
-                  placeholder="Write a brief description about yourself..."
+                  placeholder={isProvider ? 'Write a brief description about yourself...' : 'Tell us a bit about yourself...'}
                   value={formMethods.profile.description}
                   onChange={(e) => formMethods.handleInputChange('description', e.target.value)}
                   className="w-full px-3 py-3 border-2 border-gray-300 dark:border-[#2d3748] rounded-md text-sm resize-y min-h-[120px] bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-200 placeholder:dark:text-slate-500 transition-all focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900/40"
@@ -864,118 +1001,123 @@ const EditProfile = () => {
                 />
               </div>
 
-              {/* Overview */}
-              <div>
-                <h3 className="text-gray-900 dark:text-slate-100 mb-4 text-lg font-bold">Overview</h3>
-
-                <div className="mb-5 pb-4 border-b border-gray-200 dark:border-[#1e293b]">
-                  <div className="flex justify-between items-center mb-2 font-medium text-gray-900 dark:text-slate-100">
-                    <span>Verification Status</span>
-                    <CheckCircle size={20} className="text-blue-600" />
+              {isProvider && (
+                <div>
+                  <h3 className="text-gray-900 dark:text-slate-100 mb-4 text-lg font-bold">Overview</h3>
+                  <div className="mb-5 pb-4 border-b border-gray-200 dark:border-[#1e293b]">
+                    <div className="flex justify-between items-center mb-2 font-medium text-gray-900 dark:text-slate-100">
+                      <span>Verification Status</span>
+                      <CheckCircle size={20} className="text-blue-600" />
+                    </div>
+                    <span className="text-gray-600 dark:text-slate-400 text-sm">Verified</span>
                   </div>
-                  <span className="text-gray-600 dark:text-slate-400 text-sm">Verified</span>
+                  <div className="mb-5 pb-4 border-b border-gray-200 dark:border-[#1e293b]">
+                    <CounterInput label="Number of Employees" value={formMethods.profile.employees} onChange={(val) => formMethods.handleInputChange('employees', val)} icon={Users} min={1} />
+                  </div>
+                  <div className="mb-5">
+                    <CounterInput label="Work Experience (years)" value={formMethods.profile.workExperience} onChange={(val) => formMethods.handleInputChange('workExperience', val)} icon={Clock} min={0} />
+                  </div>
                 </div>
+              )}
 
-                <div className="mb-5 pb-4 border-b border-gray-200 dark:border-[#1e293b]">
-                  <CounterInput
-                    label="Number of Employees"
-                    value={formMethods.profile.employees}
-                    onChange={(val) => formMethods.handleInputChange('employees', val)}
-                    icon={Users}
-                    min={1}
-                  />
+              {isProvider && (
+                <div>
+                  <h3 className="text-gray-900 dark:text-slate-100 mb-1 text-base font-semibold">Payment Methods</h3>
+                  <p className="text-gray-500 dark:text-slate-500 text-sm mb-4">Select all that apply</p>
+                  <div className="flex flex-col gap-3">
+                    {[{ key: 'mobile', label: 'Mobile Money' }, { key: 'bank', label: 'Bank Transfer' }].map(({ key, label }) => (
+                      <label key={key} className="flex items-center gap-3 cursor-pointer py-2">
+                        <input
+                          type="checkbox"
+                          checked={formMethods.profile.paymentMethods.includes(key)}
+                          onChange={() => formMethods.handlePaymentToggle(key)}
+                          className="accent-blue-600 w-4 h-4"
+                        />
+                        <span className="text-gray-900 dark:text-slate-100">{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-
-                <div className="mb-5">
-                  <CounterInput
-                    label="Work Experience (years)"
-                    value={formMethods.profile.workExperience}
-                    onChange={(val) => formMethods.handleInputChange('workExperience', val)}
-                    icon={Clock}
-                    min={0}
-                  />
-                </div>
-              </div>
-
-              {/* Payment Methods */}
-              <div>
-                <h3 className="text-gray-900 dark:text-slate-100 mb-1 text-base font-semibold">Payment Methods</h3>
-                <p className="text-gray-500 dark:text-slate-500 text-sm mb-4">Select all that apply</p>
-                <div className="flex flex-col gap-3">
-                  {[
-                    { key: 'mobile', label: 'Mobile Money' },
-                    { key: 'bank',   label: 'Bank Transfer' },
-                  ].map(({ key, label }) => (
-                    <label key={key} className="flex items-center gap-3 cursor-pointer py-2">
-                      <input
-                        type="checkbox"
-                        checked={formMethods.profile.paymentMethods.includes(key)}
-                        onChange={() => formMethods.handlePaymentToggle(key)}
-                        className="accent-blue-600 w-4 h-4"
-                      />
-                      <span className="text-gray-900 dark:text-slate-100">{label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
 
-            {/* RIGHT COLUMN */}
+            {/* RIGHT */}
             <div className="space-y-8">
-              <ArrayInputSection
-                title="Skills & Tags"
-                items={formMethods.profile.skills}
-                onAdd={(item) => formMethods.handleArrayAdd('skills', item)}
-                onRemove={(index) => formMethods.handleArrayRemove('skills', index)}
-                placeholder="Add a skill (e.g., React Development)"
-              />
+              {isProvider ? (
+                <>
+                  <ArrayInputSection
+                    title="Skills & Tags"
+                    items={formMethods.profile.skills}
+                    onAdd={(item) => formMethods.handleArrayAdd('skills', item)}
+                    onRemove={(index) => formMethods.handleArrayRemove('skills', index)}
+                    placeholder="Add a skill (e.g., React Development)"
+                  />
+                  <ArrayInputSection
+                    title="Certifications"
+                    items={formMethods.profile.certifications}
+                    onAdd={(item) => formMethods.handleArrayAdd('certifications', item)}
+                    onRemove={(index) => formMethods.handleArrayRemove('certifications', index)}
+                    icon={Award}
+                    placeholder="Add a certification"
+                  />
+                  <ArrayInputSection
+                    title="Languages"
+                    items={formMethods.profile.languages}
+                    onAdd={(item) => formMethods.handleArrayAdd('languages', item)}
+                    onRemove={(index) => formMethods.handleArrayRemove('languages', index)}
+                    icon={Languages}
+                    placeholder="Add a language"
+                  />
 
-              <ArrayInputSection
-                title="Certifications"
-                items={formMethods.profile.certifications}
-                onAdd={(item) => formMethods.handleArrayAdd('certifications', item)}
-                onRemove={(index) => formMethods.handleArrayRemove('certifications', index)}
-                icon={Award}
-                placeholder="Add a certification"
-              />
+                  {/* ⭐ Portfolio: grid + upload tile */}
+                  <div>
+                    <h3 className="text-gray-900 dark:text-slate-100 mb-2 text-base font-semibold">
+                      Portfolio Projects
+                      {portfolioUrls.length > 0 && (
+                        <span className="ml-2 text-sm font-normal text-gray-500">
+                          ({portfolioUrls.length})
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">
+                      Upload pictures of previous work done. They are saved when you click Save Changes.
+                    </p>
 
-              <ArrayInputSection
-                title="Languages"
-                items={formMethods.profile.languages}
-                onAdd={(item) => formMethods.handleArrayAdd('languages', item)}
-                onRemove={(index) => formMethods.handleArrayRemove('languages', index)}
-                icon={Languages}
-                placeholder="Add a language"
-              />
+                    <PortfolioGrid urls={portfolioUrls} onRemove={handleRemovePortfolio} />
 
-              {/* Portfolio Projects */}
-              <div>
-                <h3 className="text-gray-900 dark:text-slate-100 mb-2 text-base font-semibold">Portfolio Projects</h3>
-                <p className="text-gray-600 dark:text-slate-400 text-sm mb-4">Upload pictures of previous work done</p>
-                <div
-                  role="button"
-                  tabIndex={0}
-                  aria-label="Upload portfolio images"
-                  onClick={() => openUpload('portfolio')}
-                  onKeyDown={onActivateKey(() => openUpload('portfolio'))}
-                  className="border-2 border-dashed border-gray-300 dark:border-[#2d3748] rounded-lg p-10 bg-white dark:bg-[#252b3b] hover:border-blue-600 transition-colors flex justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                >
-                  <SquarePlus size={38} className="text-gray-400 hover:text-blue-600 transition-colors" />
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      aria-label="Upload portfolio images"
+                      onClick={() => openUpload('portfolio')}
+                      onKeyDown={onActivateKey(() => openUpload('portfolio'))}
+                      className="border-2 border-dashed border-gray-300 dark:border-[#2d3748] rounded-lg p-10 bg-white dark:bg-[#252b3b] hover:border-blue-600 transition-colors flex justify-center cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      <SquarePlus size={38} className="text-gray-400 hover:text-blue-600 transition-colors" />
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="bg-white dark:bg-[#1a1f2e] rounded-xl p-6 border border-gray-200 dark:border-[#1e293b]">
+                  <h3 className="text-gray-900 dark:text-slate-100 mb-2 text-base font-semibold">Client Account</h3>
+                  <p className="text-gray-600 dark:text-slate-400 text-sm">
+                    Your profile picture, name, location, and bio are shown to providers when you contact them.
+                  </p>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
-          {/* Working Hours - Full Width */}
-          <WorkingHoursSection
-            profile={formMethods.profile}
-            onDaySelect={formMethods.handleDaySelection}
-            onTimeChange={formMethods.handleTimeChange}
-            onCustomDayChange={formMethods.handleCustomDayChange}
-            onToggleCustom={formMethods.toggleCustomDays}
-          />
+          {isProvider && (
+            <WorkingHoursSection
+              profile={formMethods.profile}
+              onDaySelect={formMethods.handleDaySelection}
+              onTimeChange={formMethods.handleTimeChange}
+              onCustomDayChange={formMethods.handleCustomDayChange}
+              onToggleCustom={formMethods.toggleCustomDays}
+            />
+          )}
 
-          {/* Action Buttons */}
           <div className="flex gap-4 justify-center mt-8 pt-8 border-t border-gray-200 dark:border-[#1e293b]">
             <Button fullWidth variant='danger' size="md" onClick={handleCancel}>Cancel</Button>
             <Button fullWidth size="md" onClick={handleSave} loading={loading}>Save Changes</Button>
@@ -983,7 +1125,6 @@ const EditProfile = () => {
         </div>
       </div>
 
-      {/* Image Upload Modal */}
       <ImageUploadModal
         isOpen={uploadTarget !== null}
         onClose={closeUpload}
@@ -995,7 +1136,6 @@ const EditProfile = () => {
         }
       />
     </div>
-
   );
 };
 
