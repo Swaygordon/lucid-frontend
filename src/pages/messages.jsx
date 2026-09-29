@@ -1,9 +1,8 @@
-// src/pages/messages.jsx
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { supabase } from '../lib/supabaseClient';
-import { PageHeader, EmptyState } from '../components/ui';
+import { PageHeader } from '../components/ui';
 import ChatWindow from '../components/chat/ChatWindow';
 import { Avatar } from '../components/ui/Avatar';
 import { useNavigateBack } from '../hooks/useNavigateBack';
@@ -11,7 +10,8 @@ import {
   getUserConversations,
   subscribeToMessages,
 } from '../lib/chatService';
-import { MessageCircle, Loader2 } from 'lucide-react';
+import { MessageCircle } from 'lucide-react';
+import { ChatSkeleton } from '../components/route_skeletons.jsx';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -35,31 +35,36 @@ const Messages = () => {
   useEffect(() => {
     let unsubscribe;
     const init = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        navigate('/lucid/signin');
-        return;
-      }
-      setCurrentUser(user);
-
-      const convs = await getUserConversations(user.id);
-      setConversations(convs);
-      setLoading(false);
-
-      // Auto-select conversation from URL
-      if (activeConversationId) {
-        const found = convs.find(c => c.id === activeConversationId);
-        if (found) {
-          setSelectedConversation(found);
-          setShowChatOnMobile(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          navigate('/lucid/signin');
+          return;
         }
-      }
+        setCurrentUser(user);
 
-      // Subscribe to new incoming messages → refresh list
-      unsubscribe = subscribeToMessages(user.id, async () => {
-        const updated = await getUserConversations(user.id);
-        setConversations(updated);
-      });
+        const convs = await getUserConversations(user.id);
+        setConversations(convs);
+
+        // Auto-select conversation from URL
+        if (activeConversationId) {
+          const found = convs.find(c => c.id === activeConversationId);
+          if (found) {
+            setSelectedConversation(found);
+            setShowChatOnMobile(true);
+          }
+        }
+
+        // Subscribe to new incoming messages → refresh list
+        unsubscribe = subscribeToMessages(user.id, async () => {
+          const updated = await getUserConversations(user.id);
+          setConversations(updated);
+        });
+      } catch (err) {
+        console.error('Failed to load conversations:', err);
+      } finally {
+        setLoading(false);
+      }
     };
     init();
     return () => { if (unsubscribe) unsubscribe(); };
@@ -101,29 +106,27 @@ const Messages = () => {
     return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
+  if (loading) return <ChatSkeleton />;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117] flex flex-col">
-      <PageHeader
-        title="Messages"
-        subtitle="Chat with your clients and service providers"
-        onBack={handleBackClick}
-      />
+    <div
+      className="h-screen bg-white dark:bg-[#1a1f2e] flex flex-col overflow-hidden"
+      style={{ height: '100dvh' }}
+    >
+      <div className={showChatOnMobile ? 'hidden lg:block' : ''}>
+        <PageHeader
+          title="Messages"
+          subtitle="Chat with your clients and service providers"
+          onBack={handleBackClick}
+        />
+      </div>
 
-      <div className="flex-1 max-w-7xl w-full mx-auto px-0 sm:px-4 lg:px-8 py-0 sm:py-6">
+      <div className="flex-1 min-h-0 w-full border-t border-gray-200 dark:border-[#1e293b]">
         <motion.div
           initial="hidden"
           animate="visible"
           variants={fadeIn}
-          className="bg-white dark:bg-[#1a1f2e] rounded-none sm:rounded-2xl shadow-sm border-0 sm:border border-gray-200 dark:border-[#1e293b] overflow-hidden"
-          style={{ height: 'calc(100vh - 180px)' }}
+          className="h-full bg-white dark:bg-[#1a1f2e] overflow-hidden"
         >
           <div className="flex h-full">
             {/* Conversation list */}
@@ -204,7 +207,7 @@ const Messages = () => {
             </div>
 
             {/* Chat window */}
-            <div className={`flex-1 ${showChatOnMobile ? 'flex' : 'hidden lg:flex'}`}>
+            <div className={`flex-1 min-w-0 min-h-0 ${showChatOnMobile ? 'flex' : 'hidden lg:flex'} [&>*]:flex-1 [&>*]:min-w-0 [&>*]:min-h-0`}>
               {selectedConversation && currentUser ? (
                 <ChatWindow
                   conversation={selectedConversation}

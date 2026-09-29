@@ -22,8 +22,6 @@ import { FavouritesProvider } from './contexts/FavouritesContext';
 // Pages import it directly from this same file when they need auth operations.
 import { supabase } from './lib/supabaseClient';
 
-import Messages from './pages/messages';
-
 // ─── Shared layout components — eagerly loaded (present on every page) ────────
 import Navbar from "./components/navbar";
 import Footer from './components/footer';
@@ -44,8 +42,8 @@ import {
   BookingsSkeleton,
   ContentPageSkeleton,
   DashboardSkeleton,
-  // MessagesListSkeleton,
-  // ChatSkeleton,
+  ChatSkeleton,
+  NotificationsSkeleton,
 } from './components/route_skeletons.jsx';
 
 
@@ -96,9 +94,8 @@ const AccountSettings      = lazy(() => import('./pages/user_info.jsx'));
 const NotificationsPage    = lazy(() => import('./pages/notification_page.jsx'));
 const NotificationSettings = lazy(() => import('./pages/notificationSettings.jsx'));
 
-// Messaging (Phase 7) — gitignored, see note above.
-// const MessagesListPage  = lazy(() => import('./pages/messagelist.jsx'));
-// const ChatMessagingPage = lazy(() => import('./pages/messaging.jsx'));
+// Messaging (Phase 7) 
+const Messages  = lazy(() => import('./pages/messages.jsx'));
 
 
 
@@ -214,7 +211,7 @@ function Layout({ children }) {
     '/lucid/account/settings',        // AccountSettings (Phase 6)
     '/lucid/notifications',           // NotificationsPage (Phase 6)
     '/lucid/notifications/settings',  // NotificationSettings (Phase 6)
-    // '/lucid/messages',                // MessagesListPage (Phase 7)
+    '/lucid/messages',                // Messages (Phase 7)
     '/lucid/bookings',                // BookingsPage (Phase 4)
     '/lucid/bookings/history',        // BookingHistoryPage (Phase 4)
     '/lucid/bookings/confirmation',   // BookingConfirmation (Phase 4)
@@ -232,7 +229,7 @@ function Layout({ children }) {
   const hideNavAndFooterPrefix = [
     '/lucid/providers/',      // GeneralProfile — any provider UUID or "me" (Phase 3)
     '/lucid/bookings/new/',   // BookingRequest — dynamic :providerId segment (Phase 4)
-    // '/lucid/messages/',       // individual chat threads (Phase 7)
+    //'/lucid/messages/',       // individual chat threads (Phase 7)
   ];
 
   const shouldHideLayout =
@@ -283,8 +280,6 @@ function App() {
 
             <Route path="/lucid/"              element={withFallback(<Home />, HomeSkeleton)} />
             {/* Landing page. Entry point for new visitors. */}
-
-            <Route path="/lucid/messages" element={<ProtectedRoute><Messages /></ProtectedRoute>} />
             
             <Route path="/lucid/signup"        element={withFallback(<Signup />, AuthFormSkeleton)} />
             {/* New user registration — both client and provider accounts. */}
@@ -405,11 +400,10 @@ function App() {
               } />
 
             {/* Phase 7 — Messaging */}
-           {/* <Route path="/lucid/messages"
-              element={<ProtectedRoute>{withFallback(<MessagesListPage />, MessagesListSkeleton)}</ProtectedRoute>} />*/}
-
-            {/* <Route path="/lucid/messages"
-              element={<ProtectedRoute>{withFallback(<ChatMessagingPage />, ChatSkeleton)}</ProtectedRoute>} /> */}
+           <Route path="/lucid/messages" 
+              element={
+                <ProtectedRoute>{withFallback(<Messages />, ChatSkeleton)}</ProtectedRoute>
+} />
 
             {/* Phase 6 — Notifications */}
             <Route path="/lucid/notifications"

@@ -7,6 +7,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
 import emptyNotificationsImage from '../assets/No Messages.webp';
 import { NotificationBadge } from '../components/ui';
+import { NotificationsSkeleton } from '../components/route_skeletons.jsx';
 
 // Animation variants
 const fadeInUp = {
@@ -650,22 +651,14 @@ const NotificationsPage = () => {
 
   // Calculate badge counts (payment/bookmark buckets derived straight from
   // real columns — no separate mock "category" field needed anymore)
-  const badgeCounts = useMemo(() => {
-    const unreadCount = notifications.filter(n => !n.read).length;
-    const hasUnread = unreadCount > 0;
-
-    return {
-      all: hasUnread ? notifications.length : 0,
-      unread: unreadCount,
-      read: hasUnread ? notifications.filter(n => n.read).length : 0,
-      booking: hasUnread ? notifications.filter(n => n.type === 'booking' && !n.read).length : 0,
-      payment: hasUnread ? notifications.filter(n => n.type === 'payment' && !n.read).length : 0,
-      bookmark: hasUnread ? notifications.filter(n => n.bookmarked && !n.read).length : 0,
-      // "Other" = anything that isn't a payment type and isn't bookmarked
-      // (message, profile, error, or any custom/unrecognized type)
-      other: hasUnread ? notifications.filter(n => !['booking', 'payment'].includes(n.type) && !n.bookmarked && !n.read).length : 0
-    };
-  }, [notifications]);
+  const badgeCounts = useMemo(() => ({
+  unread: notifications.filter(n => !n.read).length,
+  booking: notifications.filter(n => n.type === 'booking' && !n.read).length,
+  payment: notifications.filter(n => n.type === 'payment' && !n.read).length,
+  bookmark: notifications.filter(n => n.bookmarked && !n.read).length,
+  // "Other" = not booking/payment and not bookmarked
+  other: notifications.filter(n => !['booking', 'payment'].includes(n.type) && !n.bookmarked && !n.read).length,
+}), [notifications]);
 
   // Filter and group notifications
   const filteredNotifications = useMemo(() => {
@@ -804,13 +797,7 @@ const NotificationsPage = () => {
 
   const hasNotifications = Object.keys(filteredNotifications).length > 0;
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-[#0f1117]">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  if (loading) return <NotificationsSkeleton />;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">

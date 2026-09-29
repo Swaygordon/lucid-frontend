@@ -58,8 +58,8 @@ const AccountTypeBadge = ({ role, occupation, alsoClient, className = "" }) => {
 
   if (role === 'admin') {
     return (
-      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 ${className}`}>
-        <Shield className="w-3 h-3" />
+      <span className={`inline-flex items-center gap-1 px-4 py-2 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 ${className}`}>
+        <Shield className="w-4 h-4" />
         Admin
       </span>
     );
@@ -69,13 +69,11 @@ const AccountTypeBadge = ({ role, occupation, alsoClient, className = "" }) => {
     const label = occupation ? `Provider · ${occupation}` : 'Service Provider';
     return (
       <span className="inline-flex flex-wrap items-center gap-1">
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 ${className}`}>
-          <BriefcaseBusiness className="w-3 h-3" />
+        <span className={`inline-flex items-center gap-1 px-4 py-2 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-none text-blue-700 dark:bg-none dark:text-blue-300 ${className}`}>
           {label}
         </span>
         {alsoClient && (
-          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 ${className}`}>
-            <User className="w-3 h-3" />
+          <span className={`inline-flex items-center gap-1 px-4 py-2 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-none text-emerald-700 dark:bg-none dark:text-emerald-300 ${className}`}>
             Also a Client
           </span>
         )}
@@ -84,8 +82,8 @@ const AccountTypeBadge = ({ role, occupation, alsoClient, className = "" }) => {
   }
 
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 ${className}`}>
-      <User className="w-3 h-3" />
+    <span className={`inline-flex items-center gap-1 px-4 py-2 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-none text-emerald-700 dark:bg-none dark:text-emerald-300 ${className}`}>
+      
       Client
     </span>
   );
@@ -350,9 +348,9 @@ function Navbar() {
 
   const userMenuLinks = [
     { to: getProfilePath(), label: "My Profile", icon: User },
-    { to: getDashboardPath(), label: "Dashboard" },
+    { to: getDashboardPath(), label: "Dashboard", icon: LayoutDashboard },
     { to: "/lucid/messages",       label: "Messages",      icon: MessageCircle, badge: messageCount },
-    { to: "/lucid/notifications",  label: "Notifications", badge: notificationCount },
+    { to: "/lucid/notifications",  label: "Notifications", icon: Bell,          badge: notificationCount },
   ];
 
   const mobileUserLinks = [
@@ -391,31 +389,9 @@ function Navbar() {
             ))}
           </div>
 
-          {isLoggedIn && (
-            <Link
-              to="/lucid/messages"
-              className="ml-2 hidden lg:flex relative p-2 text-gray-700 dark:text-slate-300 hover:text-secondary rounded-lg hover:bg-secondary-50 dark:hover:bg-secondary/10 transition-colors"
-              aria-label="Messages"
-            >
-              <MessageCircle className="w-5 h-5" />
-              <NotificationBadge count={messageCount} />
-            </Link>
-          )}
+          
 
-          <Link
-            to="/lucid/notifications"
-            className="ml-2 hidden lg:block px-4 py-2 text-gray-700 dark:text-slate-300 hover:text-secondary font-medium transition-colors rounded-lg hover:bg-secondary-50 dark:hover:bg-secondary/10 whitespace-nowrap"
-          >
-            <span className="relative inline-block">
-              Notifications
-              {notificationCount > 0 && (
-                <span className="absolute -top-2 -right-4 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full min-w-[18px] text-center leading-none">
-                  {notificationCount > 9 ? '9+' : notificationCount}
-                </span>
-              )}
-            </span>
-          </Link>
-
+         
           {isLoggedIn ? (
             <div ref={dropdownRef} className="relative ml-4 hidden lg:block">
               <div
@@ -426,24 +402,24 @@ function Navbar() {
                 aria-label="Account menu"
                 onClick={() => setIsDropdownOpen(prev => !prev)}
                 onKeyDown={onActivateKey(() => setIsDropdownOpen(prev => !prev))}
-                className="relative flex items-center space-x-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#252b3b] p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                className="relative flex items-center space-x-2 cursor-pointer  p-2 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
               >
                 {getAvatarUrl() ? (
                   <img
                     src={getAvatarUrl()}
                     alt={getFullName()}
-                    className="w-9 h-9 rounded-full object-cover"
+                    className="w-10 h-10 rounded-full object-cover"
                   />
                 ) : (
                   <Avatar name={getFullName()} size="md" />
                 )}
                 <div className="flex flex-col items-start leading-tight">
-                  <span className="font-medium text-gray-800 dark:text-slate-100">{getUserDisplayName()}</span>
+                  <span className="font-medium text-xl  text-gray-800 dark:text-slate-100">{getUserDisplayName()}</span>
                   <AccountTypeBadge
                     role={accountRole}
                     occupation={accountOccupation}
                     alsoClient={alsoClient}
-                    className="mt-0.5"
+                    className="mt-1"
                   />
                 </div>
                 <ChevronDown className="w-4 h-4 text-gray-600" />
@@ -542,25 +518,27 @@ function Navbar() {
             <div className="mb-6 pb-6 border-b border-gray-200 dark:border-[#1e293b]">
               <div className="flex items-start space-x-3">
                 {getAvatarUrl() ? (
-                  <img src={getAvatarUrl()} alt={getFullName()} className="w-12 h-12 rounded-full object-cover" width="48" height="48" loading="lazy" />
+                  <img
+  src={getAvatarUrl()}
+  alt={getFullName()}
+  className="w-14 h-14 rounded-full object-cover flex-shrink-0"
+  width="48"
+  height="48"
+  loading="lazy"
+/>
                 ) : (
-                  <Avatar name={getFullName()} size="lg" />
+                  <div className="flex-shrink-0">
+  <Avatar name={getFullName()} size="lg" />
+</div>
                 )}
                 <div className="min-w-0">
-                  <p className="font-semibold text-gray-900 dark:text-slate-100 truncate">{getUserDisplayName()}</p>
+                  <p className="font-semibold text-2xl  text-gray-900 dark:text-slate-100 truncate">{getUserDisplayName()}</p>
                   <AccountTypeBadge
                     role={accountRole}
                     occupation={accountOccupation}
                     alsoClient={alsoClient}
-                    className="mt-1"
+                    className="mt-3"
                   />
-                  <Link
-                    to={getProfilePath()}
-                    onClick={handleLinkClick}
-                    className="text-sm text-primary hover:text-secondary transition-colors block mt-1"
-                  >
-                    View Profile
-                  </Link>
                 </div>
               </div>
             </div>

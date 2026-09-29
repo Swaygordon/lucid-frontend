@@ -192,37 +192,151 @@ export function DashboardSkeleton() {
 
 
 
-export function ChatSkeleton() {
+// ChatSkeleton — Suspense fallback for /lucid/messages.
+// Mirrors messages.jsx: header → card (calc(100vh - 180px)) → [list | pane].
+const Bar = ({ className = '' }) => (
+  <div className={`rounded bg-gray-200 dark:bg-slate-700/60 ${className}`} />
+);
+
+// Append to route_skeletons.jsx (uses the file's existing `block` token).
+// Mirrors notification_page.jsx: sticky header (back / title / settings) →
+// filter pills → date-grouped notification cards.
+
+const NOTIF_GROUPS = [
+  { label: 'w-16', cards: [['w-40', 'w-4/5'], ['w-32', 'w-2/3'], ['w-48', 'w-11/12']] },
+  { label: 'w-24', cards: [['w-36', 'w-3/4'], ['w-44', 'w-3/5']] },
+];
+
+const NOTIF_PILL_WIDTHS = ['w-14', 'w-20', 'w-16', 'w-20', 'w-20', 'w-24', 'w-16'];
+
+export function NotificationsSkeleton() {
   return (
-    <div className={`${baseShell} bg-gray-50 flex flex-col`}>
-      <div className="bg-white dark:bg-[#1a1f2e] border-b dark:border-[#1e293b] px-4 py-3 flex items-center gap-3">
-        <div className={`w-8 h-8 rounded-lg ${block}`} />
-        <div className={`w-10 h-10 rounded-full ${block}`} />
-        <div className="flex-1 space-y-2">
-          <div className={`h-4 w-32 ${block}`} />
-          <div className={`h-3 w-16 ${block}`} />
+    <div
+      className="min-h-screen bg-gray-50 dark:bg-[#0f1117] animate-pulse"
+      aria-busy="true"
+      aria-label="Loading notifications"
+    >
+      {/* Header */}
+      <div className="bg-white dark:bg-[#1a1f2e] border-b border-gray-200 dark:border-[#1e293b]">
+        <div className="w-full mx-auto px-10 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className={`w-10 h-10 rounded-full ${block}`} />
+            <div className={`h-8 w-52 ${block} rounded-lg`} />
+            <div className={`w-10 h-10 rounded-full ${block}`} />
+          </div>
+
+          {/* Filter pills */}
+          <div className="flex gap-2 overflow-hidden pb-2">
+            {NOTIF_PILL_WIDTHS.map((w, i) => (
+              <div key={i} className={`my-2 h-9 ${w} ${block} rounded-full flex-shrink-0`} />
+            ))}
+          </div>
         </div>
       </div>
-      <div className="flex-1 max-w-3xl w-full mx-auto px-4 py-6 space-y-4">
-        {[
-          { side: 'left',  w: 'w-56' },
-          { side: 'right', w: 'w-40' },
-          { side: 'left',  w: 'w-64' },
-          { side: 'right', w: 'w-32' },
-          { side: 'left',  w: 'w-48' },
-        ].map((m, i) => (
-          <div key={i} className={`flex ${m.side === 'right' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`h-12 ${m.w} ${block} rounded-2xl`} />
+
+      {/* Content */}
+      <div className="w-full mx-auto px-10 py-6">
+        {/* Mark all read / Clear all */}
+        <div className="flex justify-between items-center mb-4">
+          <div className={`h-4 w-32 ${block}`} />
+          <div className={`h-4 w-20 ${block}`} />
+        </div>
+
+        {NOTIF_GROUPS.map((group, gi) => (
+          <div key={gi} className="mb-6">
+            <div className={`h-4 ${group.label} ${block} mb-3`} />
+            <div className="space-y-3">
+              {group.cards.map(([titleW, msgW], ci) => (
+                <div
+                  key={ci}
+                  className="flex items-start gap-4 p-4 rounded-lg border bg-white dark:bg-[#1a1f2e] border-gray-200 dark:border-[#1e293b]"
+                >
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-full ${block}`} />
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className={`h-4 ${titleW} max-w-[60%] ${block}`} />
+                      <div className={`h-3 w-12 flex-shrink-0 ${block}`} />
+                    </div>
+                    <div className={`h-3.5 ${msgW} ${block}`} />
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
-      </div>
-      <div className="bg-white dark:bg-[#1a1f2e] border-t dark:border-[#1e293b] px-4 py-3 flex gap-2">
-        <div className={`flex-1 h-11 ${block} rounded-full`} />
-        <div className={`w-11 h-11 ${block} rounded-full`} />
       </div>
     </div>
   );
 }
+
+const ConversationRowSkeleton = ({ nameW, previewW }) => (
+  <div className="flex items-start gap-3 px-4 py-3 border-b border-gray-100 dark:border-[#1e293b]/50">
+    <div className="w-12 h-12 rounded-full bg-gray-200 dark:bg-slate-700/60 flex-shrink-0" />
+    <div className="flex-1 min-w-0">
+      <div className="flex items-center justify-between gap-2">
+        <Bar className={`h-4 ${nameW}`} />
+        <Bar className="h-3 w-6 flex-shrink-0" />
+      </div>
+      <Bar className={`h-3.5 mt-2 ${previewW}`} />
+      <Bar className="h-2.5 w-24 mt-2" />
+    </div>
+  </div>
+);
+
+const ROWS = [
+  ['w-28', 'w-4/5'],
+  ['w-36', 'w-2/3'],
+  ['w-24', 'w-11/12'],
+  ['w-32', 'w-3/5'],
+  ['w-28', 'w-3/4'],
+  ['w-40', 'w-2/3'],
+  ['w-24', 'w-4/5'],
+];
+
+export const ChatSkeleton = () => (
+  <div
+    className="h-screen bg-white dark:bg-[#1a1f2e] flex flex-col overflow-hidden animate-pulse"
+    style={{ height: '100dvh' }}
+    aria-busy="true"
+    aria-label="Loading messages"
+  >
+    {/* PageHeader */}
+    <div className="bg-white dark:bg-[#1a1f2e] px-4 sm:px-6 lg:px-8 py-4">
+      <div className="flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-slate-700/60" />
+        <div className="space-y-2">
+          <Bar className="h-5 w-28" />
+          <Bar className="h-3 w-56" />
+        </div>
+      </div>
+    </div>
+ 
+    <div className="flex-1 min-h-0 w-full border-t border-gray-200 dark:border-[#1e293b]">
+      <div className="flex h-full">
+        {/* Conversation list */}
+        <div className="w-full lg:w-80 xl:w-96 border-r border-gray-200 dark:border-[#1e293b] flex flex-col">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-[#1e293b]">
+            <Bar className="h-5 w-32" />
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {ROWS.map(([nameW, previewW], i) => (
+              <ConversationRowSkeleton key={i} nameW={nameW} previewW={previewW} />
+            ))}
+          </div>
+        </div>
+ 
+        {/* Right pane (desktop only) */}
+        <div className="flex-1 hidden lg:flex items-center justify-center bg-gray-50 dark:bg-[#0f1117]">
+          <div className="flex flex-col items-center gap-3 px-6">
+            <div className="w-16 h-16 rounded-full bg-gray-200 dark:bg-slate-700/60" />
+            <Bar className="h-4 w-40" />
+            <Bar className="h-3 w-56" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
 
 export function ContentPageSkeleton() {
   return (

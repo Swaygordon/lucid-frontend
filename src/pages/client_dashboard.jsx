@@ -236,11 +236,48 @@ const ClientDashboard = () => {
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState(null);
-  // [API] GET /notifications/count?userId={id}&read=false → { count: number }
-  // [WS] Subscribe to 'notification' events on the user's WebSocket channel to update in real time.
-  const [notificationCount, setNotificationCount] = useState(5);
-  // [API] GET /messages/unread-count?userId={id} → { count: number }
-  const [unreadMessages] = useState(3);
+  // Unread notification count — fetched from Supabase and kept live via realtime.
+  const [notificationCount, setNotificationCount] = useState(0);
+  useEffect(() => {
+    let cancelled = false;
+    let channel;
+
+    const init = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session || cancelled) return;
+      const userId = session.user.id;
+
+      const fetchCount = async () => {
+        const { count, error } = await supabase
+          .from('notifications')
+          .select('id', { count: 'exact', head: true })
+          .eq('user_id', userId)
+          .eq('is_read', false);
+        if (!error && !cancelled) setNotificationCount(count || 0);
+      };
+
+      await fetchCount();
+      if (cancelled) return;
+
+      channel = supabase
+        .channel(`dashboard-notifs-${userId}`)
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, fetchCount)
+        .on('postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'notifications', filter: `user_id=eq.${userId}` }, fetchCount)
+        // Realtime can't filter DELETE events, so this refetches on any delete (cheap head count).
+        .on('postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'notifications' }, fetchCount)
+        .subscribe();
+    };
+
+    init();
+    return () => {
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
   // [API] GET /bookings/new-count?clientId={id} — bookings not yet viewed by client
   const [unreadBookings] = useState(5);
 
@@ -366,7 +403,7 @@ const ClientDashboard = () => {
               </div>
             </div>
             <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-              <Link to="/lucid/notifications" onClick={() => setNotificationCount(0)}>
+              <Link to="/lucid/notifications">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
