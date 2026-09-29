@@ -1,0 +1,1 @@
+import{b as s,p as e,r as n}from"./index-DcYiJUbK.js";const u=(a="/lucid/",i=200)=>{const t=s(),{showNotification:o}=e();return n.useCallback(()=>{o("Going Back . . .","info"),setTimeout(()=>{window.history.length>2?t(-1):t(a)},i)},[t,o,a,i])};export{u};
