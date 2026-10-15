@@ -15,9 +15,16 @@
     />
 
     <title>Lucid — Trusted Local Services, Instantly</title>
-    <script type="module" crossorigin src="/lucid-frontend/assets/index-DcYiJUbK.js"></script>
+    <script type="module" crossorigin src="/lucid-frontend/assets/index-Dw0dIAF1.js"></script>
     <link rel="stylesheet" crossorigin href="/lucid-frontend/assets/index-DvOcBMbj.css">
-  </head>
+  <script>
+        (() => {
+          const route = new URLSearchParams(window.location.search).get('gh_route');
+          if (!route) return;
+          window.history.replaceState(null, '', "/lucid-frontend" + route);
+        })();
+      </script>
+</head>
   <body>
     <div id="root"></div>
   </body>
