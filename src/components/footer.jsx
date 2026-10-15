@@ -36,7 +36,7 @@ const SOCIAL_LINKS = [
 
 const NAVIGATION_LINKS = [
   { to: "/lucid/",         label: "Home" },
-  { to: "/lucid/Service",  label: "Services" },
+  { to: "/lucid/services", label: "Services" },
   { to: "/lucid/",         label: "How it works" },
   { to: "/lucid/",         label: "Pricing" },
   { to: "/lucid/",         label: "Safety" },
@@ -46,8 +46,8 @@ const COMPANY_LINKS = [
   { to: "/lucid/about",                  label: "About us" },
   { to: "/lucid/",                       label: "Contact" },
   { to: "/lucid/",                       label: "Jobs" },
-  { to: "/lucid/client_bookings",        label: "Bookings" },
-  { to: "/lucid/client_account",         label: "Account" },
+  { to: "/lucid/bookings",               label: "Bookings" },
+  { to: "/lucid/account",                label: "Account" },
 ];
 
 const LEGAL_LINKS = [

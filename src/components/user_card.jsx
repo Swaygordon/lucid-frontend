@@ -77,13 +77,12 @@ const ProfileCard = ({
         <span className="font-semibold">{rating.toFixed(1)}</span>
       </div>
 
-      <Link to="/generalProfile">
-        <button
-          onClick={onViewProfile}
-          className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
-        >
-          View Profile
-        </button>
+      <Link
+        to={id ? `/lucid/providers/${id}` : '/lucid/services'}
+        onClick={onViewProfile}
+        className="block w-full bg-blue-600 text-white text-center py-2 rounded-lg font-semibold hover:bg-blue-700 transition"
+      >
+        View Profile
       </Link>
     </div>
   );

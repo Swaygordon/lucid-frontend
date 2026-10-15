@@ -489,7 +489,6 @@ const SelectedService = () => {
                   image={profile.image}
                   verified={profile.verified}
                   totalJobs={profile.totalJobs}
-                  onViewProfile={() => navigate(`/lucid/providers/${profile.id}`)}
                 />
                 
               </motion.div>

@@ -205,10 +205,8 @@ const formatDateGroup = (dateString) => {
 
 // Where clicking a notification should navigate. Uses a `link` column if
 // your table has one, otherwise falls back to a sensible default per type.
-// ASSUMPTION: `/lucid/payments` was guessed — I don't know your actual
-// payments route. If it's wrong, either fix it here or (better) start
-// populating a `link` column when you insert notifications server-side so
-// each notification carries its own precise destination.
+// Payment notifications lead to bookings because payments are surfaced in
+// booking details; review notifications lead to booking history.
 const resolveLink = (row) => {
   if (row.link) return row.link;
   switch (row.type) {
@@ -216,9 +214,9 @@ const resolveLink = (row) => {
    
     case 'profile': return '/lucid/account/profile';
     case 'verification': return '/lucid/account/profile';
-    case 'payment': return '/lucid/payments';
+    case 'payment': return '/lucid/bookings';
     case 'reminder': return '/lucid/bookings';
-    case 'review': return '/lucid/account/reviews';
+    case 'review': return '/lucid/bookings/history';
     case 'promotion': return '/lucid/';
     default: return '#'; // unknown/new types land here — dead link
   }
