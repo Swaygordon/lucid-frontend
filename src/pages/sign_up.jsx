@@ -5,6 +5,7 @@ import { Eye, EyeOff, ChevronDown } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
+import { getAppUrl } from '../utils/appUrl';
 import { GHANA_LOCATIONS } from '../contexts/LocationContext';
 
 const CityPicker = ({ value, onChange }) => {
@@ -131,7 +132,7 @@ const Signup = () => {
           address:      formData.address,
           city:         formData.city,
         },
-        emailRedirectTo: `${window.location.origin}/lucid/signin`,
+        emailRedirectTo: getAppUrl('/lucid/signin'),
       },
     });
 
@@ -163,7 +164,7 @@ const Signup = () => {
   const handleGoogleSignup = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/lucid/` },
+      options: { redirectTo: getAppUrl('/lucid/') },
     });
     if (error) showNotification(error.message, 'error');
   };
@@ -171,7 +172,7 @@ const Signup = () => {
   const handleFacebookSignup = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo: `${window.location.origin}/lucid/` },
+      options: { redirectTo: getAppUrl('/lucid/') },
     });
     if (error) showNotification(error.message, 'error');
   };

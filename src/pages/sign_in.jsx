@@ -4,6 +4,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import { Button, Input } from '../components/ui';
 import { useNotification } from '../contexts/NotificationContext';
 import { supabase } from '../lib/supabaseClient';
+import { getAppUrl } from '../utils/appUrl';
 
 const Signin = () => {
   const [formData, setFormData] = useState({ email: '', password: '' });
@@ -96,7 +97,7 @@ const Signin = () => {
     const { error } = await supabase.auth.resend({
       type: 'signup',
       email: formData.email,
-      options: { emailRedirectTo: `${window.location.origin}/lucid/signin` },
+      options: { emailRedirectTo: getAppUrl('/lucid/signin') },
     });
     if (error) {
       showNotification(error.message, 'error');
@@ -108,7 +109,7 @@ const Signin = () => {
   const handleGoogleSignin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `${window.location.origin}/lucid/` },
+      options: { redirectTo: getAppUrl('/lucid/') },
     });
     if (error) showNotification(error.message, 'error');
   };
@@ -116,7 +117,7 @@ const Signin = () => {
   const handleFacebookSignin = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'facebook',
-      options: { redirectTo: `${window.location.origin}/lucid/` },
+      options: { redirectTo: getAppUrl('/lucid/') },
     });
     if (error) showNotification(error.message, 'error');
   };
