@@ -1,7 +1,7 @@
 // src/hooks/useNavigateBack.js
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useNotification } from '../contexts/NotificationContext';
+import { useNotification } from '../contexts/NotificationContext.jsx';
 
 /**
  * Unified navigation back hook with consistent UX

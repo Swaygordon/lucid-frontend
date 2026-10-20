@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Button } from './Button';
+import { Button } from './Button.jsx';
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },

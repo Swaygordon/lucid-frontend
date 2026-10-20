@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -8,8 +8,8 @@ import {
   DollarSign, Calendar, TrendingUp, MessageCircle, Image as ImageIcon,
   FileText, ExternalLink, Download, RefreshCw, Building2, CreditCard
 } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import { useNotification } from '../../contexts/NotificationContext';
+import { supabase } from '../../services/supabaseClient.js';
+import { useNotification } from '../../contexts/NotificationContext.jsx';
 
 // ============================================================
 // Animation variants
@@ -877,6 +877,20 @@ const AdminDashboard = () => {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Admin Dashboard</h1>
             </div>
             <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate('/lucid/staff/operations')}
+                className="rounded-lg bg-primary px-4 py-2 font-semibold text-white transition hover:bg-primary-hover"
+              >
+                Service requests
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/lucid/admin/workflow')}
+                className="rounded-lg border border-gray-300 px-4 py-2 font-semibold text-gray-700 transition hover:bg-gray-50 dark:border-[#384255] dark:text-slate-200 dark:hover:bg-[#252b3b]"
+              >
+                Operations hub
+              </button>
               <button
                 onClick={fetchProviders}
                 className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-[#252b3b] text-gray-700 dark:text-slate-300 rounded-lg hover:bg-gray-200 dark:hover:bg-[#2d3748] transition-colors"

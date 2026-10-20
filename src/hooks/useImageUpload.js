@@ -4,7 +4,7 @@
 //   → { url: "https://cdn.lucid.com/avatars/..." }
 // Then patch the user record: PATCH /users/:id { profileImage: url }
 // Use XMLHttpRequest's onprogress event (or fetch + ReadableStream) for real uploadProgress.
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export const useImageUpload = () => {
   const [open, setOpen] = useState(false);
@@ -18,7 +18,7 @@ const onDrop = (e) => {
   e.preventDefault();
   e.stopPropagation();
 
-  setDragCounter(0);
+  dragCounter.current = 0;
   setDragActive(false);
 
   const file = e.dataTransfer.files[0];
@@ -43,25 +43,22 @@ const onFileChange = (e) => {
     setUploadProgress(0);
   };
 
- const [dragCounter, setDragCounter] = useState(0);
+ const dragCounter = useRef(0);
 
 const onDrag = (e) => {
   e.preventDefault();
   e.stopPropagation();
 
   if (e.type === "dragenter") {
-    setDragCounter((c) => c + 1);
+    dragCounter.current += 1;
     setDragActive(true);
   }
 
   if (e.type === "dragleave") {
-    setDragCounter((c) => {
-      if (c - 1 <= 0) {
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) {
         setDragActive(false);
-        return 0;
-      }
-      return c - 1;
-    });
+    }
   }
 };
 

@@ -37,7 +37,9 @@ export const FavouritesProvider = ({ children }) => {
         : [...prev, provider];
       try {
         sessionStorage.setItem('lucid_favourites', JSON.stringify(next));
-      } catch {}
+      } catch {
+        // Keep session favourites in memory when browser storage is blocked.
+      }
       return next;
     });
   }, []);
