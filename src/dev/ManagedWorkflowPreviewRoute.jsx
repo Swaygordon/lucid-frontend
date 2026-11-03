@@ -1,3 +1,4 @@
+// @backend-handoff-delete Development-only Preview route; remove its route and imports during backend integration.
 import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useWorkflowMode } from '../contexts/WorkflowModeContext.jsx';

@@ -1,6 +1,7 @@
+// @backend-handoff-delete Tests for client-side demo transitions; replace with backend-authoritative workflow tests.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyWorkflowAction } from '../../src/dev/workflowTransitions.js';
+import { applyWorkflowAction } from '../../src/dev/workflow-mock/transitions.js';
 
 const baseCase = overrides => ({
   id: 'CASE-TEST-1',
@@ -13,6 +14,8 @@ const baseCase = overrides => ({
   clientSatisfied: false,
   paymentStatus: 'unpaid',
   providerPayoutStatus: 'not_released',
+  commissionRate: 10,
+  inspectorRate: 10,
   history: [],
   ...overrides,
 });
@@ -78,7 +81,7 @@ test('a Client reply returns a request awaiting information to the Admin queue',
 });
 
 test('client-purchased materials are recorded but excluded from the app bill', () => {
-  const record = baseCase({ status: 'work_in_progress', providerAcceptedAt: '2026-10-16T09:00:00.000Z' });
+  const record = baseCase({ status: 'awaiting_provider_bill', clientSatisfied: true, providerAcceptedAt: '2026-10-16T09:00:00.000Z' });
   const result = applyWorkflowAction(record, {
     role: 'provider',
     action: 'submit_bill',
@@ -89,7 +92,7 @@ test('client-purchased materials are recorded but excluded from the app bill', (
   assert.equal(result.error, null);
   assert.equal(result.caseRecord.providerBill.providerAmount, 600);
   assert.equal(result.caseRecord.providerBill.clientPurchasedMaterialsAmount, 120);
-  assert.equal(result.caseRecord.providerBill.payableAmount, 600);
+  assert.equal(result.caseRecord.providerBill.payableAmount, 720);
 });
 
 test('delayed or failed payment does not release the Provider payout', () => {
@@ -97,8 +100,9 @@ test('delayed or failed payment does not release the Provider payout', () => {
     const record = baseCase({
       status: 'awaiting_payment',
       providerAcceptedAt: '2026-10-16T09:00:00.000Z',
-      providerBill: { providerAmount: 600, payableAmount: 660 },
+      providerBill: { providerAmount: 600, inspectorAmount: 60, commissionAmount: 60, payableAmount: 720 },
       clientSatisfied: true,
+      clientPaymentAcceptedAt: '2026-10-16T09:30:00.000Z',
     });
     const result = applyWorkflowAction(record, {
       role: 'system',
@@ -116,8 +120,9 @@ test('delayed or failed payment does not release the Provider payout', () => {
 test('confirmed Client payment releases the simulated Provider share', () => {
   const record = baseCase({
     status: 'awaiting_payment',
-    providerBill: { providerAmount: 600, commissionAmount: 60, payableAmount: 660 },
+    providerBill: { providerAmount: 600, inspectorAmount: 60, commissionAmount: 60, payableAmount: 720 },
     clientSatisfied: true,
+    clientPaymentAcceptedAt: '2026-10-16T09:30:00.000Z',
   });
   const result = applyWorkflowAction(record, {
     role: 'system',
@@ -137,6 +142,7 @@ test('a failed payment can be retried without bypassing the Client approval gate
     status: 'payment_failed',
     providerBill: { providerAmount: 600, commissionAmount: 60, payableAmount: 660 },
     clientSatisfied: true,
+    clientPaymentAcceptedAt: '2026-10-16T09:30:00.000Z',
     paymentStatus: 'failed',
   });
   const result = applyWorkflowAction(record, {
@@ -151,12 +157,15 @@ test('a failed payment can be retried without bypassing the Client approval gate
   assert.equal(result.caseRecord.providerPayoutStatus, 'released');
 });
 
-test('cancellation is fee-free before Provider acceptance and fee-bearing after acceptance', () => {
-  const beforeAcceptance = applyWorkflowAction(baseCase({ status: 'offer_sent' }), {
+test('cancellation is free before assignment and fee-bearing once a Provider has been assigned', () => {
+  const beforeAssignment = applyWorkflowAction(baseCase({ status: 'submitted', assignedProviderId: '', assignedInspectorId: '' }), {
     role: 'client',
     action: 'cancel_case',
     payload: { feeAmount: 75 },
     at: '2026-10-16T10:00:00.000Z',
+  });
+  const afterAssignmentBeforeAcceptance = applyWorkflowAction(baseCase({ status: 'offer_sent' }), {
+    role: 'client', action: 'cancel_case', payload: { feeAmount: 75 }, at: '2026-10-16T10:00:00.000Z',
   });
   const afterAcceptance = applyWorkflowAction(baseCase({
     status: 'accepted',
@@ -168,8 +177,10 @@ test('cancellation is fee-free before Provider acceptance and fee-bearing after 
     at: '2026-10-16T10:00:00.000Z',
   });
 
-  assert.equal(beforeAcceptance.error, null);
-  assert.equal(beforeAcceptance.caseRecord.cancellationFeeDue, 0);
+  assert.equal(beforeAssignment.error, null);
+  assert.equal(beforeAssignment.caseRecord.cancellationFeeDue, 0);
+  assert.equal(afterAssignmentBeforeAcceptance.error, null);
+  assert.equal(afterAssignmentBeforeAcceptance.caseRecord.cancellationFeeDue, 75);
   assert.equal(afterAcceptance.error, null);
   assert.equal(afterAcceptance.caseRecord.cancellationFeeDue, 75);
   assert.equal(afterAcceptance.caseRecord.featuresBlocked, true);
@@ -216,7 +227,7 @@ test('Admin cannot send a Provider offer without a selected Provider', () => {
   assert.equal(result.caseRecord.assignedProviderId, '');
 });
 
-test('Inspector cannot complete a case while an Admin refund decision is pending', () => {
+test('Inspector cannot initiate payment while an Admin refund decision is pending', () => {
   const record = baseCase({
     status: 'refund_pending',
     clientSatisfied: true,
@@ -224,10 +235,10 @@ test('Inspector cannot complete a case while an Admin refund decision is pending
     refundRequest: { status: 'pending', reason: 'Service issue' },
   });
   const result = applyWorkflowAction(record, {
-    role: 'inspector', action: 'complete_case', payload: {}, at: '2026-10-16T10:00:00.000Z',
+    role: 'inspector', action: 'initiate_payment', payload: { clientSatisfied: true }, at: '2026-10-16T10:00:00.000Z',
   });
 
-  assert.equal(result.error.code, 'CASE_NOT_READY_FOR_COMPLETION');
+  assert.equal(result.error.code, 'WORK_NOT_READY');
   assert.equal(result.caseRecord.status, 'refund_pending');
 });
 
@@ -282,12 +293,10 @@ test('Admin workflow assignments require a selectable preview account', () => {
   assert.equal(request.error.code, 'INFORMATION_REQUEST_REQUIRED');
 });
 
-test('Admin cannot send a Provider offer to an unknown preview account', () => {
+test('workflow transition accepts a selected Provider ID; roster eligibility is checked by the service boundary', () => {
   const result = applyWorkflowAction(baseCase({ status: 'scope_confirmed', assignedProviderId: '' }), {
     role: 'admin', action: 'offer_provider', payload: { providerId: 'unknown-provider' }, at: '2026-10-16T10:00:00.000Z',
   });
-
-  assert.equal(result.error.code, 'PROVIDER_NOT_AVAILABLE');
-  assert.equal(result.caseRecord.status, 'scope_confirmed');
-  assert.equal(result.caseRecord.assignedProviderId, '');
+  assert.equal(result.error, null);
+  assert.equal(result.caseRecord.assignedProviderId, 'unknown-provider');
 });

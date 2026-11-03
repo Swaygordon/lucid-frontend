@@ -1,15 +1,16 @@
-export const WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v3';
+// @backend-handoff-delete Browser-local persistence and migration for simulated data; remove with the mock adapter.
+import { isWorkflowMockDatabase, WORKFLOW_MOCK_SCHEMA_VERSION } from './schema.js';
+
+export const WORKFLOW_PREVIEW_STORAGE_KEY = `lucid-workflow-preview-v${WORKFLOW_MOCK_SCHEMA_VERSION}`;
 export const LEGACY_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-managed-workflow-preview-v2';
-export const WORKFLOW_PREVIEW_VERSION = 3;
+export const PREVIOUS_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v7';
+export const OLDER_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v6';
+export const OLDEST_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v5';
+export const WORKFLOW_PREVIEW_VERSION = WORKFLOW_MOCK_SCHEMA_VERSION;
 
 const clone = value => JSON.parse(JSON.stringify(value));
 
-const validStore = value => value
-  && value.version === WORKFLOW_PREVIEW_VERSION
-  && Array.isArray(value.cases)
-  && Array.isArray(value.messages)
-  && Array.isArray(value.notifications)
-  && Array.isArray(value.financeEntries);
+const validStore = isWorkflowMockDatabase;
 
 const errorResult = (code, message) => ({ data: null, error: { code, message } });
 
@@ -81,7 +82,7 @@ const migrateLegacyPreview = (legacy, seedData) => {
 };
 
 export const createPreviewStore = ({ storage, seedData, key = WORKFLOW_PREVIEW_STORAGE_KEY, legacyKey = LEGACY_WORKFLOW_PREVIEW_STORAGE_KEY }) => {
-  const safeSeed = { ...clone(seedData), paymentMethods: Array.isArray(seedData.paymentMethods) ? clone(seedData.paymentMethods) : [] };
+  const safeSeed = { ...clone(seedData), paymentMethods: Array.isArray(seedData.paymentMethods) ? clone(seedData.paymentMethods) : [], notificationPreferences: clone(seedData.notificationPreferences || {}) };
 
   const read = () => {
     let serialized;
@@ -92,6 +93,37 @@ export const createPreviewStore = ({ storage, seedData, key = WORKFLOW_PREVIEW_S
     }
 
     if (serialized == null) {
+      let previousSerialized;
+      try { previousSerialized = storage.getItem(PREVIOUS_WORKFLOW_PREVIEW_STORAGE_KEY) || storage.getItem(OLDER_WORKFLOW_PREVIEW_STORAGE_KEY) || storage.getItem(OLDEST_WORKFLOW_PREVIEW_STORAGE_KEY); } catch {
+        return errorResult('PREVIEW_STORAGE_UNAVAILABLE', 'Preview storage cannot be read in this browser.');
+      }
+      if (previousSerialized != null) {
+        try {
+          const previous = JSON.parse(previousSerialized);
+          if ([5, 6, 7].includes(previous?.version) && Array.isArray(previous.cases) && Array.isArray(previous.inspectors)) {
+            const migrated = { ...clone(seedData), ...previous, version: WORKFLOW_MOCK_SCHEMA_VERSION };
+            const previousCaseIds = new Set(previous.cases.map(record => record.id));
+            const addedSeedCases = seedData.cases.filter(record => !previousCaseIds.has(record.id));
+            const addedSeedCaseIds = new Set(addedSeedCases.map(record => record.id));
+            migrated.cases = [
+              ...previous.cases.map(record => ({ ...record, inspectionVisit: record.inspectionVisit || null, providerVisit: record.providerVisit || null })),
+              ...addedSeedCases,
+            ];
+            migrated.messages = [
+              ...(Array.isArray(previous.messages) ? previous.messages : []),
+              ...(seedData.messages || []).filter(message => addedSeedCaseIds.has(message.caseId)),
+            ];
+            migrated.receipts = Array.isArray(previous.receipts) ? previous.receipts : clone(seedData.receipts || []);
+            migrated.providerProfiles = Array.isArray(previous.providerProfiles) ? previous.providerProfiles.map(profile => ({ ...profile, reviews: profile.reviews || [] })) : clone(seedData.providerProfiles || []);
+            migrated.clientProfiles = Array.isArray(previous.clientProfiles) ? previous.clientProfiles : clone(seedData.clientProfiles || []);
+            const saved = write(migrated);
+            if (saved.error) return saved;
+            return saved;
+          }
+        } catch {
+          return errorResult('PREVIEW_DATA_CORRUPT', 'Saved preview data is unreadable. Reset Preview mode to restore the sample journey.');
+        }
+      }
       let legacySerialized;
       try {
         legacySerialized = storage.getItem(legacyKey);
@@ -120,7 +152,7 @@ export const createPreviewStore = ({ storage, seedData, key = WORKFLOW_PREVIEW_S
       return errorResult('PREVIEW_DATA_CORRUPT', 'Saved preview data is unreadable. Reset Preview mode to restore the sample journey.');
     }
     if (!validStore(parsed)) return errorResult('PREVIEW_DATA_UNSUPPORTED', 'Saved preview data has an unsupported version or shape. Reset Preview mode to restore the sample journey.');
-    return { data: { ...parsed, paymentMethods: Array.isArray(parsed.paymentMethods) ? parsed.paymentMethods : [] }, error: null };
+    return { data: { ...parsed, paymentMethods: Array.isArray(parsed.paymentMethods) ? parsed.paymentMethods : [], notificationPreferences: { ...clone(safeSeed.notificationPreferences), ...(parsed.notificationPreferences || {}) } }, error: null };
   };
 
   const write = data => {

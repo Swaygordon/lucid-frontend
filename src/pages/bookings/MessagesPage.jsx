@@ -1,7 +1,7 @@
+// @backend-handoff-delete Local Preview messaging implementation; replace data operations with backend messaging.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { supabase } from '../../services/supabaseClient.js';
 import { PageHeader } from '../../components/ui';
 import { Avatar } from '../../components/ui/Avatar.jsx';
 import ChatWindow from '../../components/bookings/ChatWindow.jsx';
@@ -9,6 +9,16 @@ import { useNavigateBack } from '../../hooks/useNavigateBack.js';
 import { MessageCircle } from 'lucide-react';
 import { ChatSkeleton } from '../../app/components/RouteSkeletons.jsx';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
+
+const ROLE_LABELS = { admin: 'LUCID Admin / HR', client: 'Client', provider: 'Service Provider', inspector: 'Inspector' };
+const normalizeRole = role => role === 'service_provider' ? 'provider' : role;
+const mapConversation = (item, role) => {
+  const currentRole = normalizeRole(role);
+  const participants = item.audience.split('-');
+  const otherRole = participants.find(value => value !== currentRole);
+  return { ...item, otherUser: { name: ROLE_LABELS[otherRole] || 'LUCID team' }, participantLabel: participants.map(value => ROLE_LABELS[value] || value).join(' · '), lastMessage: { message: item.lastMessage, created_at: item.lastMessageAt }, booking: { service_type: item.serviceName, service_date: item.preview ? 'Preview case' : 'Managed request' }, preview: item.preview, workflowThread: true };
+};
+const caseStatusLabel = status => String(status || 'open').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 
 const fadeIn = {
   hidden: { opacity: 0, y: 20 },
@@ -30,6 +40,8 @@ const Messages = () => {
   const [inboxError, setInboxError] = useState('');
 
   const activeConversationId = searchParams.get('conversation');
+  const returnTo = searchParams.get('returnTo');
+  const safeReturnTo = returnTo && /^\/lucid\/cases\/[A-Za-z0-9-]+$/.test(returnTo) ? returnTo : null;
 
   // The original inbox layout now reads role-authorized workflow threads.
   useEffect(() => {
@@ -41,12 +53,7 @@ const Messages = () => {
         setCurrentUser(user);
         const result = await workflowServices.messages.listConversations({ role: actor.role, userId: user.id });
         if (result.error) throw result.error;
-        const convs = (result.data || []).map(item => {
-          const normalizedRole = actor.role === 'service_provider' ? 'provider' : actor.role;
-          const otherRole = normalizedRole === 'admin' ? item.audience.split('-').find(value => value !== 'admin') : item.audience.split('-').find(value => value !== normalizedRole);
-          const names = { admin: 'LUCID team', client: 'Client', provider: 'Provider', inspector: 'Inspector' };
-          return { ...item, otherUser: { name: names[otherRole] || 'LUCID team' }, lastMessage: { message: item.lastMessage, created_at: item.lastMessageAt }, booking: { service_type: item.serviceName, service_date: item.preview ? 'Preview case' : 'Managed request' }, preview: item.preview, workflowThread: true };
-        });
+        const convs = (result.data || []).map(item => mapConversation(item, actor.role));
         if (!active) return;
         setConversations(convs);
         if (activeConversationId) { const found = convs.find(item => item.id === activeConversationId); if (found) { setSelectedConversation(found); setShowChatOnMobile(true); } }
@@ -62,33 +69,19 @@ const Messages = () => {
   const refreshConversations = useCallback(async () => {
     if (!currentUser) return;
     const result = await workflowServices.messages.listConversations({ role: actor.role, userId: currentUser.id });
-    if (!result.error) setConversations((result.data || []).map(item => {
-      const normalizedRole = actor.role === 'service_provider' ? 'provider' : actor.role;
-      const otherRole = normalizedRole === 'admin' ? item.audience.split('-').find(value => value !== 'admin') : item.audience.split('-').find(value => value !== normalizedRole);
-      const names = { admin: 'LUCID team', client: 'Client', provider: 'Provider', inspector: 'Inspector' };
-      return { ...item, otherUser: { name: names[otherRole] || 'LUCID team' }, lastMessage: { message: item.lastMessage, created_at: item.lastMessageAt }, booking: { service_type: item.serviceName, service_date: item.preview ? 'Preview case' : 'Managed request' }, preview: item.preview, workflowThread: true };
-    }));
+    if (!result.error) setConversations((result.data || []).map(item => mapConversation(item, actor.role)));
   }, [currentUser, workflowServices, actor.role]);
-
-  useEffect(() => {
-    if (actor.mode !== 'live') return undefined;
-    const channels = conversations.filter(item => item.workflowThread && !item.preview).map(item => {
-      const caseId = item.caseId || item.id;
-      return supabase.channel(`managed-inbox:${caseId}:${currentUser?.id || 'user'}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'managed_case_messages', filter: `case_id=eq.${caseId}` }, () => { refreshConversations(); }).subscribe();
-    });
-    return () => { channels.forEach(channel => supabase.removeChannel(channel)); };
-  }, [actor.mode, conversations, currentUser?.id, refreshConversations]);
 
   const handleSelectConversation = (conv) => {
     setSelectedConversation(conv);
     setShowChatOnMobile(true);
-    setSearchParams({ conversation: conv.id }, { replace: true });
+    setSearchParams({ conversation: conv.id, ...(returnTo ? { returnTo } : {}) }, { replace: true });
   };
 
   const handleBackToList = () => {
     setShowChatOnMobile(false);
     setSelectedConversation(null);
-    setSearchParams({}, { replace: true });
+    setSearchParams(returnTo ? { returnTo } : {}, { replace: true });
   };
 
   const formatTimestamp = (ts) => {
@@ -117,7 +110,7 @@ const Messages = () => {
       <div className={showChatOnMobile ? 'hidden lg:block' : ''}>
         <PageHeader
           title="Messages"
-          subtitle="Chat with your clients and service providers"
+          subtitle="Case conversations with LUCID and assigned team members"
           onBack={handleBackClick}
         />
       </div>
@@ -199,6 +192,9 @@ const Messages = () => {
                               {conv.booking.service_type || 'Service'} · {conv.booking.service_date}
                             </p>
                           )}
+                          <p className="mt-1 truncate text-[11px] text-blue-700 dark:text-blue-300">{conv.caseId || 'LUCID support'} · {caseStatusLabel(conv.caseStatus)}</p>
+                          <p className="mt-1 truncate text-[11px] text-gray-500 dark:text-slate-400">{conv.participantLabel}</p>
+                          {conv.preview && <span className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Preview</span>}
                         </div>
                       </button>
                     );
@@ -210,7 +206,7 @@ const Messages = () => {
             {/* Chat window */}
             <div className={`flex-1 min-w-0 min-h-0 ${showChatOnMobile ? 'flex' : 'hidden lg:flex'} [&>*]:flex-1 [&>*]:min-w-0 [&>*]:min-h-0`}>
               {selectedConversation && currentUser ? (
-                <ChatWindow conversation={selectedConversation} currentUserId={currentUser.id} onBack={handleBackToList} onMessageSent={refreshConversations} workflowServices={workflowServices} workflowRole={actor.role} />
+                <ChatWindow conversation={selectedConversation} currentUserId={currentUser.id} onBack={handleBackToList} onMessageSent={refreshConversations} workflowServices={workflowServices} workflowRole={actor.role} returnTo={safeReturnTo} onReturnToCase={safeReturnTo ? () => navigate(safeReturnTo) : null} />
               ) : (
                 <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#0f1117]">
                   <div className="text-center px-6">

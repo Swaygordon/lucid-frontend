@@ -1,9 +1,10 @@
+// @backend-handoff-delete Transaction surface currently uses illustrative workflow data.
 import React, { useState, useMemo, useEffect, lazy } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigateBack } from '../../hooks/useNavigateBack.js';
 import { useWorkflowActor } from '../../contexts/WorkflowModeContext.jsx';
 import { useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
-import { toProviderTransactions } from '../../dev/workflowFinancePresentation.js';
+import { toProviderTransactions } from '../../services/workflow/providerFinancePresentation.js';
 import {
   ArrowLeft,
   DollarSign,

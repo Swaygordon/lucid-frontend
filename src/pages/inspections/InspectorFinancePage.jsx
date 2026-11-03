@@ -1,3 +1,4 @@
+// @backend-handoff-delete Inspector finance surface currently uses illustrative local records.
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';

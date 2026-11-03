@@ -1,33 +1,36 @@
+// @backend-handoff-delete Preview request flow and local-data disclosure; replace storage/actions with backend API while retaining approved form UI.
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, ClipboardList, MapPin, ShieldCheck } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
+import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, MapPin, ShieldCheck } from 'lucide-react';
 import { ALL_CATEGORIES } from '../../data/catalog/categories.js';
 import { GHANA_LOCATIONS } from '../../contexts/LocationContext.jsx';
 import { useNotification } from '../../contexts/NotificationContext.jsx';
-import { Button, Input } from '../../components/ui';
-import { createManagedServiceCase } from '../../services/cases/managedCaseService.js';
+import { Input } from '../../components/ui';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
 
 const INITIAL_FORM = {
-  description: '',
-  urgency: 'normal',
-  preferredDate: '',
-  preferredTime: '',
-  alternateDate: '',
-  alternateTime: '',
-  region: '',
-  city: '',
-  area: '',
-  streetAddress: '',
-  landmark: '',
-  postalCode: '',
-  contactName: '',
-  contactPhone: '',
-  contactEmail: '',
-  budgetMin: '',
-  budgetMax: '',
-  additionalNotes: '',
+  description: '', urgency: 'normal', preferredDate: '', preferredTime: '', alternateDate: '', alternateTime: '',
+  region: '', city: '', area: '', streetAddress: '', landmark: '', postalCode: '',
+  contactName: '', contactPhone: '', contactEmail: '', contactPreference: 'phone',
+  budgetMin: '', budgetMax: '', additionalNotes: '',
 };
+
+const STEPS = [
+  { id: 'request', label: 'Request details' },
+  { id: 'location', label: 'Location and contact' },
+  { id: 'review', label: 'Review and submit' },
+];
+
+const fieldClass = 'w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary dark:border-[#394458] dark:bg-[#252b3b] dark:text-slate-100';
+
+function ReviewRow({ label, children }) {
+  return <div className="grid gap-1 border-b border-gray-100 py-3 last:border-0 dark:border-[#303a4c] sm:grid-cols-[10rem_1fr] sm:gap-4"><dt className="text-sm text-gray-500 dark:text-slate-400">{label}</dt><dd className="whitespace-pre-wrap text-sm font-medium text-gray-900 dark:text-slate-100">{children || 'Not provided'}</dd></div>;
+}
+
+function formatSchedule(date, time) {
+  if (!date && !time) return 'Flexible';
+  return [date, time].filter(Boolean).join(' at ');
+}
 
 const ManagedServiceRequest = () => {
   const { category: categorySlug, service: serviceSlug } = useParams();
@@ -35,7 +38,9 @@ const ManagedServiceRequest = () => {
   const actor = useWorkflowActor();
   const workflowServices = useWorkflowServices();
   const [form, setForm] = useState(INITIAL_FORM);
+  const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [submittedCaseId, setSubmittedCaseId] = useState('');
 
   const selectedService = useMemo(() => {
@@ -43,77 +48,95 @@ const ManagedServiceRequest = () => {
     const service = category?.services.find(item => item.slug === serviceSlug);
     return category && service ? { category, service } : null;
   }, [categorySlug, serviceSlug]);
-
   const selectedRegion = GHANA_LOCATIONS.find(item => item.region === form.region);
 
   const handleChange = event => {
     const { name, value } = event.target;
     setForm(current => ({ ...current, [name]: value }));
+    setError('');
   };
 
   const handleRegionChange = event => {
-    const region = event.target.value;
-    setForm(current => ({ ...current, region, area: '' }));
+    setForm(current => ({ ...current, region: event.target.value, area: '' }));
+    setError('');
+  };
+
+  const validateStep = currentStep => {
+    if (currentStep === 0) {
+      if (!form.description.trim()) return 'Describe the issue so LUCID can review your request.';
+      if (form.description.trim().length < 10) return 'Add a little more detail about the work you need.';
+      const hasMinimum = form.budgetMin.trim() !== '';
+      const hasMaximum = form.budgetMax.trim() !== '';
+      const minimum = Number(form.budgetMin);
+      const maximum = Number(form.budgetMax);
+      if (hasMinimum !== hasMaximum || (hasMinimum && (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum < 0 || maximum < minimum))) {
+        return 'Enter both ends of the optional range, with the maximum at least the minimum, or leave both blank.';
+      }
+      if (form.preferredDate && form.alternateDate && form.alternateDate < form.preferredDate) return 'Choose an alternate date that is the same day or later.';
+    }
+    if (currentStep === 1) {
+      if (!form.region || !form.city.trim() || !form.area || !form.streetAddress.trim()) return 'Complete the required service location fields.';
+      if (!form.contactName.trim() || !form.contactPhone.trim()) return 'Enter a contact name and phone number.';
+      if (form.contactPreference === 'email' && !form.contactEmail.trim()) return 'Enter an email address or choose another contact preference.';
+    }
+    return '';
+  };
+
+  const goToNextStep = () => {
+    const validationError = validateStep(step);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError('');
+    setStep(current => Math.min(current + 1, STEPS.length - 1));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const goToPreviousStep = () => {
+    setError('');
+    setStep(current => Math.max(current - 1, 0));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSubmit = async event => {
     event.preventDefault();
-
-    const minimum = Number(form.budgetMin);
-    const maximum = Number(form.budgetMax);
-    if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || minimum < 0 || maximum < minimum) {
-      showNotification('Enter a valid range. The maximum must be at least the minimum.', 'error');
+    const validationError = validateStep(0) || validateStep(1);
+    if (validationError) {
+      setError(validationError);
+      setStep(validateStep(0) ? 0 : 1);
       return;
     }
 
     setLoading(true);
+    setError('');
     try {
-      let result;
-      if (actor.mode === 'preview') {
-        result = await workflowServices.cases.create({
-          service: selectedService.service.name,
-          category: selectedService.category.name,
-          scope: form.description.trim(),
-          description: form.description.trim(),
-          clientRange: { min: minimum, max: maximum, currency: 'GHS' },
-          locationSummary: [form.area, form.city.trim(), form.region].filter(Boolean).join(', '),
-        }, { role: actor.role, userId: actor.userId });
-        if (result.error) throw result.error;
-      } else {
-        result = await createManagedServiceCase(
-          {
-            service_slug: serviceSlug,
-            service_name: selectedService.service.name,
-            description: form.description.trim(),
-            urgency: form.urgency,
-            preferred_date: form.preferredDate || null,
-            preferred_time: form.preferredTime || null,
-            alternate_date: form.alternateDate || null,
-            alternate_time: form.alternateTime || null,
-            budget_min: minimum,
-            budget_max: maximum,
-            currency: 'GHS',
-          },
-          {
-            region: form.region,
-            city: form.city.trim() || null,
-            street_address: form.streetAddress.trim(),
-            area: form.area,
-            landmark: form.landmark.trim() || null,
-            postal_code: form.postalCode.trim() || null,
-            contact_name: form.contactName.trim(),
-            contact_phone: form.contactPhone.trim(),
-            contact_email: form.contactEmail.trim() || null,
-            additional_notes: form.additionalNotes.trim() || null,
-          },
-        );
-      }
-
-      setSubmittedCaseId(result.id || result.data?.id);
+      const result = await workflowServices.cases.create({
+        service: selectedService.service.name,
+        category: selectedService.category.name,
+        scope: form.description.trim(),
+        description: form.description.trim(),
+        urgency: form.urgency,
+        preferredDate: form.preferredDate || null,
+        preferredTime: form.preferredTime || null,
+        alternateDate: form.alternateDate || null,
+        alternateTime: form.alternateTime || null,
+        region: form.region,
+        city: form.city.trim(),
+        clientRange: form.budgetMin.trim() && form.budgetMax.trim()
+          ? { min: Number(form.budgetMin), max: Number(form.budgetMax), currency: 'GHS', binding: false }
+          : null,
+        locationSummary: [form.city.trim(), form.region].filter(Boolean).join(', '),
+      }, { role: actor.role, userId: actor.userId });
+      if (result.error) throw result.error;
+      const caseId = result.data?.id;
+      if (!caseId) throw new Error('The request was not saved. Please try again.');
+      setSubmittedCaseId(caseId);
       showNotification('Your request has been sent to LUCID.', 'success');
-    } catch (error) {
-      console.error('Managed service request could not be submitted:', error);
-      showNotification(error.message || 'We could not submit your request. Please try again.', 'error');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (submitError) {
+      console.error('Preview service request could not be submitted:', submitError);
+      setError(submitError.message || 'We could not submit your request. Your details are still here; please try again.');
     } finally {
       setLoading(false);
     }
@@ -121,7 +144,7 @@ const ManagedServiceRequest = () => {
 
   if (!selectedService) {
     return (
-      <main className="min-h-screen bg-gray-50 dark:bg-[#0f1117] px-4 py-16">
+      <main className="min-h-screen bg-gray-50 px-4 py-16 dark:bg-[#0f1117]">
         <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-[#1a1f2e]">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Service not found</h1>
           <p className="mt-2 text-gray-600 dark:text-slate-400">Choose a service from the catalog to start a request.</p>
@@ -133,118 +156,131 @@ const ManagedServiceRequest = () => {
 
   if (submittedCaseId) {
     return (
-      <main className="min-h-screen bg-gray-50 px-4 py-16 dark:bg-[#0f1117]">
-        <section className="mx-auto max-w-2xl rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-[#1a1f2e] sm:p-10">
-          <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" aria-hidden="true" />
-          <h1 className="mt-4 text-2xl font-bold text-gray-900 dark:text-slate-100">LUCID received your request</h1>
-          <p className="mt-2 text-gray-600 dark:text-slate-400">
-            Your case reference is <span className="font-semibold text-gray-900 dark:text-slate-100">{submittedCaseId.slice(0, 8).toUpperCase()}</span>.
-            LUCID will review the information and contact you if anything is missing.
-          </p>
-          <p className="mt-4 text-sm text-gray-600 dark:text-slate-400">
-            No provider has been assigned yet. Your range is a budget expectation; you will review the final itemized amount before paying.
-          </p>
-          <Link className="mt-7 inline-flex font-semibold text-primary hover:underline" to="/lucid/cases">
-            View my requests
-          </Link>
+      <main className="min-h-screen bg-gray-50 px-4 py-12 dark:bg-[#0f1117] sm:py-16">
+        <section className="mx-auto max-w-2xl rounded-2xl bg-white p-6 shadow-sm dark:bg-[#1a1f2e] sm:p-10">
+          <div className="flex flex-col items-center text-center">
+            <CheckCircle2 className="h-14 w-14 text-emerald-500" aria-hidden="true" />
+            <p className="mt-4 text-sm font-semibold text-emerald-700 dark:text-emerald-300">Request received</p>
+            <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-slate-100">LUCID will review your request</h1>
+            <p className="mt-2 text-gray-600 dark:text-slate-400">Your reference is <span className="font-semibold text-gray-900 dark:text-slate-100">{submittedCaseId.slice(-8).toUpperCase()}</span>.</p>
+          </div>
+          <div className="mt-7 rounded-xl bg-gray-50 p-4 text-sm leading-relaxed text-gray-700 dark:bg-[#252b3b] dark:text-slate-300">
+            <p><strong>What happens next:</strong> LUCID reviews the details and will message you if clarification is needed. No Provider has been assigned. You can cancel without a fee before a Provider accepts an assignment.</p>
+            <p className="mt-3">Your budget is an estimate, not a fixed quote. You will see the final itemized amount before deciding whether to pay.</p>
+          </div>
+          {actor.mode === 'preview' && <p className="mt-4 text-xs leading-relaxed text-amber-900 dark:text-amber-100">This is a simulated Preview request. Its broad service area and workflow status are stored locally; the exact address and contact details shown in your form were discarded.</p>}
+          <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
+            <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-800 dark:border-[#394458] dark:text-slate-100" to="/lucid/cases">View my requests</Link>
+            <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white" to={`/lucid/cases/${submittedCaseId}`}>Open this request</Link>
+          </div>
         </section>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10 dark:bg-[#0f1117] sm:py-14">
+    <main className="min-h-screen bg-gray-50 px-4 py-8 dark:bg-[#0f1117] sm:py-12">
       <div className="mx-auto max-w-4xl">
-        <header className="mb-8">
-          <p className="text-sm font-semibold uppercase tracking-wide text-primary">Request through LUCID</p>
-          <h1 className="mt-2 text-3xl font-bold text-gray-900 dark:text-slate-100">{selectedService.service.name}</h1>
-          <p className="mt-2 text-gray-600 dark:text-slate-400">{selectedService.category.name}</p>
-          <div className="mt-5 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
+        <nav aria-label="Request steps" className="mb-7">
+          <ol className="grid grid-cols-3 gap-2">
+            {STEPS.map((item, index) => {
+              const complete = index < step;
+              const current = index === step;
+              return <li key={item.id} aria-current={current ? 'step' : undefined} className={`rounded-lg border px-3 py-2 text-center text-xs font-semibold sm:px-4 sm:text-sm ${current ? 'border-primary bg-blue-50 text-blue-900 dark:bg-blue-950/30 dark:text-blue-100' : complete ? 'border-emerald-200 bg-emerald-50 text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-200' : 'border-gray-200 bg-white text-gray-500 dark:border-[#303a4c] dark:bg-[#1a1f2e] dark:text-slate-400'}`}><span className="mr-1.5">{complete ? '✓' : index + 1}</span>{item.label}</li>;
+            })}
+          </ol>
+        </nav>
+
+        <header className="mb-6">
+          <Link to={`/lucid/services/${categorySlug}/${serviceSlug}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ArrowLeft size={16} aria-hidden="true" /> Back to {selectedService.service.name}</Link>
+          <p className="mt-5 text-sm font-semibold text-primary">Request through LUCID</p>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-950 dark:text-slate-100">{selectedService.service.name}</h1>
+          <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">{selectedService.category.name}</p>
+          <div className="mt-4 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm leading-relaxed text-blue-950 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-100">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <p>LUCID coordinates the request, inspection, provider assignment, final bill, and payment. Your contact and exact location details are submitted privately to LUCID.</p>
+            <p>LUCID receives your request, reviews it, and coordinates an inspection and Provider assignment. The Provider is not selected when you submit this form.</p>
           </div>
+          {actor.mode === 'preview' && <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+            <p><strong>Local Preview:</strong> enter fictional contact and address details. Only the service request, broad city/region, schedule and optional budget guidance are saved in this browser; exact address, contact details and notes are discarded.</p>
+          </div>}
         </header>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
-            <div className="mb-5 flex items-center gap-3">
-              <ClipboardList className="h-5 w-5 text-primary" aria-hidden="true" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Describe the work</h2>
-            </div>
-            <label className="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-slate-300">
-              What issue needs attention?
-              <textarea
-                name="description"
-                value={form.description}
-                onChange={handleChange}
-                required
-                rows={4}
-                maxLength={4000}
-                className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-gray-800 outline-none transition focus:border-primary focus:ring-2 focus:ring-blue-100 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200 dark:focus:ring-blue-900/40"
-                placeholder="Describe the issue and what you would like LUCID to arrange."
-              />
-            </label>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-slate-300">
-                Urgency
-                <select name="urgency" value={form.urgency} onChange={handleChange} className="rounded-xl border-2 border-gray-300 bg-white px-4 py-3 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200">
-                  <option value="normal">Normal</option>
-                  <option value="urgent">Urgent</option>
-                </select>
-              </label>
-              <Input label="Preferred date" name="preferredDate" type="date" value={form.preferredDate} onChange={handleChange} />
-              <Input label="Preferred time" name="preferredTime" type="time" value={form.preferredTime} onChange={handleChange} />
-              <Input label="Alternate date (optional)" name="alternateDate" type="date" value={form.alternateDate} onChange={handleChange} />
-            </div>
-          </section>
+        {error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
 
-          <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
-            <div className="mb-5 flex items-center gap-3">
-              <MapPin className="h-5 w-5 text-primary" aria-hidden="true" />
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Where and how can LUCID reach you?</h2>
-            </div>
+        {step === 0 && <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
+          <div className="mb-5 flex items-center gap-3"><ClipboardList className="h-5 w-5 text-primary" aria-hidden="true" /><div><h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Describe the work</h2><p className="mt-1 text-sm text-gray-600 dark:text-slate-400">Share what needs attention and when you are available.</p></div></div>
+          <label htmlFor="request-description" className="block text-sm font-medium text-gray-700 dark:text-slate-300">What issue needs attention? <span className="font-normal text-gray-500">Required</span></label>
+          <textarea id="request-description" name="description" value={form.description} onChange={handleChange} required rows={5} maxLength={4000} className={`${fieldClass} mt-2`} placeholder="Describe the issue and what you would like LUCID to arrange." />
+          <p className="mt-1 text-right text-xs text-gray-500">{form.description.length}/4000</p>
+          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+            <label htmlFor="request-urgency" className="text-sm font-medium text-gray-700 dark:text-slate-300">When do you need help?
+              <select id="request-urgency" name="urgency" value={form.urgency} onChange={handleChange} className={`${fieldClass} mt-2`}><option value="normal">Within the next few days</option><option value="urgent">As soon as possible</option></select>
+            </label>
+            <Input label="Preferred date (optional)" name="preferredDate" type="date" value={form.preferredDate} onChange={handleChange} />
+            <Input label="Preferred time (optional)" name="preferredTime" type="time" value={form.preferredTime} onChange={handleChange} />
+            <Input label="Alternate date (optional)" name="alternateDate" type="date" min={form.preferredDate || undefined} value={form.alternateDate} onChange={handleChange} />
+            <Input label="Alternate time (optional)" name="alternateTime" type="time" value={form.alternateTime} onChange={handleChange} />
+          </div>
+          <div className="mt-7 border-t border-gray-100 pt-6 dark:border-[#303a4c]">
+            <h3 className="font-semibold text-gray-900 dark:text-slate-100">Optional budget guidance</h3>
+            <p className="mt-1 text-sm leading-relaxed text-gray-600 dark:text-slate-400">A range can help LUCID and the Provider understand your expectations. It is not a quote, price cap, or promise you must pay. You can leave it blank; the Provider submits the final bill after the work is ready.</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2"><Input label="From (GHS, optional)" name="budgetMin" type="number" min="0" step="0.01" value={form.budgetMin} onChange={handleChange} /><Input label="To (GHS, optional)" name="budgetMax" type="number" min="0" step="0.01" value={form.budgetMax} onChange={handleChange} /></div>
+          </div>
+        </section>}
+
+        {step === 1 && <section className="space-y-6">
+          <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
+            <div className="mb-5 flex items-center gap-3"><MapPin className="h-5 w-5 text-primary" aria-hidden="true" /><div><h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Service location</h2><p className="mt-1 text-sm text-gray-600 dark:text-slate-400">LUCID uses the service area to plan a suitable inspection.</p></div></div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <label className="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-slate-300">
-                Region
-                <select name="region" value={form.region} onChange={handleRegionChange} required className="rounded-xl border-2 border-gray-300 bg-white px-4 py-3 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200">
-                  <option value="">Choose a region</option>
-                  {GHANA_LOCATIONS.map(item => <option key={item.region} value={item.region}>{item.region}</option>)}
-                </select>
-              </label>
-              <label className="flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-slate-300">
-                Area / neighbourhood
-                <select name="area" value={form.area} onChange={handleChange} required disabled={!selectedRegion} className="rounded-xl border-2 border-gray-300 bg-white px-4 py-3 disabled:opacity-60 dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200">
-                  <option value="">Choose an area</option>
-                  {(selectedRegion?.areas || []).map(area => <option key={area} value={area}>{area}</option>)}
-                </select>
-              </label>
-              <Input label="City / town" name="city" value={form.city} onChange={handleChange} />
+              <label htmlFor="request-region" className="text-sm font-medium text-gray-700 dark:text-slate-300">Region <span className="font-normal text-gray-500">Required</span><select id="request-region" name="region" value={form.region} onChange={handleRegionChange} required className={`${fieldClass} mt-2`}><option value="">Choose a region</option>{GHANA_LOCATIONS.map(item => <option key={item.region} value={item.region}>{item.region}</option>)}</select></label>
+              <label htmlFor="request-city" className="text-sm font-medium text-gray-700 dark:text-slate-300">City or town <span className="font-normal text-gray-500">Required</span><input id="request-city" name="city" value={form.city} onChange={handleChange} required className={`${fieldClass} mt-2`} /></label>
+              <label htmlFor="request-area" className="text-sm font-medium text-gray-700 dark:text-slate-300">Area or neighbourhood <span className="font-normal text-gray-500">Required</span><select id="request-area" name="area" value={form.area} onChange={handleChange} required disabled={!selectedRegion} className={`${fieldClass} mt-2 disabled:opacity-60`}><option value="">Choose an area</option>{(selectedRegion?.areas || []).map(area => <option key={area} value={area}>{area}</option>)}</select></label>
               <Input label="Street address" name="streetAddress" value={form.streetAddress} onChange={handleChange} required />
-              <Input label="Landmark (optional)" name="landmark" value={form.landmark} onChange={handleChange} />
+              <Input label="Nearby landmark (optional)" name="landmark" value={form.landmark} onChange={handleChange} />
               <Input label="Postal code (optional)" name="postalCode" value={form.postalCode} onChange={handleChange} />
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-gray-500 dark:text-slate-400">Your exact location is for LUCID’s request review and inspection coordination. Providers receive only the location details needed after an offer is accepted.</p>
+          </div>
+
+          <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Contact preference</h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">LUCID may contact you to clarify the request or coordinate an inspection.</p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <Input label="Contact name" name="contactName" value={form.contactName} onChange={handleChange} required />
               <Input label="Contact phone" name="contactPhone" type="tel" value={form.contactPhone} onChange={handleChange} required />
-              <Input label="Contact email (optional)" name="contactEmail" type="email" value={form.contactEmail} onChange={handleChange} />
+              <Input label="Contact email (optional)" name="contactEmail" type="email" value={form.contactEmail} onChange={handleChange} required={form.contactPreference === 'email'} />
+              <label htmlFor="contact-preference" className="text-sm font-medium text-gray-700 dark:text-slate-300">Preferred way to reach you<select id="contact-preference" name="contactPreference" value={form.contactPreference} onChange={handleChange} className={`${fieldClass} mt-2`}><option value="phone">Phone call</option><option value="text">Text message</option><option value="email">Email</option></select></label>
             </div>
-            <label className="mt-4 flex flex-col gap-2 text-sm font-medium text-gray-700 dark:text-slate-300">
-              Additional notes (optional)
-              <textarea name="additionalNotes" value={form.additionalNotes} onChange={handleChange} rows={3} maxLength={2000} className="w-full rounded-xl border-2 border-gray-300 bg-white px-4 py-3 text-gray-800 outline-none focus:border-primary dark:border-[#2d3748] dark:bg-[#252b3b] dark:text-slate-200" />
-            </label>
-          </section>
-
-          <section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Your expected price range</h2>
-            <p className="mt-2 text-sm text-gray-600 dark:text-slate-400">This helps LUCID find a suitable provider. It is not a fixed quote. After the work, the provider submits their bill and the app shows the bill, LUCID’s percentage charge, and your total before you approve and pay.</p>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <Input label="Minimum (GHS)" name="budgetMin" type="number" min="0" step="0.01" value={form.budgetMin} onChange={handleChange} required />
-              <Input label="Maximum (GHS)" name="budgetMax" type="number" min="0" step="0.01" value={form.budgetMax} onChange={handleChange} required />
-            </div>
-          </section>
-
-          <div className="flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-            <Link to={`/lucid/services/${categorySlug}/${serviceSlug}`} className="text-center font-semibold text-primary hover:underline sm:text-left">Back to service</Link>
-            <Button type="submit" loading={loading} disabled={loading} className="sm:min-w-52">Send request to LUCID</Button>
+            <label htmlFor="request-notes" className="mt-4 block text-sm font-medium text-gray-700 dark:text-slate-300">Access notes for LUCID (optional)<textarea id="request-notes" name="additionalNotes" value={form.additionalNotes} onChange={handleChange} rows={3} maxLength={2000} className={`${fieldClass} mt-2`} placeholder="For example, the best entrance or when someone is available." /></label>
+            <p className="mt-2 text-right text-xs text-gray-500">{form.additionalNotes.length}/2000</p>
           </div>
+        </section>}
+
+        {step === 2 && <section className="space-y-6">
+          <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Review your request</h2>
+            <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">Check the details before sending them to LUCID.</p>
+            <dl className="mt-5 divide-y divide-gray-100 dark:divide-[#303a4c]">
+              <ReviewRow label="Service">{selectedService.service.name} · {selectedService.category.name}</ReviewRow>
+              <ReviewRow label="What needs attention">{form.description.trim()}</ReviewRow>
+              <ReviewRow label="Urgency">{form.urgency === 'urgent' ? 'As soon as possible' : 'Within the next few days'}</ReviewRow>
+              <ReviewRow label="Availability">Preferred: {formatSchedule(form.preferredDate, form.preferredTime)}{form.alternateDate || form.alternateTime ? ` · Alternate: ${formatSchedule(form.alternateDate, form.alternateTime)}` : ''}</ReviewRow>
+              <ReviewRow label="Optional budget guidance">{form.budgetMin && form.budgetMax ? `GHS ${Number(form.budgetMin).toFixed(2)} – GHS ${Number(form.budgetMax).toFixed(2)} (non-binding)` : 'Not provided'}</ReviewRow>
+              <ReviewRow label="Service location">{[form.streetAddress, form.area, form.city, form.region, form.landmark].filter(Boolean).join(', ')}</ReviewRow>
+              <ReviewRow label="Contact">{[form.contactName, form.contactPhone, form.contactEmail, `Preferred: ${form.contactPreference}`].filter(Boolean).join(' · ')}</ReviewRow>
+              <ReviewRow label="Access notes">{form.additionalNotes.trim()}</ReviewRow>
+            </dl>
+          </div>
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">
+            <strong>Before you send:</strong> this request goes to LUCID for review. No Provider is assigned now. You can cancel without a fee before a Provider accepts an assignment. Any budget guidance is optional and non-binding. Before work starts, you will review the agreed work and estimate; the Provider sends the final bill when the work is ready.
+          </div>
+          {actor.mode === 'preview' && <p className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">Preview note: only the service details, broad city/region, availability and optional budget guidance are stored in this browser. The exact location, contact information and access notes shown above are discarded after submission.</p>}
+        </section>}
+
+        <form onSubmit={event => { event.preventDefault(); if (step < 2) goToNextStep(); else handleSubmit(event); }} className="mt-6 flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
+          {step === 0 ? <Link to={`/lucid/services/${categorySlug}/${serviceSlug}`} className="inline-flex min-h-11 items-center justify-center font-semibold text-primary hover:underline">Back to service</Link> : <button type="button" onClick={goToPreviousStep} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60 dark:border-[#394458] dark:text-slate-100 dark:hover:bg-[#1a1f2e]"><ArrowLeft size={17} aria-hidden="true" /> Back</button>}
+          {step < 2 ? <button type="submit" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">Continue <ArrowRight size={18} aria-hidden="true" /></button> : <button type="submit" disabled={loading} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{loading ? 'Sending request…' : 'Send request to LUCID'} {!loading && <ArrowRight size={18} aria-hidden="true" />}</button>}
         </form>
       </div>
     </main>

@@ -1,10 +1,11 @@
+// @backend-handoff-delete Preview-only earnings/payout disclosure copy; remove after connecting real finance services.
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { useNavigateBack } from '../../hooks/useNavigateBack.js';
 import EarningsChart from '../../components/finance/FinanceEarningsChart.jsx';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
-import { summarizeProviderEarnings, toProviderTransactions } from '../../dev/workflowFinancePresentation.js';
+import { summarizeProviderEarnings, toProviderTransactions } from '../../services/workflow/providerFinancePresentation.js';
 import {
   ArrowLeft,
   DollarSign,
@@ -480,20 +481,20 @@ const TransactionItem = ({ transaction }) => {
   const StatusIcon = statusConfig.icon;
 
   return (
-    <div className="flex items-center justify-between py-4 border-b border-gray-200 dark:border-[#1e293b] last:border-0">
-      <div className="flex gap-4 flex-1">
+    <div className="flex min-w-0 flex-col gap-3 border-b border-gray-200 py-4 last:border-0 dark:border-[#1e293b] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 gap-4 sm:flex-1">
         <div className={`p-2 rounded-lg ${isWithdrawal ? 'bg-red-50' : 'bg-green-50'} h-fit`}>
           <DollarSign className={`w-5 h-5 ${isWithdrawal ? 'text-error' : 'text-green-600'}`} />
         </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <h4 className="font-semibold text-gray-900 dark:text-slate-100">{transaction.description}</h4>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <h4 className="min-w-0 break-words font-semibold text-gray-900 dark:text-slate-100">{transaction.description}</h4>
             <span className={`px-2 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1 ${statusConfig.bg} ${statusConfig.color}`}>
               <StatusIcon className="w-3 h-3" />
               {transaction.status}
             </span>
           </div>
-          <div className="flex items-center gap-4 text-sm text-gray-600 dark:text-slate-400">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600 dark:text-slate-400">
             <span className="flex items-center gap-1">
               <Calendar className="w-3 h-3" />
               {transaction.date}
@@ -503,7 +504,7 @@ const TransactionItem = ({ transaction }) => {
           </div>
         </div>
       </div>
-      <div className={`text-lg font-bold ${isWithdrawal ? 'text-error' : 'text-green-600'}`}>
+      <div className={`self-end text-lg font-bold sm:self-auto ${isWithdrawal ? 'text-error' : 'text-green-600'}`}>
         {isWithdrawal ? '-' : '+'}GH₵{Math.abs(transaction.amount)}
       </div>
     </div>
@@ -569,17 +570,14 @@ const LegacyEarningsPayments = () => {
 
   const loadPreviewFinance = async () => {
     const args = { role: actor.role, userId: actor.userId };
-    const [entryResult, methodResult] = await Promise.all([
-      services.finance.listEntries(args),
-      services.finance.listPaymentMethods(args),
-    ]);
-    if (entryResult.error || methodResult.error) {
-      setFinanceError(entryResult.error?.message || methodResult.error?.message || 'Could not load preview finance.');
-      return entryResult.error || methodResult.error;
+    const entryResult = await services.finance.listEntries(args);
+    if (entryResult.error) {
+      setFinanceError(entryResult.error.message || 'Could not load preview finance.');
+      return entryResult.error;
     }
     setFinanceError('');
     setPreviewEntries(entryResult.data || []);
-    setPaymentMethods(methodResult.data || []);
+    setPaymentMethods([]);
     return null;
   };
 
@@ -672,7 +670,7 @@ const LegacyEarningsPayments = () => {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">
       <AnimatePresence>
-        {showWithdrawModal && (
+        {showWithdrawModal && actor.mode !== 'preview' && (
           <WithdrawModal
             onClose={() => setShowWithdrawModal(false)}
             available={earningsData.available}
@@ -681,20 +679,20 @@ const LegacyEarningsPayments = () => {
             onSubmit={submitWithdrawal}
           />
         )}
-        {addModalOpen && (
+        {addModalOpen && actor.mode !== 'preview' && (
           <PaymentMethodModal
             onClose={() => setAddModalOpen(false)}
             onSave={(m) => { handleAddMethod(m); setAddModalOpen(false); }}
           />
         )}
-        {editingMethod && (
+        {editingMethod && actor.mode !== 'preview' && (
           <PaymentMethodModal
             method={editingMethod}
             onClose={() => setEditingMethod(null)}
             onSave={(m) => { handleEditMethod(m); setEditingMethod(null); }}
           />
         )}
-        {removingMethod && (
+        {removingMethod && actor.mode !== 'preview' && (
           <RemovePaymentModal
             method={removingMethod}
             onClose={() => setRemovingMethod(null)}
@@ -719,13 +717,13 @@ const LegacyEarningsPayments = () => {
             </button>
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">Earnings & Payments</h1>
-              <p className="text-gray-600 dark:text-slate-400 mt-1">Manage your earnings and payment methods</p>
+      <p className="text-gray-600 dark:text-slate-400 mt-1">{actor.mode === 'preview' ? 'Review earnings history and payout readiness' : 'Manage your earnings and payment methods'}</p>
             </div>
           </div>
         </div>
       </motion.header>
 
-      {actor.mode === 'preview' && <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">Preview only: earnings, payout methods, and withdrawals are stored in this browser. No real payment or payout occurs.</div>}
+      {actor.mode === 'preview' && <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">Preview only: earnings and payout statuses are simulated in this browser. Payout account details are not collected and no withdrawal can be made.</div>}
       {financeError && <div role="alert" className="mx-auto mt-4 max-w-7xl px-4 text-sm text-red-600">{financeError}</div>}
 
       {/* Auto-detected payout account banner */}
@@ -805,10 +803,10 @@ const LegacyEarningsPayments = () => {
           />
           <StatCard
             icon={Wallet}
-            title="Available"
+            title={actor.mode === 'preview' ? 'Confirmed payout' : 'Available'}
             amount={earningsData.available}
             trend="neutral"
-            subtitle="Ready to withdraw"
+            subtitle={actor.mode === 'preview' ? 'Illustrative balance; payout setup is not connected' : 'Ready to withdraw'}
           />
         </motion.div>
 
@@ -830,15 +828,15 @@ const LegacyEarningsPayments = () => {
           <EarningsChart datasets={actor.mode === 'preview' ? earningsData.chartData : undefined} />
         </motion.div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid min-w-0 lg:grid-cols-3 gap-8">
           {/* Recent Transactions */}
           <motion.div
             initial="hidden"
             animate="visible"
             variants={fadeIn}
-            className="lg:col-span-2 space-y-6"
+            className="min-w-0 lg:col-span-2 space-y-6"
           >
-            <div className="bg-white dark:bg-[#1a1f2e] rounded-xl p-6 shadow-md">
+            <div className="min-w-0 bg-white dark:bg-[#1a1f2e] rounded-xl p-6 shadow-md">
               <div className="flex items-center justify-between mb-6">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Recent Transactions</h2>
@@ -867,7 +865,10 @@ const LegacyEarningsPayments = () => {
 
             {/* Withdraw Section */}
             {/* [API] POST /providers/:id/payouts — {amount, bankDetails} → {payoutId, status, estimatedArrival} */}
-            <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-xl p-6 shadow-md">
+            {actor.mode === 'preview' ? <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 text-blue-950 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-100">
+              <h3 className="text-xl font-bold mb-2">Payout setup</h3>
+              <p className="text-sm leading-relaxed">Secure payout details and withdrawals will be added when the payment service is connected. Confirmed payout amounts shown here are illustrative.</p>
+            </div> : <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-xl p-6 shadow-md">
               <h3 className="text-2xl font-bold mb-2">Ready to withdraw?</h3>
               <p className="text-blue-100 mb-6">
                 You have GH₵{earningsData.available.toLocaleString()} available for withdrawal
@@ -879,7 +880,7 @@ const LegacyEarningsPayments = () => {
                 <Wallet className="w-5 h-5" />
                 Withdraw Funds
               </button>
-            </div>
+            </div>}
           </motion.div>
 
           {/* Payment Methods */}
@@ -892,17 +893,17 @@ const LegacyEarningsPayments = () => {
           >
             <div className="bg-white dark:bg-[#1a1f2e] rounded-xl p-6 shadow-md">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">Payment Methods</h2>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">{actor.mode === 'preview' ? 'Payout account setup' : 'Payment Methods'}</h2>
                 {/* [API] POST /users/:id/payment-methods */}
-                <button
+                {actor.mode !== 'preview' && <button
                   onClick={() => setAddModalOpen(true)}
                   className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   title="Add payment method"
                 >
                   <Plus className="w-4 h-4" />
-                </button>
+                </button>}
               </div>
-              <div className="space-y-3">
+              {actor.mode === 'preview' ? <p className="text-sm leading-relaxed text-gray-600 dark:text-slate-400">No bank or mobile money details are stored in Preview. Add payout details through the secure payment provider after it is connected.</p> : <div className="space-y-3">
                 {paymentMethods.map((method) => {
                   const icons = { 'mobile-money': Smartphone, 'bank': Building };
                   const Icon = icons[method.type] || Wallet;
@@ -941,7 +942,7 @@ const LegacyEarningsPayments = () => {
                     </div>
                   );
                 })}
-              </div>
+              </div>}
             </div>
           </motion.div>
         </div>

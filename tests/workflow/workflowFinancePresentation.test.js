@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { summarizeProviderEarnings, toProviderTransactions } from '../../src/dev/workflowFinancePresentation.js';
+import { summarizeProviderEarnings, toProviderTransactions } from '../../src/services/workflow/providerFinancePresentation.js';
 
 test('empty earnings are finite zeros and produce no NaN chart values', () => {
   const summary = summarizeProviderEarnings([], new Date('2026-10-17T12:00:00.000Z'));

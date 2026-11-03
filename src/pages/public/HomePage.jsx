@@ -1,3 +1,4 @@
+// @backend-handoff-delete Remove or update the public Preview journey CTA after the new authenticated workflow is integrated.
 import React, { memo, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaEllipsisH } from 'react-icons/fa';

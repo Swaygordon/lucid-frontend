@@ -1,9 +1,8 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import ClientDashboard from './ClientDashboard.jsx';
-import ProviderDashboard from './ProviderDashboard.jsx';
-import { ClientWorkflowDashboard, ProviderWorkflowDashboard } from './WorkflowRoleDashboard.jsx';
+import { ClientWorkflowDashboard } from './WorkflowRoleDashboard.jsx';
 import { useWorkflowMode } from '../../contexts/WorkflowModeContext.jsx';
+import { normalizeWorkflowRole } from '../../services/workflow/workflowRoles.js';
 
 function DashboardSkeleton() {
   return (
@@ -47,11 +46,12 @@ function DashboardSkeleton() {
 }
 
 export default function DashboardPage() {
-  const { mode, role } = useWorkflowMode();
+  const { role } = useWorkflowMode();
   if (!role) return <DashboardSkeleton />;
-  if (role === 'client') return mode === 'preview' ? <ClientWorkflowDashboard /> : <ClientDashboard />;
-  if (role === 'service_provider' || role === 'provider') return mode === 'preview' ? <ProviderWorkflowDashboard /> : <ProviderDashboard />;
-  if (['admin', 'hr', 'operations_admin', 'super_admin'].includes(role)) return <Navigate to="/lucid/admin/workflow" replace />;
-  if (role === 'inspector') return <Navigate to="/lucid/inspector/visits" replace />;
+  const normalizedRole = normalizeWorkflowRole(role);
+  if (normalizedRole === 'client') return <ClientWorkflowDashboard />;
+  if (normalizedRole === 'provider') return <Navigate to="/lucid/provider/work" replace />;
+  if (normalizedRole === 'admin') return <Navigate to="/lucid/admin/workflow" replace />;
+  if (normalizedRole === 'inspector') return <Navigate to="/lucid/inspector/visits" replace />;
   return <Navigate to="/lucid/" replace />;
 }

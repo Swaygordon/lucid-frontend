@@ -1,5 +1,6 @@
+// @backend-handoff-delete Local Preview message persistence and related development notice.
 import React, { useEffect, useState } from 'react';
-import { Send } from 'lucide-react';
+import { CornerUpLeft, Pencil, Send, X } from 'lucide-react';
 import { supabase } from '../../services/supabaseClient.js';
 import { useNotification } from '../../contexts/NotificationContext.jsx';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
@@ -17,6 +18,8 @@ const ManagedCaseConversation = ({ caseId, status, staffView = false, onStatusCh
   const [sending, setSending] = useState(false);
   const [loadError, setLoadError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [replyTo, setReplyTo] = useState(null);
+  const [editingMessage, setEditingMessage] = useState(null);
 
   useEffect(() => {
     let active = true;
@@ -33,6 +36,10 @@ const ManagedCaseConversation = ({ caseId, status, staffView = false, onStatusCh
               sender_type: message.senderRole === 'client' ? 'client' : 'lucid',
               body: message.body,
               created_at: message.at,
+              senderRole: message.senderRole,
+              replyTo: message.replyTo,
+              editedAt: message.editedAt,
+              editHistory: message.editHistory || [],
             })));
             setLoadError(false);
           }
@@ -69,7 +76,14 @@ const ManagedCaseConversation = ({ caseId, status, staffView = false, onStatusCh
     setSending(true);
     try {
       if (mode === 'preview') {
-        const result = await workflowServices.messages.sendMessage(`client-admin:${caseId}`, { role, userId, body: message });
+        if (editingMessage) {
+          const result = await workflowServices.messages.editMessage(editingMessage.id, { role, userId, body: message });
+          if (result.error) throw result.error;
+          setBody(''); setEditingMessage(null); setRefreshKey(value => value + 1);
+          showNotification('Message updated. The original remains in its edit history.', 'success');
+          return;
+        }
+        const result = await workflowServices.messages.sendMessage(`client-admin:${caseId}`, { role, userId, body: message, replyToId: replyTo?.id || null });
         if (result.error) throw result.error;
         if (staffView && requestMoreInfo) {
           const statusResult = await workflowServices.cases.apply(caseId, { role, userId, action: 'request_information', payload: { message } });
@@ -81,6 +95,7 @@ const ManagedCaseConversation = ({ caseId, status, staffView = false, onStatusCh
           onStatusChange?.(caseId, statusResult.data.status);
         }
         setBody('');
+        setReplyTo(null);
         setRequestMoreInfo(false);
         setRefreshKey(value => value + 1);
         showNotification('Preview message saved in this browser.', 'success');
@@ -134,13 +149,17 @@ const ManagedCaseConversation = ({ caseId, status, staffView = false, onStatusCh
               <p className="text-xs font-semibold text-primary">{message.sender_type === 'client' ? 'Client' : 'LUCID team'}</p>
               <time className="text-xs text-gray-500 dark:text-slate-400" dateTime={message.created_at}>{new Date(message.created_at).toLocaleString()}</time>
             </div>
+            {message.replyTo && <blockquote className="mt-2 border-l-2 border-blue-300 pl-3 text-xs text-gray-500 dark:border-blue-700 dark:text-slate-400">Replying to {message.replyTo.senderRole === 'client' ? 'Client' : 'LUCID'}: {message.replyTo.excerpt}</blockquote>}
             <p className="mt-2 whitespace-pre-wrap text-sm text-gray-700 dark:text-slate-300">{message.body}</p>
+            {message.editedAt && <details className="mt-2 text-xs text-gray-500 dark:text-slate-400"><summary className="cursor-pointer">Edited · view history</summary><ol className="mt-2 space-y-1">{(message.editHistory || []).map((edit, index) => <li key={`${message.id}-edit-${index}`}><time dateTime={edit.editedAt}>{new Date(edit.editedAt).toLocaleString()}</time> · {edit.body}</li>)}</ol></details>}
+            <div className="mt-3 flex flex-wrap gap-3"><button type="button" onClick={() => { setReplyTo(message); setEditingMessage(null); }} className="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"><CornerUpLeft size={14}/> Reply with quote</button>{mode === 'preview' && message.senderRole === role && Date.now() - new Date(message.created_at).getTime() <= 120000 && <button type="button" onClick={() => { setEditingMessage(message); setReplyTo(null); setBody(message.body); }} className="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"><Pencil size={14}/> Edit (2 min)</button>}</div>
           </article>
         ))}
       </div>
 
       {!['completed', 'cancelled', 'resolved'].includes(status) && (
         <form onSubmit={handleSubmit} className="mt-4 space-y-3 border-t border-gray-200 pt-4 dark:border-[#384255]">
+          {(replyTo || editingMessage) && <div className="flex items-start justify-between gap-3 rounded-lg border-l-2 border-blue-400 bg-blue-50 p-3 text-xs text-blue-950 dark:bg-blue-950/20 dark:text-blue-100"><div><p className="font-semibold">{editingMessage ? 'Editing your message' : `Replying to ${replyTo.sender_type === 'client' ? 'Client' : 'LUCID'}`}</p><p className="mt-1 line-clamp-2">{editingMessage ? 'The original will remain in the conversation history.' : replyTo.body}</p></div><button type="button" aria-label="Cancel reply or edit" onClick={() => { setReplyTo(null); setEditingMessage(null); setBody(''); }} className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/40"><X size={16}/></button></div>}
           <label className="sr-only" htmlFor={`case-message-${caseId}`}>Message LUCID about this request</label>
           <textarea
             id={`case-message-${caseId}`}
@@ -161,7 +180,7 @@ const ManagedCaseConversation = ({ caseId, status, staffView = false, onStatusCh
           <div className="flex justify-end">
             <button type="submit" disabled={sending || !body.trim()} className="inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
               <Send className="h-4 w-4" aria-hidden="true" />
-              {sending ? 'Sending...' : requestMoreInfo ? 'Send request' : 'Send to LUCID'}
+              {sending ? 'Sending...' : editingMessage ? 'Save edit' : requestMoreInfo ? 'Send request' : 'Send to LUCID'}
             </button>
           </div>
         </form>
