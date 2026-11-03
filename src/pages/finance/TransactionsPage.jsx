@@ -147,15 +147,17 @@ const LegacyTransactionsPage = ({ preview = false }) => {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4">
-          <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+          <div className="flex min-w-0 items-center gap-2">
             <Filter className="w-4 h-4 text-gray-400 dark:text-slate-500" />
-            <div className="flex gap-1">
+            <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:flex-none">
               {TYPE_FILTERS.map(f => (
                 <button
                   key={f}
+                  type="button"
+                  aria-pressed={typeFilter === f}
                   onClick={() => setType(f)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                  className={`min-h-10 shrink-0 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
                     typeFilter === f
                       ? 'bg-blue-600 text-white'
                       : 'bg-white dark:bg-[#1a1f2e] text-gray-600 dark:text-slate-400 border-2 border-gray-200 dark:border-[#2d3748] hover:border-blue-400'
@@ -167,15 +169,17 @@ const LegacyTransactionsPage = ({ preview = false }) => {
             </div>
           </div>
 
-          <label className="flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-slate-300">Sort by
+          <label className="flex items-center justify-between gap-2 text-sm font-semibold text-gray-600 dark:text-slate-300 sm:justify-start">Sort by
             <select value={sortOrder} onChange={event => setSortOrder(event.target.value)} className="rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="amount-high">Amount: high to low</option><option value="amount-low">Amount: low to high</option></select>
           </label>
-          <div className="flex gap-1">
+          <div className="flex w-full gap-1 overflow-x-auto py-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden sm:w-auto">
             {STATUS_FILTERS.map(f => (
               <button
                 key={f}
+                type="button"
+                aria-pressed={statusFilter === f}
                 onClick={() => setStatus(f)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                className={`min-h-10 shrink-0 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
                   statusFilter === f
                     ? 'bg-blue-600 text-white'
                     : 'bg-white dark:bg-[#1a1f2e] text-gray-600 dark:text-slate-400 border-2 border-gray-200 dark:border-[#2d3748] hover:border-blue-400'
