@@ -400,8 +400,8 @@ function Home() {
               {/* Search Bar */}
               <SearchBar onSearch={handleSearch} onSelect={handleSelectSuggestion} isLoading={searchLoading} />
               <div className="relative z-20 mt-4 flex justify-center px-4">
-                <Link to="/lucid/preview" className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 text-sm font-semibold text-blue-800 shadow-sm transition hover:border-blue-400 hover:bg-white dark:border-blue-900/60 dark:bg-[#1a1f2e]/90 dark:text-blue-200 dark:hover:bg-[#252b3b]">
-                  <Shield className="h-4 w-4" aria-hidden="true" /> Preview the full booking journey <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                <Link data-preview-disclosure to="/lucid/preview" className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/90 px-4 py-2 text-sm font-semibold text-blue-800 shadow-sm transition hover:border-blue-400 hover:bg-white dark:border-blue-900/60 dark:bg-[#1a1f2e]/90 dark:text-blue-200 dark:hover:bg-[#252b3b]">
+                  <Shield data-preview-disclosure className="h-4 w-4" aria-hidden="true" /> <span data-preview-disclosure>Preview the full booking journey</span> <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
               </div>
 

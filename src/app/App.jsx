@@ -93,6 +93,9 @@ const PreviewAccountSettings = lazy(
 const ManagedServiceRequest = lazy(
   () => import("../pages/cases/ManagedServiceRequestPage.jsx"),
 );
+const ClientRequestAccountPrompt = lazy(
+  () => import("../pages/cases/ClientRequestAccountPrompt.jsx"),
+);
 const ManagedCases = lazy(() => import("../pages/cases/ManagedCasesPage.jsx"));
 const ManagedCaseDetail = lazy(
   () => import("../pages/cases/ManagedCaseDetailPage.jsx"),
@@ -112,6 +115,9 @@ const InspectorFinance = lazy(
 );
 const AdminWorkflowHub = lazy(
   () => import("../pages/admin/AdminWorkflowHubPage.jsx"),
+);
+const AdminFinancialRecords = lazy(
+  () => import("../pages/admin/AdminFinancialRecordsPage.jsx"),
 );
 const ManagedWorkflowPreviewRoute = lazy(
   () => import("../dev/ManagedWorkflowPreviewRoute.jsx"),
@@ -189,6 +195,17 @@ const PreviewSetupRoute = () => {
     return <Navigate to="/lucid/inspector/profile" replace />;
   if (role === "admin") return <Navigate to="/lucid/admin/workflow" replace />;
   return <PreviewAccountSetup />;
+};
+
+const ClientRequestRoute = () => {
+  const { user, role } = useWorkflowMode();
+  const location = useLocation();
+  if (!user) return <Navigate to="/lucid/signin" replace state={{ from: location }} />;
+  if (role === "client") return withFallback(<ManagedServiceRequest />, BookingsSkeleton);
+  if (role === "provider" || role === "inspector") {
+    return withFallback(<ClientRequestAccountPrompt />, BookingsSkeleton);
+  }
+  return <Navigate to="/lucid/dashboard" replace />;
 };
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -338,6 +355,18 @@ function App() {
                         staffRoles={OPERATIONS_STAFF}
                       >
                         {withFallback(<AdminWorkflowHub />, DashboardSkeleton)}
+                      </ProtectedRoute>
+                    }
+                  />
+
+                  <Route
+                    path="/lucid/admin/records"
+                    element={
+                      <ProtectedRoute
+                        allowedRoles={ADMIN_ONLY}
+                        staffRoles={OPERATIONS_STAFF}
+                      >
+                        {withFallback(<AdminFinancialRecords />, DashboardSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -574,14 +603,7 @@ function App() {
                   {/* LUCID-managed intake. This stores no provider ID and is client-only. */}
                   <Route
                     path="/lucid/bookings/request/:category/:service"
-                    element={
-                      <ProtectedRoute allowedRoles={CLIENT_ONLY}>
-                        {withFallback(
-                          <ManagedServiceRequest />,
-                          BookingsSkeleton,
-                        )}
-                      </ProtectedRoute>
-                    }
+                    element={<ClientRequestRoute />}
                   />
 
                   <Route

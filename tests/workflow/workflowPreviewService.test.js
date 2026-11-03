@@ -137,6 +137,26 @@ test('message quotes retain the referenced excerpt and timed edits preserve the 
   assert.equal(tooLate.error.code, 'MESSAGE_EDIT_WINDOW_CLOSED');
 });
 
+test('Preview messages retain replayable voice-note audio within the local size limit', async () => {
+  const storage = makeStorage();
+  const service = createMockWorkflowService({ storage, seedData: createSeed(), clock: () => new Date().toISOString() });
+  const audioDataUrl = 'data:audio/webm;base64,YWJj';
+  const sent = await service.messages.sendMessage('client-admin:CASE-PREVIEW-1', {
+    role: 'client', userId: 'demo-client', body: '',
+    attachment: { name: 'Voice note', type: 'audio/webm', size: 3, dataUrl: audioDataUrl },
+  });
+  const messages = await service.messages.listMessages('client-admin:CASE-PREVIEW-1', { role: 'client', userId: 'demo-client' });
+  const oversized = await service.messages.sendMessage('client-admin:CASE-PREVIEW-1', {
+    role: 'client', userId: 'demo-client', body: '',
+    attachment: { name: 'Voice note', type: 'audio/webm', size: 1024 * 1024 + 1, dataUrl: `data:audio/webm;base64,${'A'.repeat(1_500_000)}` },
+  });
+
+  assert.equal(sent.error, null);
+  assert.equal(sent.data.attachment.dataUrl, audioDataUrl);
+  assert.equal(messages.data.find(message => message.id === sent.data.id).attachment.dataUrl, audioDataUrl);
+  assert.equal(oversized.error.code, 'ATTACHMENT_TOO_LARGE');
+});
+
 test('Preview payout onboarding never stores raw bank or mobile-money details', async () => {
   const storage = makeStorage();
   const service = createMockWorkflowService({ storage, seedData: createSeed(), clock: () => '2026-10-16T11:00:00.000Z' });

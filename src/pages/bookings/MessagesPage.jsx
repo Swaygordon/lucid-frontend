@@ -194,7 +194,7 @@ const Messages = () => {
                           )}
                           <p className="mt-1 truncate text-[11px] text-blue-700 dark:text-blue-300">{conv.caseId || 'LUCID support'} · {caseStatusLabel(conv.caseStatus)}</p>
                           <p className="mt-1 truncate text-[11px] text-gray-500 dark:text-slate-400">{conv.participantLabel}</p>
-                          {conv.preview && <span className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Preview</span>}
+                          {conv.preview && <span data-preview-disclosure className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Preview</span>}
                         </div>
                       </button>
                     );

@@ -2,6 +2,10 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+.preview-ui-hidden [data-preview-disclosure] {
+  display: none !important;
+}
+
 /* ── Typography ─────────────────────────────────────────────────────────────── */
 /* Plus Jakarta Sans across the whole UI (body + headings).                     */
 body {

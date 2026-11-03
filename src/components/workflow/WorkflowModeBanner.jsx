@@ -35,7 +35,7 @@ const WorkflowModeBanner = () => {
   };
 
   return mode === 'preview' ? (
-    <aside className="border-b border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100" aria-live="polite">
+    <aside data-preview-disclosure className="border-b border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-100" aria-live="polite">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-2.5 sm:px-6">
         <p className="flex min-w-0 items-center gap-2 text-sm"><FlaskConical className="h-4 w-4 shrink-0" aria-hidden="true" /><span><strong>Local Preview.</strong> Authenticated pages use sample accounts and workflow data stored in this browser; no login or workflow data is sent to the backend.</span></p>
         <div className="flex shrink-0 flex-wrap items-center gap-2">

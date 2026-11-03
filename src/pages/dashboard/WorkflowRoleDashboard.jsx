@@ -14,8 +14,8 @@ const money = (amount, currency = 'GHS') => `${currency} ${Number(amount || 0).t
 const prettyStatus = status => String(status || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 
 const Stat = ({ label, value, helper, icon: Icon, tone = 'blue' }) => (
-  <article className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e]">
-    <div className="flex items-start justify-between gap-3"><div><p className="text-sm text-gray-500 dark:text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold text-gray-950 dark:text-slate-100">{value}</p><p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{helper}</p></div><span className={`rounded-xl p-3 ${tone === 'green' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : tone === 'amber' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300'}`}><Icon className="h-5 w-5" aria-hidden="true" /></span></div>
+  <article className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e] sm:p-5">
+    <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="line-clamp-2 text-xs leading-4 text-gray-500 dark:text-slate-400 sm:text-sm">{label}</p><p className="mt-1 break-words text-lg font-bold leading-tight text-gray-950 dark:text-slate-100 sm:mt-2 sm:text-3xl">{value}</p><p className="mt-1 line-clamp-2 text-[11px] leading-4 text-gray-500 dark:text-slate-400 sm:text-xs">{helper}</p></div><span className={`shrink-0 rounded-lg p-2 sm:rounded-xl sm:p-3 ${tone === 'green' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : tone === 'amber' ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300' : 'bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300'}`}><Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" /></span></div>
   </article>
 );
 
@@ -117,11 +117,11 @@ const WorkflowRoleDashboard = ({ role }) => {
           <Link to={isClient ? '/lucid/services' : '/lucid/provider/work'} className="inline-flex w-fit items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-primary hover:bg-blue-50">{isClient ? 'Request a service' : 'View assigned work'} <ArrowRight className="h-4 w-4" aria-hidden="true" /></Link>
         </header>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
           <Stat label={isClient ? 'Open requests' : 'Active assignments'} value={activeCases.length} helper="Across your current workspace" icon={ClipboardList} />
           <Stat label="Needs your attention" value={attentionCases.length} helper={isClient ? 'A reply, approval, or payment is due' : 'Offer or Client response pending'} icon={Clock3} tone="amber" />
           <Stat label={isClient ? 'Receipts and paid work' : 'Completed work'} value={completedCases.length} helper="Available in your history" icon={ReceiptText} tone="green" />
-          <Stat label={isClient ? 'Messages' : 'Released earnings'} value={isClient ? 'Open inbox' : money(totalDue)} helper={isClient ? 'LUCID and assigned Inspector' : mode === 'preview' ? 'Preview ledger total' : 'Recorded payout total'} icon={isClient ? MessageSquareText : CircleDollarSign} />
+          <Stat label={isClient ? 'Messages' : 'Released earnings'} value={isClient ? 'Open inbox' : money(totalDue)} helper={isClient ? 'LUCID and assigned Inspector' : mode === 'preview' ? <span data-preview-disclosure>Preview ledger total</span> : 'Recorded payout total'} icon={isClient ? MessageSquareText : CircleDollarSign} />
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)]">
@@ -137,7 +137,7 @@ const WorkflowRoleDashboard = ({ role }) => {
                 <Link to="/lucid/messages" className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-100 dark:bg-[#252b3b] dark:text-slate-200 dark:hover:bg-[#303a4c]">Messages <MessageSquareText className="h-4 w-4" /></Link>
               </div>
             </WorkspacePanel>
-            {mode === 'preview' && <p className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-100"><strong>Preview data.</strong> Requests, messages, receipts, and finance values are browser-local examples. The selected role is a simulated persona; no real account or payment is involved.</p>}
+          {mode === 'preview' && <p data-preview-disclosure className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-100"><strong>Preview data.</strong> Requests, messages, receipts, and finance values are browser-local examples. The selected role is a simulated persona; no real account or payment is involved.</p>}
           </div>
         </div>
 

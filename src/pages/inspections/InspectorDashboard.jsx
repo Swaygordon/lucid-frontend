@@ -38,22 +38,22 @@ const PreviewInspectorWorkspace = ({ cases, inspectors, selectedInspectorId, onI
   const recent = useMemo(() => cases.filter(item => CLOSED_STATUSES.includes(item.status)).slice(0, 5), [cases]);
 
   return (
-    <main className="min-h-[75vh] bg-gray-50 px-4 py-8 dark:bg-[#0f1117] sm:px-6">
+    <main className="min-h-[75vh] bg-gray-50 px-4 py-5 dark:bg-[#0f1117] sm:px-6 sm:py-8">
       <div className="mx-auto max-w-6xl space-y-6">
-        <header className="flex flex-col gap-4 rounded-3xl bg-gradient-to-br from-slate-900 to-blue-900 p-6 text-white shadow-lg sm:flex-row sm:items-end sm:justify-between sm:p-8">
+        <header className="flex flex-col gap-4 rounded-2xl bg-gradient-to-br from-slate-900 to-blue-900 p-4 text-white shadow-lg sm:flex-row sm:items-end sm:justify-between sm:rounded-3xl sm:p-8">
           <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-200">LUCID field team · Preview</p>
-            <h1 className="mt-2 text-3xl font-bold sm:text-4xl">Inspector workspace</h1>
+            <p data-preview-disclosure className="text-sm font-semibold uppercase tracking-[0.16em] text-blue-200">LUCID field team · Preview</p>
+            <h1 className="mt-2 text-2xl font-bold sm:text-4xl">Inspector workspace</h1>
             <p className="mt-2 max-w-2xl text-sm text-blue-100 sm:text-base">Review assigned requests, plan site visits, submit assessments, and coordinate active work.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Link to="/lucid/messages" className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-blue-900 hover:bg-blue-50"><MessageSquareText className="h-4 w-4" aria-hidden="true" />Messages</Link>
-            <Link to="/lucid/inspector/profile" className="inline-flex min-h-10 items-center rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">My profile</Link>
-            <Link to="/lucid/inspector/finance" className="inline-flex min-h-10 items-center rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10">Financial history</Link>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <Link to="/lucid/messages" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-blue-900 hover:bg-blue-50 sm:px-4"><MessageSquareText className="h-4 w-4" aria-hidden="true" />Messages</Link>
+            <Link to="/lucid/inspector/profile" className="inline-flex min-h-11 items-center justify-center rounded-xl border border-white/30 px-3 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:px-4">My profile</Link>
+            <Link to="/lucid/inspector/finance" className="col-span-2 inline-flex min-h-11 items-center justify-center rounded-xl border border-white/30 px-4 py-2.5 text-sm font-semibold text-white hover:bg-white/10 sm:col-span-1">Financial history</Link>
           </div>
         </header>
 
-        <label className="flex max-w-xl flex-col gap-2 text-sm font-semibold text-gray-800 dark:text-slate-200">
+        <label data-preview-disclosure className="flex max-w-xl flex-col gap-2 text-sm font-semibold text-gray-800 dark:text-slate-200">
           Preview Inspector account
           <select value={selectedInspectorId} onChange={event => onInspectorChange(event.target.value)} className="rounded-xl border border-gray-200 bg-white px-4 py-3 font-medium text-gray-900 shadow-sm outline-none focus:border-primary dark:border-[#303a4c] dark:bg-[#1a1f2e] dark:text-slate-100">
             {inspectors.map(inspector => <option key={inspector.id} value={inspector.id}>{inspector.displayName} · {inspector.homeCity}, {inspector.region}</option>)}
@@ -62,12 +62,12 @@ const PreviewInspectorWorkspace = ({ cases, inspectors, selectedInspectorId, onI
         </label>
 
         {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-200">{error}</p>}
-        <section aria-label="Inspector work summary" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <section aria-label="Inspector work summary" className="grid grid-cols-2 gap-3 xl:grid-cols-5">
           <PreviewStat label="Assessment due" value={assessment.length} icon={ClipboardCheck} tone="amber" />
           <PreviewStat label="Scheduled visits" value={scheduled.length} icon={CalendarClock} />
           <PreviewStat label="Reports with LUCID" value={reports.length} icon={CheckCircle2} tone="green" />
           <PreviewStat label="Work coordination" value={coordination.length} icon={CalendarCheck2} />
-          <PreviewStat label="Payment / completion" value={payment.length} icon={Clock3} tone="violet" />
+          <PreviewStat label="Payment / completion" value={payment.length} icon={Clock3} tone="violet" className="col-span-2 xl:col-span-1" />
         </section>
 
         <InspectorCaseSection title="Assessments and site visits" description="Set or update a visit time, review the Client request, and submit findings and feasibility." items={assessment} empty="No assessments are waiting for you." actionLabel="Review and assess" icon={MapPin} loading={loading} />
@@ -75,7 +75,7 @@ const PreviewInspectorWorkspace = ({ cases, inspectors, selectedInspectorId, onI
         <InspectorCaseSection title="Coordination and payment follow-up" description="Open a case to message the assigned people and track work, payment, or completion status." items={[...coordination, ...payment]} empty="No active coordination or payment follow-up." actionLabel="Open shared case" icon={MessageSquareText} loading={loading} />
         <InspectorCaseSection title="Recent history" description="Recently closed or completed cases assigned to this Inspector." items={recent} empty="Completed and closed cases will appear here." actionLabel="Open case history" icon={CheckCircle2} loading={loading} />
 
-        <p className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-100"><strong>Preview data.</strong> Assignment changes, schedules, assessments, and notices are stored in this browser. Inspection evidence saves file details only; no file content is uploaded.</p>
+        <p data-preview-disclosure className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-100"><strong>Preview data.</strong> Assignment changes, schedules, assessments, and notices are stored in this browser. Inspection evidence saves file details only; no file content is uploaded.</p>
       </div>
     </main>
   );
@@ -108,14 +108,14 @@ const InspectorCaseCard = ({ record, actionLabel }) => (
   </article>
 );
 
-const PreviewStat = ({ label, value, icon: Icon, tone = 'blue' }) => {
+const PreviewStat = ({ label, value, icon: Icon, tone = 'blue', className = '' }) => {
   const tones = {
     blue: 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-200',
     amber: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300',
     green: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300',
     violet: 'bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-300',
   };
-  return <article className="flex items-center justify-between rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e]"><div><p className="text-sm text-gray-500 dark:text-slate-400">{label}</p><p className="mt-2 text-3xl font-bold text-gray-950 dark:text-slate-100">{value}</p></div><span className={`rounded-xl p-3 ${tones[tone]}`}><Icon className="h-5 w-5" aria-hidden="true" /></span></article>;
+  return <article className={`flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e] sm:p-4 ${className}`}><div className="min-w-0"><p className="text-xs leading-4 text-gray-500 dark:text-slate-400 sm:text-sm">{label}</p><p className="mt-1 text-2xl font-bold text-gray-950 dark:text-slate-100 sm:mt-2 sm:text-3xl">{value}</p></div><span className={`shrink-0 rounded-lg p-2 sm:rounded-xl sm:p-3 ${tones[tone]}`}><Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" /></span></article>;
 };
 
 const InspectorDashboard = () => {

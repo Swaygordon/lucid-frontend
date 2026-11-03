@@ -5,6 +5,7 @@ import { createPreviewStore } from './store.js';
 import { normalizeWorkflowRole } from '../../services/workflow/workflowRoles.js';
 
 const clone = value => JSON.parse(JSON.stringify(value));
+const MAX_PREVIEW_VOICE_NOTE_BYTES = 1024 * 1024;
 const resultError = (code, message) => ({ data: null, error: { code, message } });
 const actorKey = { client: 'demo-client', provider: 'demo-provider', inspector: 'demo-inspector' };
 const normalizedText = value => String(value || '').trim().toLocaleLowerCase();
@@ -446,8 +447,18 @@ export const createMockWorkflowService = ({ storage = defaultStorage(), seedData
       const quoted = replyToId ? matching.find(message => message.id === replyToId) : null;
       if (replyToId && !quoted) return resultError('MESSAGE_NOT_FOUND', 'The message you are replying to is no longer in this conversation.');
       const replyTo = quoted ? { messageId: quoted.id, senderRole: quoted.senderRole, excerpt: String(quoted.body || '').slice(0, 180) } : null;
+      const attachmentType = String(attachment?.type || 'application/octet-stream').slice(0, 120);
+      const attachmentSize = Math.max(0, Number(attachment?.size) || 0);
+      const isAudio = attachmentType.toLowerCase().startsWith('audio/');
+      const audioDataUrl = typeof attachment?.dataUrl === 'string' ? attachment.dataUrl : '';
+      if (isAudio && audioDataUrl && (attachmentSize > MAX_PREVIEW_VOICE_NOTE_BYTES || audioDataUrl.length > MAX_PREVIEW_VOICE_NOTE_BYTES * 1.4)) {
+        return resultError('ATTACHMENT_TOO_LARGE', 'Keep voice notes under 1 MB in Preview.');
+      }
+      if (isAudio && audioDataUrl && !/^data:audio\/[a-z0-9.+-]+(?:;[a-z0-9=._+-]+)*;base64,[a-z0-9+/]+={0,2}$/i.test(audioDataUrl)) {
+        return resultError('INVALID_AUDIO_ATTACHMENT', 'The voice note could not be prepared. Record it again and retry.');
+      }
       const safeAttachment = attachment && typeof attachment.name === 'string'
-        ? { name: attachment.name.slice(0, 180), type: String(attachment.type || 'application/octet-stream').slice(0, 120), size: Math.max(0, Number(attachment.size) || 0) }
+        ? { name: attachment.name.slice(0, 180), type: attachmentType, size: attachmentSize, ...(isAudio && audioDataUrl ? { dataUrl: audioDataUrl } : {}) }
         : null;
       if (!cleanBody && !safeAttachment) return resultError('MESSAGE_REQUIRED', 'Write a message or attach a file before sending.');
       const timestamp = clock();
@@ -620,9 +631,9 @@ export const createMockWorkflowService = ({ storage = defaultStorage(), seedData
       if (!userId || normalizeWorkflowRole(role) !== 'admin') return resultError('NOT_AUTHORIZED', 'Only LUCID Admin can view the operations directory.');
       const data = loaded.data;
       const records = [
-        ...(data.clientProfiles || []).map(profile => ({ id: profile.id, role: 'client', name: profile.fullName || 'Preview Client', city: profile.homeCity, region: profile.region, categories: [], profileComplete: Boolean(profile.profileComplete), accountStatus: profile.accountStatus || 'active' })),
-        ...(data.providerProfiles || []).map(profile => ({ id: profile.id, role: 'provider', name: profile.fullName || profile.displayName || 'Preview Provider', city: profile.homeCity, region: profile.region, categories: profile.categories || [], qualifications: profile.qualifications || [], availability: profile.availability || 'Unspecified', averageRating: profile.averageRating || 0, reviewCount: profile.reviewCount || profile.reviews?.length || 0, profileComplete: Boolean(profile.profileComplete), accountStatus: profile.accountStatus || 'active' })),
-        ...(data.inspectors || []).map(profile => ({ id: profile.id, role: 'inspector', name: profile.displayName, city: profile.homeCity, region: profile.region, categories: profile.categories || [], availability: profile.availability || 'Unspecified', profileComplete: Boolean((data.inspectorProfiles || []).find(item => item.id === profile.id)?.profileComplete), accountStatus: profile.accountStatus || (profile.active ? 'active' : 'suspended') })),
+        ...(data.clientProfiles || []).map(profile => ({ id: profile.id, role: 'client', name: profile.fullName || 'Preview Client', email: profile.email || profile.contactEmail || '', phone: profile.phone || '', city: profile.homeCity, region: profile.region, categories: [], profileComplete: Boolean(profile.profileComplete), accountStatus: profile.accountStatus || 'active' })),
+        ...(data.providerProfiles || []).map(profile => ({ id: profile.id, role: 'provider', name: profile.fullName || profile.displayName || 'Preview Provider', email: profile.email || profile.contactEmail || '', phone: profile.phone || '', city: profile.homeCity, region: profile.region, categories: profile.categories || [], qualifications: profile.qualifications || [], availability: profile.availability || 'Unspecified', presenceStatus: profile.presenceStatus || 'offline', scheduleStatus: profile.scheduleStatus || 'unspecified', assignmentCapacity: profile.assignmentCapacity || 'unspecified', payoutSetup: Boolean(profile.payoutSetup), averageRating: profile.averageRating || 0, reviewCount: profile.reviewCount || profile.reviews?.length || 0, profileComplete: Boolean(profile.profileComplete), accountStatus: profile.accountStatus || 'active' })),
+        ...(data.inspectors || []).map(profile => { const details = (data.inspectorProfiles || []).find(item => item.id === profile.id) || {}; return { id: profile.id, role: 'inspector', name: profile.displayName, email: details.email || details.contactEmail || '', phone: details.phone || profile.phone || '', city: profile.homeCity, region: profile.region, categories: profile.categories || [], qualifications: details.qualifications || [], availability: profile.availability || details.availability || 'Unspecified', presenceStatus: profile.presenceStatus || details.presenceStatus || 'offline', scheduleStatus: profile.scheduleStatus || details.scheduleStatus || 'unspecified', assignmentCapacity: profile.assignmentCapacity || details.assignmentCapacity || 'unspecified', payoutSetup: Boolean(details.payoutSetup), profileComplete: Boolean(details.profileComplete), accountStatus: profile.accountStatus || (profile.active ? 'active' : 'suspended') }; }),
         { id: 'demo-admin', role: 'admin', name: 'LUCID Operations', city: '', region: '', categories: [], profileComplete: true, accountStatus: 'active' },
       ].map(profile => {
         const related = data.cases.filter(record => record.clientRoleId === profile.id || record.assignedProviderId === profile.id || record.assignedInspectorId === profile.id);

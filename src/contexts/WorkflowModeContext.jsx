@@ -1,10 +1,11 @@
 // @backend-handoff-delete Entire local identity/session implementation; preserve the hook shape only if useful to the new auth provider.
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { getWorkflowServices } from '../services/workflow/workflowService.js';
 
 const AUTH_KEY = 'lucid:preview-session';
 const ROLE_KEY = 'lucid:workflow-preview-role';
 const INSPECTOR_KEY = 'lucid:workflow-preview-inspector';
+const PREVIEW_UI_KEY = 'lucid:preview-ui-visible';
 const ROLES = ['client', 'provider', 'inspector', 'admin'];
 const Context = createContext(null);
 
@@ -14,12 +15,20 @@ const readSession = () => {
 const readRole = () => {
   try { const role = window.localStorage.getItem(ROLE_KEY); return ROLES.includes(role) ? role : null; } catch { return null; }
 };
+const readPreviewUiVisible = () => {
+  try { return window.localStorage.getItem(PREVIEW_UI_KEY) !== 'false'; } catch { return true; }
+};
 const idForEmail = email => `preview-${String(email).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
 export const WorkflowModeProvider = ({ children }) => {
   const [user, setUser] = useState(readSession);
   const [accountRole, setAccountRole] = useState(() => readSession()?.role || null);
   const [role, setRole] = useState(readRole);
+  const [previewUiVisible, setPreviewUiVisible] = useState(readPreviewUiVisible);
+  useEffect(() => {
+    document.documentElement.classList.toggle('preview-ui-hidden', !previewUiVisible);
+    return () => document.documentElement.classList.remove('preview-ui-hidden');
+  }, [previewUiVisible]);
   const [previewInspectorId, setPreviewInspectorIdState] = useState(() => {
     try { return window.localStorage.getItem(INSPECTOR_KEY) || 'demo-inspector'; } catch { return 'demo-inspector'; }
   });
@@ -55,6 +64,13 @@ export const WorkflowModeProvider = ({ children }) => {
     if (!String(nextId || '').startsWith('demo-inspector')) return false;
     window.localStorage.setItem(INSPECTOR_KEY, nextId); setPreviewInspectorIdState(nextId); return true;
   }, []);
+  const togglePreviewUi = useCallback(() => {
+    setPreviewUiVisible(current => {
+      const next = !current;
+      window.localStorage.setItem(PREVIEW_UI_KEY, String(next));
+      return next;
+    });
+  }, []);
   const resetPreviewData = useCallback(async () => {
     if (!user) return { data: null, error: { code: 'PREVIEW_SIGNIN_REQUIRED', message: 'Sign in to reset Preview data.' } };
     const result = await getWorkflowServices({ mode: 'preview' }).reset();
@@ -62,7 +78,7 @@ export const WorkflowModeProvider = ({ children }) => {
     return result;
   }, [user]);
 
-  const value = useMemo(() => ({ mode: 'preview', user, role, accountRole, previewRole: role, canEnablePreview: true, previewInspectorId, enablePreview: () => true, setPreviewRole, setPreviewInspectorId: setPreviewInspector, disablePreview: () => {}, resetPreviewData, signIn, signUp, signOut }), [user, role, accountRole, previewInspectorId, setPreviewRole, setPreviewInspector, resetPreviewData, signIn, signUp, signOut]);
+  const value = useMemo(() => ({ mode: 'preview', user, role, accountRole, previewRole: role, canEnablePreview: true, previewInspectorId, previewUiVisible, togglePreviewUi, enablePreview: () => true, setPreviewRole, setPreviewInspectorId: setPreviewInspector, disablePreview: () => {}, resetPreviewData, signIn, signUp, signOut }), [user, role, accountRole, previewInspectorId, previewUiVisible, togglePreviewUi, setPreviewRole, setPreviewInspector, resetPreviewData, signIn, signUp, signOut]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 };
 

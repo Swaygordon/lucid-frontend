@@ -168,7 +168,7 @@ const ManagedServiceRequest = () => {
             <p><strong>What happens next:</strong> LUCID reviews the details and will message you if clarification is needed. No Provider has been assigned. You can cancel without a fee before a Provider accepts an assignment.</p>
             <p className="mt-3">Your budget is an estimate, not a fixed quote. You will see the final itemized amount before deciding whether to pay.</p>
           </div>
-          {actor.mode === 'preview' && <p className="mt-4 text-xs leading-relaxed text-amber-900 dark:text-amber-100">This is a simulated Preview request. Its broad service area and workflow status are stored locally; the exact address and contact details shown in your form were discarded.</p>}
+          {actor.mode === 'preview' && <p data-preview-disclosure className="mt-4 text-xs leading-relaxed text-amber-900 dark:text-amber-100">This is a simulated Preview request. Its broad service area and workflow status are stored locally; the exact address and contact details shown in your form were discarded.</p>}
           <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
             <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-800 dark:border-[#394458] dark:text-slate-100" to="/lucid/cases">View my requests</Link>
             <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white" to={`/lucid/cases/${submittedCaseId}`}>Open this request</Link>
@@ -200,9 +200,9 @@ const ManagedServiceRequest = () => {
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
             <p>LUCID receives your request, reviews it, and coordinates an inspection and Provider assignment. The Provider is not selected when you submit this form.</p>
           </div>
-          {actor.mode === 'preview' && <div className="mt-3 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
+          {actor.mode === 'preview' && <div data-preview-disclosure className="mt-3 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
             <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <p><strong>Local Preview:</strong> enter fictional contact and address details. Only the service request, broad city/region, schedule and optional budget guidance are saved in this browser; exact address, contact details and notes are discarded.</p>
+            <p data-preview-disclosure><strong>Local Preview:</strong> enter fictional contact and address details. Only the service request, broad city/region, schedule and optional budget guidance are saved in this browser; exact address, contact details and notes are discarded.</p>
           </div>}
         </header>
 
@@ -275,7 +275,7 @@ const ManagedServiceRequest = () => {
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">
             <strong>Before you send:</strong> this request goes to LUCID for review. No Provider is assigned now. You can cancel without a fee before a Provider accepts an assignment. Any budget guidance is optional and non-binding. Before work starts, you will review the agreed work and estimate; the Provider sends the final bill when the work is ready.
           </div>
-          {actor.mode === 'preview' && <p className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">Preview note: only the service details, broad city/region, availability and optional budget guidance are stored in this browser. The exact location, contact information and access notes shown above are discarded after submission.</p>}
+          {actor.mode === 'preview' && <p data-preview-disclosure className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">Preview note: only the service details, broad city/region, availability and optional budget guidance are stored in this browser. The exact location, contact information and access notes shown above are discarded after submission.</p>}
         </section>}
 
         <form onSubmit={event => { event.preventDefault(); if (step < 2) goToNextStep(); else handleSubmit(event); }} className="mt-6 flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">

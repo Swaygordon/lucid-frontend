@@ -78,7 +78,7 @@ const ManagedCases = () => {
             <div><h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-slate-100">My requests</h1><p className="mt-2 max-w-2xl text-gray-600 dark:text-slate-400">See what is happening, who acts next, and where to continue each request.</p></div>
             <Link to="/lucid/services" className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">Request a service <ArrowRight size={17} aria-hidden="true" /></Link>
           </div>
-          <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />Local Preview requests</p>
+          <p data-preview-disclosure className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />Local Preview requests</p>
         </header>
 
         <section className="mt-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e] sm:p-6" aria-label="Request filters">
@@ -114,7 +114,7 @@ const ManagedCases = () => {
               </section>}
 
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3 text-sm"><Link to="/lucid/notifications" className="inline-flex items-center gap-2 font-semibold text-primary hover:underline"><Bell size={16} aria-hidden="true" />View notifications</Link><Link to="/lucid/messages" className="inline-flex items-center gap-2 font-semibold text-primary hover:underline"><MessageSquareText size={16} aria-hidden="true" />Open messages</Link></div>
-        <p className="mt-5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">Sample workflow records are stored locally in this browser. No payment is collected through Preview.</p>
+        <p data-preview-disclosure className="mt-5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">Sample workflow records are stored locally in this browser. No payment is collected through Preview.</p>
       </div>
     </main>
   );

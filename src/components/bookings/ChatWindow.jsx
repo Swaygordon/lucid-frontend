@@ -2,12 +2,34 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../services/supabaseClient.js';
 import { Avatar } from '../ui/Avatar.jsx';
-import { Send, ArrowLeft, Loader2, Paperclip, X } from 'lucide-react';
+import { Send, ArrowLeft, Loader2, Paperclip, X, Mic, Square, Reply, Pencil } from 'lucide-react';
 import {
   getConversationMessages,
   sendMessage,
   markConversationRead,
 } from '../../services/bookings/chatService.js';
+
+const MAX_VOICE_NOTE_BYTES = 1024 * 1024;
+const MAX_VOICE_NOTE_SECONDS = 60;
+const messageForChat = (item, workflowRole, currentUserId) => ({
+  id: item.id,
+  sender_id: item.senderRole === (workflowRole === 'service_provider' ? 'provider' : workflowRole) ? currentUserId : 'workflow-counterpart',
+  senderRole: item.senderRole,
+  message: item.body,
+  attachment: item.attachment,
+  created_at: item.at,
+  is_read: item.read,
+  replyTo: item.replyTo || null,
+  editedAt: item.editedAt || null,
+  editHistory: item.editHistory || [],
+});
+const formatDuration = seconds => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+const blobToDataUrl = blob => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => resolve(String(reader.result));
+  reader.onerror = () => reject(new Error('Voice note could not be prepared.'));
+  reader.readAsDataURL(blob);
+});
 
 const ChatWindow = ({ conversation, currentUserId, onBack, onMessageSent, workflowServices, workflowRole, onReturnToCase }) => {
   const [messages, setMessages] = useState([]);
@@ -17,9 +39,22 @@ const ChatWindow = ({ conversation, currentUserId, onBack, onMessageSent, workfl
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState('');
   const [selectedAttachment, setSelectedAttachment] = useState(null);
+  const [voiceDataUrl, setVoiceDataUrl] = useState('');
+  const [voicePreviewUrl, setVoicePreviewUrl] = useState('');
+  const [recording, setRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [replyTarget, setReplyTarget] = useState(null);
+  const [editingMessageId, setEditingMessageId] = useState('');
+  const [now, setNow] = useState(Date.now());
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
   const attachmentInputRef = useRef(null);
+  const mediaRecorderRef = useRef(null);
+  const recordingStreamRef = useRef(null);
+  const recordingChunksRef = useRef([]);
+  const recordingStartedAtRef = useRef(0);
+  const recordingTimerRef = useRef(null);
+  const discardRecordingRef = useRef(false);
 
   const otherUser = conversation.otherUser;
   const otherUserId = conversation.client_id === currentUserId
@@ -35,7 +70,7 @@ const ChatWindow = ({ conversation, currentUserId, onBack, onMessageSent, workfl
       if (conversation.workflowThread) {
         const result = await workflowServices.messages.listMessages(conversation.id, { role: workflowRole, userId: currentUserId });
         if (result.error) throw result.error;
-        const data = (result.data || []).map(item => ({ id: item.id, sender_id: item.senderRole === (workflowRole === 'service_provider' ? 'provider' : workflowRole) ? currentUserId : 'workflow-counterpart', message: item.body, attachment: item.attachment, created_at: item.at, is_read: item.read }));
+        const data = (result.data || []).map(item => messageForChat(item, workflowRole, currentUserId));
         if (isMounted) { setMessages(data); setLoading(false); }
         return;
       }
@@ -58,7 +93,7 @@ useEffect(() => {
     const caseId = conversation.caseId || conversation.id;
     const channel = supabase.channel(`managed-thread:${caseId}:${currentUserId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'managed_case_messages', filter: `case_id=eq.${caseId}` }, async () => {
       const result = await workflowServices.messages.listMessages(caseId, { role: workflowRole, userId: currentUserId });
-      if (!result.error) setMessages((result.data || []).map(item => ({ id: item.id, sender_id: item.senderRole === (workflowRole === 'service_provider' ? 'provider' : workflowRole) ? currentUserId : 'workflow-counterpart', message: item.body, created_at: item.at, is_read: item.read })));
+      if (!result.error) setMessages((result.data || []).map(item => messageForChat(item, workflowRole, currentUserId)));
     }).subscribe();
     return () => { supabase.removeChannel(channel); };
   }
@@ -86,6 +121,17 @@ useEffect(() => {
 
   return () => { supabase.removeChannel(channel); };
 }, [conversation.id, conversation.caseId, conversation.preview, currentUserId, conversation.workflowThread, workflowServices, workflowRole]);
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, []);
+
+  useEffect(() => () => {
+    if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+    recordingStreamRef.current?.getTracks().forEach(track => track.stop());
+    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+  }, [voicePreviewUrl]);
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -101,20 +147,32 @@ useEffect(() => {
     setSending(true);
 
     try {
-      let msg;
       if (conversation.workflowThread) {
-        const result = await workflowServices.messages.sendMessage(conversation.id, { role: workflowRole, userId: currentUserId, body: text, attachment: selectedAttachment ? { name: selectedAttachment.name, type: selectedAttachment.type, size: selectedAttachment.size } : null });
+        const result = editingMessageId
+          ? await workflowServices.messages.editMessage(editingMessageId, { role: workflowRole, userId: currentUserId, body: text })
+          : await workflowServices.messages.sendMessage(conversation.id, {
+            role: workflowRole,
+            userId: currentUserId,
+            body: text,
+            replyToId: replyTarget?.id || null,
+            attachment: selectedAttachment ? { name: selectedAttachment.name, type: selectedAttachment.type, size: selectedAttachment.size, ...(voiceDataUrl ? { dataUrl: voiceDataUrl } : {}) } : null,
+          });
         if (result.error) throw result.error;
         const refreshed = await workflowServices.messages.listMessages(conversation.id, { role: workflowRole, userId: currentUserId });
         if (refreshed.error) throw refreshed.error;
-        const items = (refreshed.data || []).map(item => ({ id: item.id, sender_id: item.senderRole === (workflowRole === 'service_provider' ? 'provider' : workflowRole) ? currentUserId : 'workflow-counterpart', message: item.body, attachment: item.attachment, created_at: item.at, is_read: item.read }));
+        const items = (refreshed.data || []).map(item => messageForChat(item, workflowRole, currentUserId));
         setMessages(items);
+        setReplyTarget(null);
+        setEditingMessageId('');
         setSelectedAttachment(null);
+        setVoiceDataUrl('');
+        if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+        setVoicePreviewUrl('');
         if (attachmentInputRef.current) attachmentInputRef.current.value = '';
         onMessageSent?.();
         return;
       }
-      msg = await sendMessage({ conversationId: conversation.id, senderId: currentUserId, receiverId: otherUserId, message: text });
+      const msg = await sendMessage({ conversationId: conversation.id, senderId: currentUserId, receiverId: otherUserId, message: text });
 
       // Optimistically add
       setMessages(prev => {
@@ -144,8 +202,99 @@ useEffect(() => {
       return;
     }
     setSendError('');
+    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+    setVoicePreviewUrl('');
+    setVoiceDataUrl('');
     setSelectedAttachment(file);
   };
+
+  const handleStartRecording = async () => {
+    setSendError('');
+    if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+      setSendError('Voice recording is not available in this browser. You can attach an audio file instead.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+      setVoicePreviewUrl('');
+      setVoiceDataUrl('');
+      setSelectedAttachment(null);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+      recordingStreamRef.current = stream;
+      recordingChunksRef.current = [];
+      discardRecordingRef.current = false;
+      const mimeType = ['audio/webm;codecs=opus', 'audio/ogg;codecs=opus', 'audio/mp4'].find(type => MediaRecorder.isTypeSupported(type));
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType, audioBitsPerSecond: 64000 } : { audioBitsPerSecond: 64000 });
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = event => { if (event.data.size > 0) recordingChunksRef.current.push(event.data); };
+      recorder.onerror = () => setSendError('The recording was interrupted. Please try again.');
+      recorder.onstop = async () => {
+        stream.getTracks().forEach(track => track.stop());
+        recordingStreamRef.current = null;
+        setRecording(false);
+        if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+        if (discardRecordingRef.current) { recordingChunksRef.current = []; return; }
+        const blob = new Blob(recordingChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        recordingChunksRef.current = [];
+        if (!blob.size) { setSendError('No audio was recorded. Check your microphone and try again.'); return; }
+        if (blob.size > MAX_VOICE_NOTE_BYTES) { setSendError('This voice note is over 1 MB. Record a shorter note and try again.'); return; }
+        try {
+          const dataUrl = await blobToDataUrl(blob);
+          if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+          setVoiceDataUrl(dataUrl);
+          setVoicePreviewUrl(URL.createObjectURL(blob));
+          setSelectedAttachment({ name: 'Voice note', type: blob.type || 'audio/webm', size: blob.size, isVoiceNote: true });
+        } catch (error) { setSendError(error.message || 'Voice note could not be prepared.'); }
+      };
+      recorder.start();
+      recordingStartedAtRef.current = Date.now();
+      setRecordingSeconds(0);
+      setRecording(true);
+      recordingTimerRef.current = window.setInterval(() => {
+        const elapsed = Math.floor((Date.now() - recordingStartedAtRef.current) / 1000);
+        setRecordingSeconds(elapsed);
+        if (elapsed >= MAX_VOICE_NOTE_SECONDS && mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+      }, 250);
+    } catch {
+      recordingStreamRef.current?.getTracks().forEach(track => track.stop());
+      recordingStreamRef.current = null;
+      setSendError('Allow microphone access in your browser to record a voice note.');
+    }
+  };
+
+  const handleStopRecording = () => {
+    if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+  };
+
+  const handleCancelRecording = () => {
+    discardRecordingRef.current = true;
+    if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+    setRecording(false);
+    if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
+    recordingTimerRef.current = null;
+  };
+
+  const handleReply = message => {
+    setEditingMessageId('');
+    setNewMessage('');
+    setReplyTarget(message);
+    inputRef.current?.focus();
+  };
+
+  const handleEdit = message => {
+    setReplyTarget(null);
+    setSelectedAttachment(null);
+    setVoiceDataUrl('');
+    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+    setVoicePreviewUrl('');
+    setEditingMessageId(message.id);
+    setNewMessage(message.message || '');
+    inputRef.current?.focus();
+  };
+
+  const cancelEdit = () => { setEditingMessageId(''); setNewMessage(''); };
 
   const formatTime = (ts) => {
     const d = new Date(ts);
@@ -206,7 +355,7 @@ useEffect(() => {
           {conversation.workflowThread && <p className="truncate text-xs text-gray-500 dark:text-slate-400">{conversation.participantLabel}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {conversation.preview && <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Preview</span>}
+          {conversation.preview && <span data-preview-disclosure className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Preview</span>}
           {onReturnToCase && <button type="button" onClick={onReturnToCase} className="rounded-lg border border-gray-200 px-2.5 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 dark:border-[#394458] dark:text-slate-200 dark:hover:bg-[#252b3b] sm:px-3 sm:text-xs">Back to request</button>}
         </div>
       </div>
@@ -264,16 +413,19 @@ useEffect(() => {
                       : 'bg-white dark:bg-[#252b3b] text-gray-900 dark:text-slate-100 rounded-bl-sm shadow-sm'
                   }`}
                 >
+                  {m.replyTo && <div className={`mb-2 rounded-lg border-l-2 px-2.5 py-1.5 text-xs ${isMine ? 'border-blue-200 bg-blue-500/40 text-blue-50' : 'border-blue-500 bg-gray-50 text-gray-600 dark:bg-[#1a1f2e] dark:text-slate-300'}`}><p className="font-semibold">Reply to {String(m.replyTo.senderRole || 'message').replaceAll('_', ' ')}</p><p className="mt-0.5 line-clamp-2">{m.replyTo.excerpt || 'Attachment'}</p></div>}
                   {m.message && <p className="text-sm whitespace-pre-wrap break-words">{m.message}</p>}
-                  {m.attachment && <div className={`mt-1 flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs ${isMine ? 'bg-blue-500/60 text-white' : 'bg-gray-50 text-gray-700 dark:bg-[#1a1f2e] dark:text-slate-200'}`}><Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span className="min-w-0 truncate">{m.attachment.name}</span><span className="shrink-0 opacity-80">{Math.max(1, Math.round(m.attachment.size / 1024))} KB</span></div>}
+                  {m.attachment?.dataUrl && m.attachment.type?.startsWith('audio/') ? <audio controls preload="metadata" src={m.attachment.dataUrl} aria-label="Voice note" className="mt-2 max-w-full" /> : m.attachment && <div className={`mt-1 flex items-center gap-2 rounded-lg px-2.5 py-2 text-xs ${isMine ? 'bg-blue-500/60 text-white' : 'bg-gray-50 text-gray-700 dark:bg-[#1a1f2e] dark:text-slate-200'}`}><Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span className="min-w-0 truncate">{m.attachment.name}</span><span className="shrink-0 opacity-80">{Math.max(1, Math.round(m.attachment.size / 1024))} KB</span></div>}
                   <p
                     className={`text-[10px] mt-1 ${
                       isMine ? 'text-blue-100' : 'text-gray-400 dark:text-slate-500'
                     } text-right`}
                   >
                     {formatTime(m.created_at)}
-                    {isMine && m.is_read && ' ✓✓'}
+                    {m.editedAt && <span className="ml-1">Edited</span>}
                   </p>
+                  {m.editHistory?.length > 0 && <details className={`mt-1 text-[10px] ${isMine ? 'text-blue-100' : 'text-gray-500 dark:text-slate-400'}`}><summary className="cursor-pointer text-right">Previous versions</summary><ol className="mt-1 space-y-1 text-left">{m.editHistory.map((version, index) => <li key={`${m.id}-edit-${index}`} className="rounded bg-black/5 px-2 py-1"><span className="block">{version.body}</span><time dateTime={version.editedAt}>{formatTime(version.editedAt)}</time></li>)}</ol></details>}
+                  {conversation.workflowThread && <div className={`mt-1 flex gap-3 text-[11px] ${isMine ? 'justify-end text-blue-100' : 'justify-start text-gray-500 dark:text-slate-400'}`}><button type="button" onClick={() => handleReply(m)} className="inline-flex items-center gap-1 rounded px-1 py-1 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"><Reply className="h-3 w-3" aria-hidden="true"/>Reply</button>{isMine && now - new Date(m.created_at).getTime() <= 2 * 60 * 1000 && <button type="button" onClick={() => handleEdit(m)} className="inline-flex items-center gap-1 rounded px-1 py-1 underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"><Pencil className="h-3 w-3" aria-hidden="true"/>Edit</button>}</div>}
                 </div>
               </div>
             );
@@ -283,33 +435,22 @@ useEffect(() => {
       </div>
 
       {/* Input */}
-      {archived ? <p className="border-t border-gray-200 bg-gray-50 px-4 py-4 text-center text-sm text-gray-600 dark:border-[#1e293b] dark:bg-[#0f1117] dark:text-slate-400">This conversation is archived and read-only.</p> : <form
-        onSubmit={handleSend}
-        className="relative flex items-center gap-2 px-4 py-3 border-t border-gray-200 dark:border-[#1e293b] bg-white dark:bg-[#1a1f2e]"
-      >
-        {sendError && <p role="alert" className="absolute bottom-[4.5rem] left-4 right-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 shadow dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">{sendError}</p>}
-        <input
-          ref={inputRef}
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 px-4 py-2.5 text-sm text-gray-900 dark:text-slate-100 bg-gray-100 dark:bg-[#252b3b] rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-          disabled={sending}
-        />
-        <input ref={attachmentInputRef} type="file" className="sr-only" aria-label="Attach a file" onChange={handleAttachmentChange} />
-        <button type="button" onClick={() => attachmentInputRef.current?.click()} disabled={sending} className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-[#252b3b]" aria-label="Attach a file"><Paperclip className="h-5 w-5" /></button>
-        {selectedAttachment && <div className="absolute bottom-[4.5rem] left-4 flex max-w-[calc(100%-2rem)] items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700 shadow dark:border-[#394458] dark:bg-[#1a1f2e] dark:text-slate-200"><Paperclip className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{selectedAttachment.name}</span><span className="shrink-0 text-gray-500">{Math.max(1, Math.round(selectedAttachment.size / 1024))} KB</span><button type="button" onClick={() => { setSelectedAttachment(null); if (attachmentInputRef.current) attachmentInputRef.current.value = ''; }} aria-label="Remove attachment"><X className="h-4 w-4" /></button></div>}
-        <button
-          type="submit"
-          disabled={(!newMessage.trim() && !selectedAttachment) || sending}
-          className="p-2.5 rounded-full bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          aria-label="Send message"
-        >
-          {sending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-        </button>
+      {archived ? <p className="border-t border-gray-200 bg-gray-50 px-4 py-4 text-center text-sm text-gray-600 dark:border-[#1e293b] dark:bg-[#0f1117] dark:text-slate-400">This conversation is archived and read-only.</p> : <form onSubmit={handleSend} className="relative space-y-2 border-t border-gray-200 bg-white px-3 py-3 dark:border-[#1e293b] dark:bg-[#1a1f2e] sm:px-4">
+        {sendError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-200">{sendError}</p>}
+        {replyTarget && <div className="flex items-start gap-2 rounded-lg border-l-2 border-blue-500 bg-blue-50 px-3 py-2 text-xs text-blue-950 dark:bg-blue-950/30 dark:text-blue-100"><div className="min-w-0 flex-1"><p className="font-semibold">Replying to {replyTarget.senderRole || (replyTarget.sender_id === currentUserId ? 'your message' : otherUser?.name || 'message')}</p><p className="mt-0.5 truncate">{replyTarget.message || replyTarget.attachment?.name || 'Voice note'}</p></div><button type="button" onClick={() => setReplyTarget(null)} aria-label="Cancel reply" className="rounded p-1 hover:bg-blue-100 dark:hover:bg-blue-900/50"><X size={15}/></button></div>}
+        {editingMessageId && <div className="flex items-center justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:bg-amber-950/30 dark:text-amber-100"><span>Editing your message. You can edit it for two minutes after sending.</span><button type="button" onClick={cancelEdit} className="rounded px-2 py-1 font-semibold underline">Cancel edit</button></div>}
+        {recording && <div role="status" className="flex items-center gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/30 dark:text-red-100"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-600"/><span className="flex-1 font-medium">Recording · {formatDuration(recordingSeconds)} / 1:00</span><button type="button" onClick={handleStopRecording} className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-red-700 px-3 text-xs font-semibold text-white"><Square size={14} fill="currentColor"/>Stop</button><button type="button" onClick={handleCancelRecording} className="min-h-9 rounded-lg px-2 text-xs font-semibold underline">Cancel</button></div>}
+        {selectedAttachment && <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:border-[#394458] dark:bg-[#252b3b] dark:text-slate-200">{selectedAttachment.isVoiceNote && voicePreviewUrl ? <><span className="font-semibold">Voice note</span><audio controls preload="metadata" src={voicePreviewUrl} aria-label="Preview voice note" className="h-9 min-w-0 max-w-full flex-1"/></> : <><Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden="true"/><span className="min-w-0 flex-1 truncate">{selectedAttachment.name}</span><span>{Math.max(1, Math.round(selectedAttachment.size / 1024))} KB</span></>}<button type="button" onClick={() => { setSelectedAttachment(null); setVoiceDataUrl(''); if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl); setVoicePreviewUrl(''); if (attachmentInputRef.current) attachmentInputRef.current.value = ''; }} aria-label="Remove attachment" className="rounded p-1 hover:bg-gray-200 dark:hover:bg-[#394458]"><X className="h-4 w-4"/></button></div>}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          <input ref={inputRef} type="text" value={newMessage} onChange={event => setNewMessage(event.target.value)} placeholder={editingMessageId ? 'Edit your message...' : 'Type a message...'} className="min-w-0 flex-1 rounded-full bg-gray-100 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-[#252b3b] dark:text-slate-100" disabled={sending || recording}/>
+          <input ref={attachmentInputRef} type="file" className="sr-only" aria-label="Attach a file" onChange={handleAttachmentChange}/>
+          <button type="button" onClick={() => attachmentInputRef.current?.click()} disabled={sending || recording} className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-[#252b3b]" aria-label="Attach a file"><Paperclip className="h-5 w-5"/></button>
+          {!recording && conversation.workflowThread && <button type="button" onClick={handleStartRecording} disabled={sending || Boolean(editingMessageId)} className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-[#252b3b]" aria-label="Record voice note" title="Record voice note"><Mic className="h-5 w-5"/></button>}
+          {editingMessageId && <button type="button" onClick={cancelEdit} className="rounded-full p-2.5 text-gray-500 hover:bg-gray-100 dark:text-slate-300 dark:hover:bg-[#252b3b]" aria-label="Cancel edit"><X className="h-5 w-5"/></button>}
+          <button type="submit" disabled={recording || ((!newMessage.trim() && !selectedAttachment) || (editingMessageId && !newMessage.trim())) || sending} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-blue-600 px-3 text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50" aria-label={editingMessageId ? 'Save edited message' : 'Send message'}>{sending ? <Loader2 className="h-5 w-5 animate-spin"/> : editingMessageId ? <Pencil className="h-4 w-4"/> : <Send className="h-5 w-5"/>}<span className="sr-only">{editingMessageId ? 'Save edit' : 'Send'}</span></button>
+        </div>
       </form>}
-      {!archived && conversation.preview && <p className="border-t border-gray-100 bg-white px-4 pb-2 text-[10px] text-gray-500 dark:border-[#1e293b] dark:bg-[#1a1f2e] dark:text-slate-500">Attachments in Preview save file name and size only; file contents are not uploaded.</p>}
+      {!archived && conversation.preview && <p data-preview-disclosure className="border-t border-gray-100 bg-white px-4 pb-2 text-[10px] text-gray-500 dark:border-[#1e293b] dark:bg-[#1a1f2e] dark:text-slate-500">Voice notes up to 1 MB are stored locally in this Preview. Other attachments save the file name and size only.</p>}
     </div>
   );
 };

@@ -30,6 +30,7 @@ const LegacyTransactionsPage = ({ preview = false }) => {
   const [search, setSearch]       = useState('');
   const [statusFilter, setStatus] = useState('All');
   const [typeFilter, setType]     = useState('All');
+  const [sortOrder, setSortOrder] = useState('newest');
   const [previewRows, setPreviewRows] = useState([]);
   const [previewError, setPreviewError] = useState('');
 
@@ -62,8 +63,8 @@ const LegacyTransactionsPage = ({ preview = false }) => {
         (typeFilter === 'Withdrawals' && t.amount < 0);
 
       return matchesSearch && matchesStatus && matchesType;
-    });
-  }, [transactions, search, statusFilter, typeFilter]);
+    }).sort((a, b) => sortOrder === 'oldest' ? new Date(a.timestamp || 0) - new Date(b.timestamp || 0) : sortOrder === 'amount-high' ? Math.abs(b.amount) - Math.abs(a.amount) : sortOrder === 'amount-low' ? Math.abs(a.amount) - Math.abs(b.amount) : new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+  }, [transactions, search, statusFilter, typeFilter, sortOrder]);
 
   const exportToCSV = () => {
     const headers = ['Date', 'Description', 'Amount (GH₵)', 'Type', 'Status', 'Method', 'Job Type'];
@@ -128,7 +129,7 @@ const LegacyTransactionsPage = ({ preview = false }) => {
         </div>
       </motion.header>
 
-      {preview && <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">Preview ledger: these entries are simulated and do not represent real payments.</div>}
+      {preview && <div data-preview-disclosure className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">Preview ledger: these entries are simulated and do not represent real payments.</div>}
       {previewError && <div role="alert" className="mx-auto mt-4 max-w-4xl px-4 text-sm text-red-600">{previewError}</div>}
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8 space-y-6">
@@ -139,7 +140,8 @@ const LegacyTransactionsPage = ({ preview = false }) => {
             type="text"
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Search by name, method, or job type..."
+            aria-label="Search transactions"
+            placeholder="Search by case, method, or job type..."
             className="w-full pl-10 pr-4 py-3 border-2 border-gray-200 dark:border-[#2d3748] bg-white dark:bg-[#1a1f2e] text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 rounded-xl focus:outline-none focus:border-blue-500 transition-colors"
           />
         </div>
@@ -165,6 +167,9 @@ const LegacyTransactionsPage = ({ preview = false }) => {
             </div>
           </div>
 
+          <label className="flex items-center gap-2 text-sm font-semibold text-gray-600 dark:text-slate-300">Sort by
+            <select value={sortOrder} onChange={event => setSortOrder(event.target.value)} className="rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="amount-high">Amount: high to low</option><option value="amount-low">Amount: low to high</option></select>
+          </label>
           <div className="flex gap-1">
             {STATUS_FILTERS.map(f => (
               <button

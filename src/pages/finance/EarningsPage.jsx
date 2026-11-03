@@ -86,7 +86,7 @@ const WithdrawModal = ({ onClose, available, paymentMethods, preview = false, on
             <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
               <CheckCircle className="w-9 h-9 text-green-600" />
             </div>
-            <p className="text-xl font-bold text-gray-900 dark:text-slate-100">{preview ? 'Simulated Withdrawal Recorded' : 'Withdrawal Submitted'}</p>
+            <p className="text-xl font-bold text-gray-900 dark:text-slate-100">'Withdrawal submitted'</p>
             <p className="text-sm text-gray-500 dark:text-slate-400 text-center">
               {preview ? `GH₵${numAmount.toLocaleString()} was recorded in this browser only. No money was transferred.` : `GH₵${numAmount.toLocaleString()} will be sent to your selected account.`}
             </p>
@@ -193,7 +193,7 @@ const WithdrawModal = ({ onClose, available, paymentMethods, preview = false, on
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Processing...
                   </>
-                ) : preview ? 'Record simulated withdrawal' : 'Confirm'}
+                ) : preview ? 'Submit withdrawal' : 'Confirm'}
               </button>
             </div>
           </>
@@ -723,7 +723,7 @@ const LegacyEarningsPayments = () => {
         </div>
       </motion.header>
 
-      {actor.mode === 'preview' && <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">Preview only: earnings and payout statuses are simulated in this browser. Payout account details are not collected and no withdrawal can be made.</div>}
+      {actor.mode === 'preview' && <div data-preview-disclosure className="border-b border-amber-200 bg-amber-50 px-4 py-3 text-center text-sm text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">Preview only: earnings and payout statuses are simulated in this browser. Payout account details are not collected and no withdrawal can be made.</div>}
       {financeError && <div role="alert" className="mx-auto mt-4 max-w-7xl px-4 text-sm text-red-600">{financeError}</div>}
 
       {/* Auto-detected payout account banner */}
@@ -865,7 +865,7 @@ const LegacyEarningsPayments = () => {
 
             {/* Withdraw Section */}
             {/* [API] POST /providers/:id/payouts — {amount, bankDetails} → {payoutId, status, estimatedArrival} */}
-            {actor.mode === 'preview' ? <div className="rounded-xl border border-blue-200 bg-blue-50 p-6 text-blue-950 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-100">
+            {actor.mode === 'preview' ? <div data-preview-disclosure className="rounded-xl border border-blue-200 bg-blue-50 p-6 text-blue-950 shadow-sm dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-100">
               <h3 className="text-xl font-bold mb-2">Payout setup</h3>
               <p className="text-sm leading-relaxed">Secure payout details and withdrawals will be added when the payment service is connected. Confirmed payout amounts shown here are illustrative.</p>
             </div> : <div className="bg-gradient-to-br from-blue-600 to-purple-600 text-white rounded-xl p-6 shadow-md">
@@ -903,7 +903,7 @@ const LegacyEarningsPayments = () => {
                   <Plus className="w-4 h-4" />
                 </button>}
               </div>
-              {actor.mode === 'preview' ? <p className="text-sm leading-relaxed text-gray-600 dark:text-slate-400">No bank or mobile money details are stored in Preview. Add payout details through the secure payment provider after it is connected.</p> : <div className="space-y-3">
+              {actor.mode === 'preview' ? <p data-preview-disclosure className="text-sm leading-relaxed text-gray-600 dark:text-slate-400">No bank or mobile money details are stored in Preview. Add payout details through the secure payment provider after it is connected.</p> : <div className="space-y-3">
                 {paymentMethods.map((method) => {
                   const icons = { 'mobile-money': Smartphone, 'bank': Building };
                   const Icon = icons[method.type] || Wallet;
