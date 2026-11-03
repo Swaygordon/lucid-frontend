@@ -3,8 +3,9 @@ import { isWorkflowMockDatabase, WORKFLOW_MOCK_SCHEMA_VERSION } from './schema.j
 
 export const WORKFLOW_PREVIEW_STORAGE_KEY = `lucid-workflow-preview-v${WORKFLOW_MOCK_SCHEMA_VERSION}`;
 export const LEGACY_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-managed-workflow-preview-v2';
-export const PREVIOUS_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v7';
-export const OLDER_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v6';
+export const PREVIOUS_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v8';
+export const OLDER_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v7';
+export const OLDER_WORKFLOW_PREVIEW_STORAGE_KEY_2 = 'lucid-workflow-preview-v6';
 export const OLDEST_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v5';
 export const WORKFLOW_PREVIEW_VERSION = WORKFLOW_MOCK_SCHEMA_VERSION;
 
@@ -100,13 +101,13 @@ export const createPreviewStore = ({ storage, seedData, key = WORKFLOW_PREVIEW_S
 
     if (serialized == null) {
       let previousSerialized;
-      try { previousSerialized = storage.getItem(PREVIOUS_WORKFLOW_PREVIEW_STORAGE_KEY) || storage.getItem(OLDER_WORKFLOW_PREVIEW_STORAGE_KEY) || storage.getItem(OLDEST_WORKFLOW_PREVIEW_STORAGE_KEY); } catch {
+      try { previousSerialized = storage.getItem(PREVIOUS_WORKFLOW_PREVIEW_STORAGE_KEY) || storage.getItem(OLDER_WORKFLOW_PREVIEW_STORAGE_KEY) || storage.getItem(OLDER_WORKFLOW_PREVIEW_STORAGE_KEY_2) || storage.getItem(OLDEST_WORKFLOW_PREVIEW_STORAGE_KEY); } catch {
         return errorResult('PREVIEW_STORAGE_UNAVAILABLE', 'Preview storage cannot be read in this browser.');
       }
       if (previousSerialized != null) {
         try {
           const previous = JSON.parse(previousSerialized);
-          if ([5, 6, 7].includes(previous?.version) && Array.isArray(previous.cases) && Array.isArray(previous.inspectors)) {
+          if ([5, 6, 7, 8].includes(previous?.version) && Array.isArray(previous.cases) && Array.isArray(previous.inspectors)) {
             const migrated = { ...clone(seedData), ...previous, version: WORKFLOW_MOCK_SCHEMA_VERSION };
             const previousCaseIds = new Set(previous.cases.map(record => record.id));
             const addedSeedCases = seedData.cases.filter(record => !previousCaseIds.has(record.id));

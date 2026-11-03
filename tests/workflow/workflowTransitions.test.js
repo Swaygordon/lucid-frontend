@@ -227,7 +227,7 @@ test('Admin cannot send a Provider offer without a selected Provider', () => {
   assert.equal(result.caseRecord.assignedProviderId, '');
 });
 
-test('Inspector cannot initiate payment while an Admin refund decision is pending', () => {
+test('Inspector cannot initiate payment or bill approval', () => {
   const record = baseCase({
     status: 'refund_pending',
     clientSatisfied: true,
@@ -238,7 +238,7 @@ test('Inspector cannot initiate payment while an Admin refund decision is pendin
     role: 'inspector', action: 'initiate_payment', payload: { clientSatisfied: true }, at: '2026-10-16T10:00:00.000Z',
   });
 
-  assert.equal(result.error.code, 'WORK_NOT_READY');
+  assert.equal(result.error.code, 'ROLE_NOT_ALLOWED');
   assert.equal(result.caseRecord.status, 'refund_pending');
 });
 

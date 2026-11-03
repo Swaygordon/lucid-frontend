@@ -54,6 +54,17 @@ test('malformed preview data returns a recoverable error without deleting the st
   assert.equal(storage.raw(WORKFLOW_PREVIEW_STORAGE_KEY), oldValue);
 });
 
+test('schema v8 preview data migrates to v9 without discarding saved cases', async () => {
+  const seedData = createSeed();
+  const oldData = { ...seedData, version: 8, cases: [{ ...seedData.cases[0], status: 'work_in_progress' }] };
+  const storage = makeStorage({ 'lucid-workflow-preview-v8': JSON.stringify(oldData) });
+  const service = createMockWorkflowService({ storage, seedData });
+  const cases = await service.cases.listForRole({ role: 'provider', userId: 'demo-provider' });
+  assert.equal(cases.error, null);
+  assert.equal(cases.data.some(item => item.id === 'CASE-PREVIEW-1'), true);
+  assert.equal(JSON.parse(storage.raw(WORKFLOW_PREVIEW_STORAGE_KEY)).version, 9);
+});
+
 test('Client profile setup requires no payment preference and removes legacy preference data', async () => {
   const storage = makeStorage();
   const seedData = createSeed();
@@ -122,6 +133,57 @@ test('client can submit a simulated request that appears in the shared case list
   assert.equal(created.error, null);
   assert.equal(listed.data.some(item => item.id === created.data.id), true);
   assert.equal(created.data.status, 'submitted');
+});
+
+test('Admin may request one Client bypass consent when no Inspector is eligible, then assign Provider immediately after approval', async () => {
+  const seedData = createSeed();
+  seedData.cases = [{ ...seedData.cases[0], status: 'submitted', assignedInspectorId: '', inspectorAssignment: null, inspection: null }];
+  seedData.inspectors = seedData.inspectors.map(item => ({ ...item, active: false }));
+  const service = createMockWorkflowService({ storage: makeStorage(), seedData, clock: () => '2026-11-03T10:00:00.000Z' });
+  const requested = await service.cases.apply('CASE-PREVIEW-1', { role: 'admin', userId: 'demo-admin', action: 'request_inspector_bypass', payload: { reason: 'No qualified Inspector is available.' } });
+  const clientNotices = await service.notifications.listForRole({ role: 'client', userId: 'demo-client' });
+  const approved = await service.cases.apply('CASE-PREVIEW-1', { role: 'client', userId: 'demo-client', action: 'approve_inspector_bypass' });
+  const candidates = await service.assignments.searchProviderCandidates({ caseId: 'CASE-PREVIEW-1', role: 'admin', userId: 'demo-admin' });
+  const offered = await service.cases.apply('CASE-PREVIEW-1', { role: 'admin', userId: 'demo-admin', action: 'offer_provider', payload: { providerId: 'demo-provider' } });
+
+  assert.equal(requested.error, null);
+  assert.equal(requested.data.status, 'inspector_bypass_pending');
+  assert.equal(clientNotices.data.some(item => item.message.includes('approval to continue without an Inspector')), true);
+  assert.equal(approved.data.status, 'inspector_bypass_approved');
+  assert.equal(candidates.error, null);
+  assert.equal(candidates.data.some(item => item.id === 'demo-provider'), true);
+  assert.equal(offered.data.status, 'offer_sent');
+});
+
+test('Admin cannot request Inspector bypass while an eligible Inspector or usable report exists', async () => {
+  const seedData = createSeed();
+  seedData.cases = [{ ...seedData.cases[0], status: 'submitted', assignedInspectorId: '', inspection: null }];
+  const service = createMockWorkflowService({ storage: makeStorage(), seedData });
+  const available = await service.cases.apply('CASE-PREVIEW-1', { role: 'admin', userId: 'demo-admin', action: 'request_inspector_bypass' });
+  assert.equal(available.error.code, 'INSPECTOR_AVAILABLE');
+
+  seedData.cases[0] = { ...seedData.cases[0], inspection: { findings: 'Assessment available', submittedAt: '2026-11-02T10:00:00.000Z' } };
+  const withReport = createMockWorkflowService({ storage: makeStorage(), seedData });
+  const reportResult = await withReport.cases.apply('CASE-PREVIEW-1', { role: 'admin', userId: 'demo-admin', action: 'request_inspector_bypass' });
+  assert.equal(reportResult.error.code, 'INSPECTION_ALREADY_RECORDED');
+});
+
+test('Provider can finish, bill, revise, and receive payment without Inspector sign-off or a Client review', async () => {
+  const service = createMockWorkflowService({ storage: makeStorage(), seedData: createSeed(), clock: () => '2026-11-03T12:00:00.000Z' });
+  const act = (role, userId, action, payload = {}) => service.cases.apply('CASE-PREVIEW-1', { role, userId, action, payload });
+  assert.equal((await act('provider', 'demo-provider', 'accept_offer')).error, null);
+  assert.equal((await act('provider', 'demo-provider', 'start_work')).error, null);
+  assert.equal((await act('provider', 'demo-provider', 'complete_work')).error, null);
+  assert.equal((await act('provider', 'demo-provider', 'submit_bill', { amount: 500, note: 'Completed the outlet repair.' })).error, null);
+  assert.equal((await act('client', 'demo-client', 'reject_bill')).error, null);
+  assert.equal((await act('provider', 'demo-provider', 'submit_bill', { amount: 480 })).error, null);
+  assert.equal((await act('client', 'demo-client', 'approve_bill')).error, null);
+  assert.equal((await service.finance.simulatePayment('CASE-PREVIEW-1', { role: 'client', userId: 'demo-client', outcome: 'confirmed' })).error, null);
+  const completed = await service.cases.get('CASE-PREVIEW-1', { role: 'client', userId: 'demo-client' });
+  const clientNotices = await service.notifications.listForRole({ role: 'client', userId: 'demo-client' });
+  assert.equal(completed.data.status, 'completed');
+  assert.equal(completed.data.review, null);
+  assert.equal(clientNotices.data.some(item => item.body.includes('final bill')), true);
 });
 
 test('message quotes retain the referenced excerpt and timed edits preserve the original', async () => {

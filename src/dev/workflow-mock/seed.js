@@ -77,6 +77,15 @@ const makeCase = (id, status, overrides = {}) => ({
 
 export const createWorkflowPreviewSeed = () => {
   const cases = [
+    makeCase('LUCID-DEMO-1040', 'inspector_bypass_approved', {
+      assignedInspectorId: '',
+      inspectorWaived: true,
+      inspectorBypassConsent: { approvedAt: at(2), requestRevision: 1, scope: 'Repair the identified kitchen outlet fault.', category: 'Home Repairs & Maintenance', locationSummary: 'Osu, Accra' },
+      confirmedScope: 'Repair the identified kitchen outlet fault.',
+    }),
+    makeCase('LUCID-DEMO-1041', 'inspector_bypass_pending', {
+      inspectorBypassRequest: { requestedAt: at(1), requestRevision: 1, reason: 'No eligible Inspector is available in the service area.', previousInspectorId: '', previousInspector: null },
+    }),
     makeCase('LUCID-DEMO-1042', 'submitted'),
     makeCase('LUCID-DEMO-1043', 'needs_information', { informationRequest: 'Please add a photo of the affected area.' }),
     makeCase('LUCID-DEMO-1044', 'inspector_assigned', {

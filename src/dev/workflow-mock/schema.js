@@ -1,5 +1,5 @@
 // @backend-handoff-delete Local mock schema/versioning; remove with the workflow mock store.
-export const WORKFLOW_MOCK_SCHEMA_VERSION = 8;
+export const WORKFLOW_MOCK_SCHEMA_VERSION = 9;
 
 export const isWorkflowMockDatabase = value => Boolean(
   value

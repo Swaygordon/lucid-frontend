@@ -189,6 +189,19 @@ export const createMockWorkflowService = ({ storage = defaultStorage(), seedData
       if (distanceKm > 25 && !overrideReason) return resultError('OVERRIDE_REASON_REQUIRED', 'Add a reason when assigning an Inspector outside the 25 km proximity search.');
       actionPayload = { ...payload, inspectorName: candidate.displayName, distanceKm, previousInspectorId: access.record.assignedInspectorId || '', isReassignment, previousUnavailable };
     }
+    if (action === 'request_inspector_bypass') {
+      if (access.record.inspection?.submittedAt || access.record.inspection?.findings) return resultError('INSPECTION_ALREADY_RECORDED', 'A submitted Inspector assessment is already available.');
+      const candidates = loaded.data.inspectors.filter(item => {
+        const profile = (loaded.data.inspectorProfiles || []).find(entry => entry.id === item.id) || {};
+        const activeCount = loaded.data.cases.filter(record => record.assignedInspectorId === item.id && !['completed', 'cancelled', 'not_feasible'].includes(record.status)).length;
+        return inspectorSupportsCase(item, access.record) && profile.payoutSetup !== false && activeCount < Number(profile.maxActiveAssignments || 3);
+      });
+      const assigned = loaded.data.inspectors.find(item => item.id === access.record.assignedInspectorId);
+      const assignedUnavailable = Boolean(access.record.assignedInspectorId && (!assigned || !inspectorSupportsCase(assigned, access.record)));
+      if (candidates.length) return resultError('INSPECTOR_AVAILABLE', 'An eligible Inspector is available. Search and assign an Inspector before requesting Client consent to proceed without one.');
+      if (access.record.status === 'inspector_assigned' && !assignedUnavailable) return resultError('INSPECTOR_STILL_AVAILABLE', 'The assigned Inspector is still available; ask Admin to reassign them before considering a bypass.');
+      actionPayload = { ...payload, assignedInspectorUnavailable: assignedUnavailable };
+    }
     if (action === 'offer_provider') {
       const candidate = loaded.data.providerProfiles.find(item => item.id === payload.providerId);
       if (!candidate || !providerSupportsCase(candidate, access.record)) return resultError('PROVIDER_NOT_ELIGIBLE', 'Choose an available Preview Provider whose profile includes this request category.');
@@ -236,22 +249,34 @@ export const createMockWorkflowService = ({ storage = defaultStorage(), seedData
     }
     const otherRoles = ['client', 'admin', ...(applied.caseRecord.assignedInspectorId ? ['inspector'] : []), ...(applied.caseRecord.assignedProviderId ? ['provider'] : [])];
     const workflowNotices = {
+      request_inspector_bypass: 'LUCID needs your approval to continue without an Inspector. Review the case notice to choose whether to proceed.',
+      approve_inspector_bypass: 'The Client agreed to proceed without an Inspector. LUCID can assign a Provider now.',
+      decline_inspector_bypass: 'The Client declined to proceed without an Inspector. LUCID will continue the Inspector search.',
+      offer_provider: applied.caseRecord.inspectorWaived
+        ? 'A new assignment is available. No preliminary Inspector assessment was available; assess the site and confirm its condition before starting the agreed work.'
+        : 'A new assignment is available. Review the request scope and any Inspector assessment before accepting.',
       submit_work_estimate: 'The Provider shared the work and estimate for your approval.',
       approve_work_estimate: 'The Client approved the work estimate. The Provider can begin the agreed work.',
       request_work_estimate_revision: 'The Client asked for a change or explanation to the estimate.',
       request_price_change: 'The Provider requested approval for additional work. Work is paused until you respond.',
       approve_price_change: 'The Client approved the additional work and cost.',
       reject_price_change: 'The Client declined the additional work. The Provider can continue only with the approved work.',
-      initiate_payment: 'The Inspector confirmed satisfactory completion. Provider billing is now open.',
-      submit_bill: 'The Provider submitted an itemized charge for Client review.',
-      approve_bill: 'The Client approved the bill and is continuing to secure payment.',
-      reject_bill: 'The Client requested a bill revision through LUCID or the Inspector.',
+      complete_work: 'The Provider marked the work complete. Their final bill will be sent to you here.',
+      submit_bill: 'The Provider submitted the final bill for your review and payment.',
+      approve_bill: 'The Client accepted the bill and is proceeding to secure payment.',
+      reject_bill: applied.caseRecord.billRejection?.note ? 'The Client requested a bill revision and left a note for the Provider.' : 'The Client requested a bill revision. The Provider can review the bill decision and send an updated bill.',
       payment_result: payload.outcome === 'confirmed' ? 'Payment was confirmed. The case is complete and receipts are available.' : `Payment confirmation is ${payload.outcome}. The Provider payout remains unreleased.`,
       confirm_delayed_payment: 'Delayed payment was confirmed. The case is complete and receipts are available.',
       leave_review: 'The Client left a review for the Provider’s work.',
     };
     for (const recipient of new Set(otherRoles.filter(item => item !== access.role))) {
       addNotification(next, recipient, caseId, `${applied.caseRecord.service || 'Service request'}: ${workflowNotices[action] || action.replaceAll('_', ' ')}`, timestamp);
+    }
+    if (action === 'approve_inspector_bypass' && access.record.assignedInspectorId) {
+      addNotification(next, 'inspector', caseId, `${applied.caseRecord.service || 'Service request'}: Client approved proceeding without an Inspector. Your assignment is closed; its history and reports remain on the case.`, timestamp);
+    }
+    if (action === 'decline_inspector_bypass' && access.record.inspectorBypassRequest?.previousInspectorId) {
+      addNotification(next, 'inspector', caseId, `${applied.caseRecord.service || 'Service request'}: Client declined the Inspector bypass. LUCID is continuing the Inspector search.`, timestamp);
     }
     if (action === 'assign_inspector' && actionPayload.isReassignment && actionPayload.previousInspectorId) {
       addNotification(next, 'inspector', caseId, `${applied.caseRecord.service || 'Service request'}: Inspector assignment changed. You are no longer assigned to this request.`, timestamp);
@@ -369,7 +394,7 @@ export const createMockWorkflowService = ({ storage = defaultStorage(), seedData
       const access = caseForActor(loaded.data, caseId, role, userId);
       if (access.error) return resultError(access.error.code, access.error.message);
       if (normalizeWorkflowRole(role) !== 'admin') return resultError('NOT_AUTHORIZED', 'Only LUCID Admin can search Provider candidates.');
-      if (!['scope_confirmed', 'provider_declined'].includes(access.record.status)) return resultError('SCOPE_NOT_CONFIRMED', 'Confirm the inspected scope before searching for a Provider.');
+      if (!['scope_confirmed', 'provider_declined', 'inspector_bypass_approved'].includes(access.record.status)) return resultError('SCOPE_NOT_CONFIRMED', 'Confirm the inspected scope or receive Client approval to proceed without an Inspector before searching for a Provider.');
       const candidates = (loaded.data.providerProfiles || [])
         .filter(item => providerSupportsCase(item, access.record) && providerActiveCount(loaded.data, item.id) < Number(item.maxActiveAssignments || 3))
         .map(item => ({ id: item.id, displayName: item.fullName || item.displayName || 'Preview Provider', homeCity: item.homeCity, region: item.region, categories: providerCategories(item), presenceStatus: item.presenceStatus || 'offline', scheduleStatus: item.scheduleStatus || 'on_shift', assignmentCapacity: item.assignmentCapacity || 'open', availability: item.assignmentCapacity === 'limited' ? 'Limited availability' : 'Available', payoutReady: item.payoutSetup !== false, profileComplete: Boolean(item.profileComplete), distanceKm: providerDistanceKm(access.record, item), withinDefaultRadius: providerDistanceKm(access.record, item) <= 25, reviewCount: item.reviewCount || item.reviews?.length || 0, averageRating: item.averageRating || 0 }))

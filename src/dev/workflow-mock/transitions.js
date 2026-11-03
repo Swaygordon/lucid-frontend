@@ -10,6 +10,9 @@ const eventLabel = action => ({
   amend_request: 'Admin proposed changes to the request',
   accept_request_amendment: 'Client accepted the proposed request changes',
   reject_request_amendment: 'Client declined the proposed request changes',
+  request_inspector_bypass: 'Admin requested Client consent to proceed without an Inspector',
+  approve_inspector_bypass: 'Client agreed to proceed without an Inspector',
+  decline_inspector_bypass: 'Client declined to proceed without an Inspector',
   assign_inspector: 'Inspector assigned to the request',
   schedule_inspection: 'Inspector scheduled a site visit',
   record_inspection: 'Inspector submitted assessment',
@@ -21,6 +24,7 @@ const eventLabel = action => ({
   approve_work_estimate: 'Client approved the work and estimate',
   request_work_estimate_revision: 'Client requested an estimate revision',
   start_work: 'Provider started work',
+  complete_work: 'Provider marked the work complete and opened final billing',
   request_price_change: 'Provider requested approval for additional work',
   initiate_payment: 'Inspector confirmed satisfaction and initiated billing',
   submit_bill: 'Provider submitted the final work bill',
@@ -36,10 +40,10 @@ const recordEvent = (caseRecord, role, action, at, details) => {
 };
 
 const roleCan = (role, action) => ({
-  provider: ['accept_offer', 'decline_offer', 'submit_work_estimate', 'schedule_provider_visit', 'start_work', 'request_price_change', 'submit_bill'],
-  client: ['approve_work_estimate', 'request_work_estimate_revision', 'approve_price_change', 'reject_price_change', 'provide_information', 'approve_bill', 'reject_bill', 'cancel_case', 'pay_cancellation_fee', 'raise_dispute', 'request_refund', 'accept_request_amendment', 'reject_request_amendment', 'leave_review'],
-  inspector: ['schedule_inspection', 'record_inspection', 'initiate_payment'],
-  admin: ['request_information', 'amend_request', 'assign_inspector', 'confirm_scope', 'mark_not_feasible', 'offer_provider', 'resolve_dispute', 'decide_refund', 'confirm_delayed_payment', 'set_commission_rate'],
+  provider: ['accept_offer', 'decline_offer', 'submit_work_estimate', 'schedule_provider_visit', 'start_work', 'complete_work', 'request_price_change', 'submit_bill'],
+  client: ['approve_work_estimate', 'request_work_estimate_revision', 'approve_price_change', 'reject_price_change', 'provide_information', 'approve_inspector_bypass', 'decline_inspector_bypass', 'approve_bill', 'reject_bill', 'cancel_case', 'pay_cancellation_fee', 'raise_dispute', 'request_refund', 'accept_request_amendment', 'reject_request_amendment', 'leave_review'],
+  inspector: ['schedule_inspection', 'record_inspection'],
+  admin: ['request_information', 'amend_request', 'assign_inspector', 'request_inspector_bypass', 'confirm_scope', 'mark_not_feasible', 'offer_provider', 'resolve_dispute', 'decide_refund', 'confirm_delayed_payment', 'set_commission_rate'],
   system: ['payment_result'],
 }[role] || []).includes(action);
 
@@ -77,10 +81,16 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
       if (!next.providerAcceptedAt || next.status !== 'accepted') {
         return reject('PROVIDER_ACCEPTANCE_REQUIRED', 'The Provider must accept the offer in the app before work starts.');
       }
-      if (!next.approvedWorkEstimate) return reject('WORK_ESTIMATE_APPROVAL_REQUIRED', 'The Client must approve the work estimate before work starts.');
       if (next.pendingPriceChange) return reject('PRICE_CHANGE_APPROVAL_REQUIRED', 'Work is paused until the Client approves the price change.');
       next.status = 'work_in_progress';
       next.workStartedAt = at;
+      break;
+
+    case 'complete_work':
+      if (next.status !== 'work_in_progress' || !next.workStartedAt) return reject('WORK_NOT_IN_PROGRESS', 'Only active work can be marked complete.');
+      if (next.pendingPriceChange) return reject('PRICE_CHANGE_APPROVAL_REQUIRED', 'Resolve the additional work request before completing the job.');
+      next.status = 'awaiting_provider_bill';
+      next.workCompletedAt = at;
       break;
 
     case 'submit_work_estimate': {
@@ -150,16 +160,14 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
 
     case 'submit_bill': {
       if (next.status === 'price_change_pending' || next.pendingPriceChange) return reject('PRICE_CHANGE_APPROVAL_REQUIRED', 'Work and billing are paused until the Client approves or rejects the price change.');
-      if (!['awaiting_provider_bill', 'bill_rejected'].includes(next.status) || !next.clientSatisfied) return reject('PAYMENT_NOT_INITIATED', 'The Inspector must confirm the Client is satisfied and initiate billing before a Provider can submit a charge.');
+      if (!['awaiting_provider_bill', 'bill_rejected'].includes(next.status)) return reject('WORK_NOT_COMPLETED', 'Mark the work complete before submitting the final bill.');
       const providerAmount = Number(payload.amount);
-      if (!Number.isFinite(providerAmount) || providerAmount < 0) return reject('INVALID_BILL_AMOUNT', 'Enter a valid Provider work amount.');
-      const approvedAmount = Number(next.approvedWorkAmount ?? next.approvedWorkEstimate?.amount);
-      if (Number.isFinite(approvedAmount) && approvedAmount > 0 && providerAmount > approvedAmount) return reject('BILL_EXCEEDS_APPROVED_AMOUNT', 'The bill is higher than the approved work amount. Request approval for the additional work before submitting it.');
+      if (!Number.isFinite(providerAmount) || providerAmount <= 0) return reject('INVALID_BILL_AMOUNT', 'Enter a final bill greater than zero.');
       const clientPurchasedMaterialsAmount = Math.max(0, Number(payload.clientPurchasedMaterialsAmount) || 0);
       const commissionRate = Math.max(0, Number(next.commissionRate) || 0);
       const commissionAmount = Math.round(providerAmount * commissionRate) / 100;
       const inspectorRate = Math.max(0, Number(next.inspectorRate ?? 10) || 0);
-      const inspectorAmount = Math.round(providerAmount * inspectorRate) / 100;
+      const inspectorAmount = next.assignedInspectorId ? Math.round(providerAmount * inspectorRate) / 100 : 0;
       const version = (next.providerBillHistory || []).length + 1;
       next.providerBill = {
         version,
@@ -189,7 +197,7 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
       break;
 
     case 'approve_bill':
-      if (role !== 'client' || next.status !== 'awaiting_client_approval' || !next.providerBill || !next.clientSatisfied) return reject('BILL_NOT_READY', 'A Provider bill must be submitted after the Inspector initiates payment before it can be accepted.');
+      if (role !== 'client' || next.status !== 'awaiting_client_approval' || !next.providerBill) return reject('BILL_NOT_READY', 'There is no Provider bill awaiting your decision.');
       next.providerBill = { ...next.providerBill, status: 'approved_for_payment', clientApprovedAt: at };
       next.providerBillHistory = (next.providerBillHistory || []).map(item => item.version === next.providerBill.version ? next.providerBill : item);
       next.clientPaymentAcceptedAt = at;
@@ -198,17 +206,16 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
 
     case 'reject_bill': {
       if (role !== 'client' || next.status !== 'awaiting_client_approval' || !next.providerBill) return reject('BILL_NOT_READY', 'There is no itemized Provider bill awaiting a decision.');
-      const rejectionReason = String(payload.reason || '').trim();
-      if (!rejectionReason) return reject('BILL_REJECTION_REASON_REQUIRED', 'Tell LUCID what needs to be clarified or changed.');
-      next.providerBill = { ...next.providerBill, status: 'revision_requested', clientDecisionReason: rejectionReason.slice(0, 1000), clientDecidedAt: at };
+      const rejectionReason = String(payload.note ?? payload.reason ?? '').trim().slice(0, 1000);
+      next.providerBill = { ...next.providerBill, status: 'revision_requested', clientDecisionReason: rejectionReason, clientDecidedAt: at };
       next.providerBillHistory = (next.providerBillHistory || []).map(item => item.version === next.providerBill.version ? next.providerBill : item);
-      next.billRejection = { reason: rejectionReason.slice(0, 1000), rejectedAt: at, billVersion: next.providerBill.version };
+      next.billRejection = { note: rejectionReason, reason: rejectionReason, rejectedAt: at, billVersion: next.providerBill.version };
       next.status = 'bill_rejected';
       break;
     }
 
     case 'payment_result': {
-      if (!['awaiting_payment', 'payment_delayed', 'payment_failed'].includes(next.status) || !next.clientPaymentAcceptedAt || !next.clientSatisfied || !next.providerBill) return reject('PAYMENT_NOT_READY', 'Client acceptance and a submitted bill are required before payment.');
+      if (!['awaiting_payment', 'payment_delayed', 'payment_failed'].includes(next.status) || !next.clientPaymentAcceptedAt || !next.providerBill) return reject('PAYMENT_NOT_READY', 'Client acceptance and a submitted bill are required before payment.');
       if (!['confirmed', 'delayed', 'failed'].includes(payload.outcome)) return reject('INVALID_PAYMENT_OUTCOME', 'Choose a supported simulated payment outcome.');
       next.paymentStatus = payload.outcome;
       if (payload.outcome === 'confirmed') {
@@ -332,11 +339,35 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
       break;
     }
 
+    case 'request_inspector_bypass': {
+      const unavailableReassignment = next.status === 'inspector_assigned' && payload.assignedInspectorUnavailable === true;
+      if (!['submitted', 'inspector_assigned'].includes(next.status) || (next.status === 'inspector_assigned' && !unavailableReassignment)) return reject('INSPECTOR_ASSIGNMENT_ACTIVE', 'An active Inspector must be replaced or finish their assessment before a bypass can be requested.');
+      if (next.inspection?.submittedAt || next.inspection?.findings) return reject('INSPECTION_ALREADY_RECORDED', 'A submitted Inspector report is already available for this request.');
+      next.inspectorBypassRequest = { requestedAt: at, requestRevision: Number(next.requestRevision || 1), reason: String(payload.reason || '').trim(), previousInspectorId: next.assignedInspectorId || '', previousInspector: clone(next.inspectorAssignment || null) };
+      next.status = 'inspector_bypass_pending';
+      break;
+    }
+
+    case 'approve_inspector_bypass':
+      if (role !== 'client' || next.status !== 'inspector_bypass_pending' || !next.inspectorBypassRequest) return reject('BYPASS_CONSENT_NOT_PENDING', 'There is no request to proceed without an Inspector awaiting your decision.');
+      next.inspectionBypassConsent = { approvedAt: at, requestRevision: Number(next.requestRevision || 1), scope: next.scope || next.description || '', category: next.category || '', locationSummary: next.locationSummary || '', previousInspectorId: next.inspectorBypassRequest.previousInspectorId || '' };
+      next.inspectorWaived = true;
+      next.assignedInspectorId = '';
+      next.status = 'inspector_bypass_approved';
+      break;
+
+    case 'decline_inspector_bypass':
+      if (role !== 'client' || next.status !== 'inspector_bypass_pending' || !next.inspectorBypassRequest) return reject('BYPASS_CONSENT_NOT_PENDING', 'There is no request to proceed without an Inspector awaiting your decision.');
+      next.inspectorBypassDecision = { decision: 'declined', decidedAt: at };
+      next.inspectorBypassRequest = null;
+      next.status = 'submitted';
+      break;
+
     case 'amend_request': {
-      if (!['submitted', 'needs_information'].includes(next.status)) return reject('REQUEST_NOT_EDITABLE', 'Request details can only be amended before an Inspector is assigned.');
+      if (!['submitted', 'needs_information', 'inspector_bypass_approved'].includes(next.status)) return reject('REQUEST_NOT_EDITABLE', 'Request details can only be amended before a Provider is assigned.');
       if (next.requestAmendment?.status === 'pending') return reject('AMENDMENT_ALREADY_PENDING', 'A proposed change is already waiting for the Client.');
       const proposed = payload.patch && typeof payload.patch === 'object' ? payload.patch : {};
-      const allowed = ['description', 'scope', 'urgency', 'preferredDate', 'preferredTime', 'alternateDate', 'alternateTime', 'locationSummary'];
+      const allowed = ['description', 'scope', 'urgency', 'preferredDate', 'preferredTime', 'alternateDate', 'alternateTime', 'locationSummary', 'city', 'region', 'category', 'service'];
       const patch = Object.fromEntries(Object.entries(proposed).filter(([key, value]) => allowed.includes(key) && value !== undefined));
       if (!Object.keys(patch).length) return reject('AMENDMENT_EMPTY', 'Make at least one request change before sending it to the Client.');
       const reason = String(payload.reason || '').trim();
@@ -346,12 +377,21 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
       break;
     }
 
-    case 'accept_request_amendment':
+    case 'accept_request_amendment': {
       if (!next.requestAmendment || next.requestAmendment.status !== 'pending') return reject('NO_PENDING_AMENDMENT', 'There is no proposed request change waiting for your response.');
+      const consentSensitiveFields = ['scope', 'description', 'category', 'service', 'locationSummary', 'city', 'region'];
+      const invalidatesConsent = next.inspectionBypassConsent && consentSensitiveFields.some(key => Object.hasOwn(next.requestAmendment.proposed, key));
       Object.assign(next, clone(next.requestAmendment.proposed));
       next.requestAmendment = { ...next.requestAmendment, status: 'accepted', acknowledgedAt: at };
-      if (next.status === 'needs_information') next.status = 'submitted';
+      if (invalidatesConsent) {
+        next.requestRevision = Number(next.requestRevision || 1) + 1;
+        next.inspectionBypassConsent = null;
+        next.inspectorWaived = false;
+        next.inspectorBypassRequest = null;
+        next.status = 'submitted';
+      } else if (next.status === 'needs_information') next.status = 'submitted';
       break;
+    }
 
     case 'reject_request_amendment':
       if (!next.requestAmendment || next.requestAmendment.status !== 'pending') return reject('NO_PENDING_AMENDMENT', 'There is no proposed request change waiting for your response.');
@@ -359,7 +399,14 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
       break;
 
     case 'offer_provider':
-      if (!['scope_confirmed', 'provider_declined'].includes(next.status)) return reject('SCOPE_NOT_CONFIRMED', 'Inspection and scope confirmation are required before a Provider offer.');
+      if (!['scope_confirmed', 'provider_declined', 'inspector_bypass_approved'].includes(next.status)) return reject('SCOPE_NOT_CONFIRMED', 'Inspection and scope confirmation or Client-approved Inspector bypass are required before a Provider offer.');
+      if (next.status === 'inspector_bypass_approved') {
+        const consent = next.inspectionBypassConsent;
+        if (!consent || Number(consent.requestRevision) !== Number(next.requestRevision || 1)
+          || consent.scope !== (next.scope || next.description || '')
+          || consent.category !== (next.category || '')
+          || consent.locationSummary !== (next.locationSummary || '')) return reject('BYPASS_CONSENT_STALE', 'The request changed after Client consent. Request updated consent before assigning a Provider.');
+      }
       if (!String(payload.providerId || '').trim()) return reject('PROVIDER_REQUIRED', 'Select a Provider before sending the offer.');
       next.assignedProviderId = String(payload.providerId).trim();
       next.providerAssignment = {
@@ -480,6 +527,14 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
             ? { reason: next.closedReason }
       : action === 'offer_provider'
         ? { providerName: next.providerAssignment.providerName, distanceKm: next.providerAssignment.distanceKm, overrideReason: next.providerAssignment.overrideReason }
+      : action === 'request_inspector_bypass'
+        ? { requestRevision: next.inspectorBypassRequest?.requestRevision, reason: next.inspectorBypassRequest?.reason, previousInspectorId: next.inspectorBypassRequest?.previousInspectorId }
+      : action === 'approve_inspector_bypass'
+        ? { requestRevision: next.inspectionBypassConsent?.requestRevision, scope: next.inspectionBypassConsent?.scope, category: next.inspectionBypassConsent?.category, locationSummary: next.inspectionBypassConsent?.locationSummary }
+      : action === 'decline_inspector_bypass'
+        ? { decision: next.inspectorBypassDecision?.decision }
+      : action === 'complete_work'
+        ? { completedAt: next.workCompletedAt }
       : action === 'accept_request_amendment' || action === 'reject_request_amendment'
         ? { amendmentStatus: next.requestAmendment?.status, clientReason: next.requestAmendment?.clientReason }
         : null;
