@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Bell, BriefcaseBusiness, LockKeyhole, UserRound, Wallet } from 'lucide-react';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
 
-const Card = ({ to, icon: Icon, title, copy }) => <Link to={to} className="flex gap-4 rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-primary/50 hover:shadow-sm dark:border-[#303a4c] dark:bg-[#1a1f2e]"><span className="rounded-xl bg-blue-50 p-3 text-primary dark:bg-blue-950/40"><Icon size={20}/></span><span><strong className="block text-gray-900 dark:text-slate-100">{title}</strong><span className="mt-1 block text-sm text-gray-600 dark:text-slate-400">{copy}</span></span></Link>;
+const Card = ({ to, icon: Icon, title, copy }) => <Link to={to} className="flex items-start gap-4 rounded-2xl border border-gray-200 bg-white p-5 transition hover:border-primary/50 hover:shadow-sm dark:border-[#303a4c] dark:bg-[#1a1f2e]"><span className="flex h-11 w-11 shrink-0 items-center justify-center self-start rounded-xl bg-blue-50 text-primary dark:bg-blue-950/40"><Icon size={20}/></span><span className="min-w-0"><strong className="block text-gray-900 dark:text-slate-100">{title}</strong><span className="mt-1 block text-sm text-gray-600 dark:text-slate-400">{copy}</span></span></Link>;
 
 export default function PreviewAccountSettingsPage() {
   const actor = useWorkflowActor(); const { role } = actor; const services = useWorkflowServices();
