@@ -295,8 +295,7 @@ const ROWS = [
 
 export const ChatSkeleton = () => (
   <div
-    className="h-screen bg-white dark:bg-[#1a1f2e] flex flex-col overflow-hidden animate-pulse"
-    style={{ height: '100dvh' }}
+    className="h-full min-h-0 bg-white dark:bg-[#1a1f2e] flex flex-col overflow-hidden animate-pulse"
     aria-busy="true"
     aria-label="Loading messages"
   >

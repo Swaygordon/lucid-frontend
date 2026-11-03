@@ -104,10 +104,9 @@ const Messages = () => {
 
   return (
     <div
-      className="h-screen bg-white dark:bg-[#1a1f2e] flex flex-col overflow-hidden"
-      style={{ height: '100dvh' }}
+      className="flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-[#1a1f2e]"
     >
-      <div className={showChatOnMobile ? 'hidden lg:block' : ''}>
+      <div className={`shrink-0 ${showChatOnMobile ? 'hidden lg:block' : ''}`}>
         <PageHeader
           title="Messages"
           subtitle="Case conversations with LUCID and assigned team members"
@@ -115,17 +114,17 @@ const Messages = () => {
         />
       </div>
 
-      <div className="flex-1 min-h-0 w-full border-t border-gray-200 dark:border-[#1e293b]">
+      <div className="min-h-0 w-full flex-1 border-t border-gray-200 dark:border-[#1e293b]">
         <motion.div
           initial="hidden"
           animate="visible"
           variants={fadeIn}
-          className="h-full bg-white dark:bg-[#1a1f2e] overflow-hidden"
+              className="h-full min-h-0 bg-white dark:bg-[#1a1f2e] overflow-hidden"
         >
-          <div className="flex h-full">
+          <div className="flex h-full min-h-0">
             {/* Conversation list */}
             <div
-              className={`w-full lg:w-80 xl:w-96 border-r border-gray-200 dark:border-[#1e293b] flex flex-col ${
+              className={`min-h-0 w-full lg:w-80 xl:w-96 border-r border-gray-200 dark:border-[#1e293b] flex flex-col ${
                 showChatOnMobile ? 'hidden lg:flex' : 'flex'
               }`}
             >
@@ -135,7 +134,7 @@ const Messages = () => {
                 </h2>
               </div>
 
-              <div className="flex-1 overflow-y-auto">
+              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
                 {inboxError ? <div role="alert" className="p-6 text-sm text-gray-600 dark:text-slate-300">{inboxError}</div> : conversations.length === 0 ? (
                   <div className="p-6 text-center">
                     <MessageCircle className="w-12 h-12 text-gray-300 dark:text-slate-600 mx-auto mb-3" />

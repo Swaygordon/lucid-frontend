@@ -326,7 +326,7 @@ useEffect(() => {
   });
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-[#1a1f2e]">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-white dark:bg-[#1a1f2e]">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-[#1e293b] bg-white dark:bg-[#1a1f2e]">
         {onBack && (
@@ -370,7 +370,7 @@ useEffect(() => {
       )}
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-gray-50 dark:bg-[#0f1117]">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 space-y-1 bg-gray-50 dark:bg-[#0f1117]">
         {loading ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
