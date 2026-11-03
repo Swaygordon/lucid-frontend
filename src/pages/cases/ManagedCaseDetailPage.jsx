@@ -366,15 +366,22 @@ const InspectorActions = ({ record, busy, apply }) => {
 
 const AdminActions = ({ record, scope, setScope, reason, setReason, commissionRate, setCommissionRate, busy, apply, services, userId }) => {
   const [inspectors, setInspectors] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [currentInspector, setCurrentInspector] = useState(null);
   const [selectedInspectorId, setSelectedInspectorId] = useState('');
   const [showOutsideRadius, setShowOutsideRadius] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
   const [reassignmentReason, setReassignmentReason] = useState('');
+  const [bypassReason, setBypassReason] = useState('');
   const [proposedDescription, setProposedDescription] = useState(record.description || record.scope || '');
   const [proposedLocation, setProposedLocation] = useState(record.locationSummary || '');
   const [proposalReason, setProposalReason] = useState('');
   const [candidateError, setCandidateError] = useState('');
+  const [providerSearch, setProviderSearch] = useState('');
+  const [selectedProviderId, setSelectedProviderId] = useState('');
+  const [showDistantProviders, setShowDistantProviders] = useState(false);
+  const [providerOverrideReason, setProviderOverrideReason] = useState('');
+  const [providersLoading, setProvidersLoading] = useState(false);
 
   useEffect(() => {
     if (!['submitted', 'inspector_assigned'].includes(record.status)) return;
@@ -391,10 +398,42 @@ const AdminActions = ({ record, scope, setScope, reason, setReason, commissionRa
     return () => { active = false; };
   }, [services, record.id, record.status, record.assignedInspectorId, userId]);
 
+  useEffect(() => {
+    if (!['scope_confirmed', 'provider_declined', 'inspector_bypass_approved'].includes(record.status)) {
+      setProviders([]);
+      setSelectedProviderId('');
+      setProvidersLoading(false);
+      return;
+    }
+    let active = true;
+    setProvidersLoading(true);
+    setCandidateError('');
+    services.assignments.searchProviderCandidates({ caseId: record.id, role: 'admin', userId })
+      .then(result => {
+        if (!active) return;
+        if (result.error) setCandidateError(result.error.message);
+        else setProviders(result.data || []);
+      })
+      .catch(error => { if (active) setCandidateError(error.message || 'Provider candidates could not be loaded.'); })
+      .finally(() => { if (active) setProvidersLoading(false); });
+    return () => { active = false; };
+  }, [services, record.id, record.status, userId]);
+
   const nearby = inspectors.filter(item => item.distanceKm <= 25);
   const outside = inspectors.filter(item => item.distanceKm > 25);
   const selectedInspector = inspectors.find(item => item.id === selectedInspectorId);
   const needsOverride = Boolean(selectedInspector && selectedInspector.distanceKm > 25);
+  const providerMatches = providers.filter(item => `${item.displayName} ${item.homeCity || ''} ${item.region || ''} ${(item.categories || []).join(' ')}`.toLocaleLowerCase().includes(providerSearch.trim().toLocaleLowerCase()));
+  const nearbyProviders = providerMatches.filter(item => item.withinDefaultRadius);
+  const distantProviders = providerMatches.filter(item => !item.withinDefaultRadius);
+  const visibleProviders = [...nearbyProviders, ...(showDistantProviders ? distantProviders : [])];
+  const selectedProvider = providers.find(item => item.id === selectedProviderId);
+  const providerNeedsOverride = Boolean(selectedProvider && !selectedProvider.withinDefaultRadius);
+  const assignProvider = () => {
+    if (!selectedProvider) return;
+    if (providerNeedsOverride && !window.confirm(`Assign ${selectedProvider.displayName} from about ${selectedProvider.distanceKm} km away? Your reason will be saved to the case history.`)) return;
+    apply('offer_provider', { providerId: selectedProvider.id, distanceKm: selectedProvider.distanceKm, overrideReason: providerOverrideReason.trim() });
+  };
 
   return (
     <div className="space-y-5">
@@ -419,15 +458,30 @@ const AdminActions = ({ record, scope, setScope, reason, setReason, commissionRa
           {record.status === 'inspector_assigned' && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Why does this Inspector need to be replaced?<textarea required maxLength={1000} value={reassignmentReason} onChange={event => setReassignmentReason(event.target.value)} rows={2} className={`${fields} mt-1`} placeholder="For example, the assigned Inspector's account was suspended" /></label>}
           {needsOverride && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Reason for assigning outside the 25 km range<textarea required maxLength={1000} value={overrideReason} onChange={event => setOverrideReason(event.target.value)} rows={2} className={`${fields} mt-1`} placeholder="Record why this Inspector is the best available option" /></label>}
           <ActionButton disabled={busy || !selectedInspector || (needsOverride && !overrideReason.trim()) || (record.status === 'inspector_assigned' && !reassignmentReason.trim())} onClick={() => apply('assign_inspector', { inspectorId: selectedInspector.id, distanceKm: selectedInspector.distanceKm, searchRadiusKm: 25, overrideReason, reassignmentReason })}>{record.status === 'inspector_assigned' ? 'Reassign to selected Inspector' : 'Assign selected Inspector'}</ActionButton>
+          {inspectors.length === 0 && record.requestAmendment?.status !== 'pending' && <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20"><p className="text-sm font-semibold text-amber-950 dark:text-amber-100">No eligible Inspector is available in the expanded search.</p><p className="text-xs leading-5 text-amber-900 dark:text-amber-200">Ask the Client once whether they agree to continue without a preliminary Inspector. If they agree, this case becomes ready for Provider assignment with no further Client form.</p><label className="block text-sm font-medium text-amber-950 dark:text-amber-100">Why is an Inspector unavailable?<textarea required maxLength={1000} value={bypassReason} onChange={event => setBypassReason(event.target.value)} rows={2} className={`${fields} mt-1`} placeholder="For example, no qualified Inspector can take this case" /></label><ActionButton secondary disabled={busy || !bypassReason.trim()} onClick={() => apply('request_inspector_bypass', { reason: bypassReason.trim() })}>Ask Client to proceed without an Inspector</ActionButton></div>}
         </>}
         <div className="flex flex-wrap gap-2 border-t border-gray-100 pt-3 dark:border-[#303a4c]"><label className="sr-only" htmlFor="admin-request-question">Clarification question</label><input id="admin-request-question" value={reason} onChange={event => setReason(event.target.value)} placeholder="Question for the Client" className={fields} /><ActionButton secondary disabled={busy || !reason.trim()} onClick={() => apply('request_information', { message: reason.trim() })}>Request more information</ActionButton></div>
       </section>}
 
+      {record.status === 'inspector_bypass_pending' && <section className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/50 dark:bg-amber-950/20"><h3 className="font-semibold text-amber-950 dark:text-amber-100">Waiting for the Client’s Inspector decision</h3><p className="mt-1 text-amber-900 dark:text-amber-200">The Client can approve or decline from their case page. If they approve, this case returns here ready for Provider assignment without another Client form.</p></section>}
+
       <div data-preview-disclosure className="grid gap-2 rounded-xl bg-blue-50 p-4 dark:bg-blue-950/20"><p className="text-sm font-semibold text-blue-950 dark:text-blue-100">Editable commission placeholder</p><p className="text-xs text-blue-900 dark:text-blue-200">Use a demo percentage for this walkthrough; the production rate is not set here.</p><div className="flex flex-wrap gap-2"><input aria-label="Preview commission rate percent" type="number" min="0" max="100" step="0.1" value={commissionRate} onChange={event => setCommissionRate(event.target.value)} className={fields + ' max-w-40'} /><ActionButton disabled={busy} onClick={() => apply('set_commission_rate', { rate: Number(commissionRate) })}>Save placeholder</ActionButton></div></div>
       {record.status === 'inspection_reported' && record.inspection?.feasibility !== 'not_feasible' && <div className="space-y-3"><label className="block text-sm text-gray-700 dark:text-slate-300">Admin-confirmed scope<textarea className={`${fields} mt-1.5`} rows={3} value={scope} onChange={event => setScope(event.target.value)} /></label><div className="flex flex-wrap gap-2"><ActionButton disabled={busy || !scope.trim()} onClick={() => apply('confirm_scope', { scope })}>Confirm scope</ActionButton></div></div>}
       {record.status === 'inspection_reported' && record.inspection?.feasibility === 'not_feasible' && <section className="space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/20"><div><h3 className="font-semibold text-amber-950 dark:text-amber-100">Inspector marked this request not feasible</h3><p className="mt-1 text-sm text-amber-900 dark:text-amber-200">Provider assignment is blocked. Review the report and record the closure reason for the Client.</p></div><label className="block text-sm font-medium text-amber-950 dark:text-amber-100">Closure reason<textarea required maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} rows={2} className={`${fields} mt-1`} placeholder="Explain why the request cannot proceed." /></label><ActionButton disabled={busy || !reason.trim()} onClick={() => apply('mark_not_feasible', { reason: reason.trim() })}>Close request as not feasible</ActionButton></section>}
+      {['scope_confirmed', 'provider_declined', 'inspector_bypass_approved'].includes(record.status) && <section className="space-y-3 rounded-xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/50 dark:bg-blue-950/10">
+        <div><h3 className="font-semibold text-gray-900 dark:text-slate-100">Find and assign a Provider</h3><p className="mt-1 text-xs leading-5 text-gray-600 dark:text-slate-400">Suggested matches support this request category and are sorted by estimated distance. Provider identities remain private from the Client.</p></div>
+        {record.status === 'inspector_bypass_approved' && <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">The Client agreed to proceed without a preliminary Inspector. The request details are the approved starting scope; the Provider will assess site conditions after accepting. No further Client form is required.</p>}
+        <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Search Providers<input value={providerSearch} onChange={event => setProviderSearch(event.target.value)} className={`${fields} mt-1`} placeholder="Name, service category, city or region" /></label>
+        {candidateError && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{candidateError}</p>}
+        {providersLoading && <p role="status" className="rounded-lg bg-white p-3 text-sm text-gray-700 dark:bg-[#252b3b] dark:text-slate-200">Searching available Providers...</p>}
+        {!providersLoading && !candidateError && providers.length === 0 && <p className="rounded-lg bg-white p-3 text-sm text-gray-700 dark:bg-[#252b3b] dark:text-slate-200">No available Provider matches this category right now. Review the request category or search the broader roster from the Workers section.</p>}
+        {providers.length > 0 && visibleProviders.length === 0 && <p className="rounded-lg bg-white p-3 text-sm text-gray-700 dark:bg-[#252b3b] dark:text-slate-200">No Providers match that search. Try a name, service category, city, or region.</p>}
+        <div className="grid gap-2 sm:grid-cols-2">{visibleProviders.map(candidate => <label key={candidate.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 hover:border-primary dark:border-[#394458] dark:bg-[#252b3b]"><input type="radio" name={`provider-${record.id}`} checked={selectedProviderId === candidate.id} onChange={() => { setSelectedProviderId(candidate.id); setProviderOverrideReason(''); }} className="mt-1 accent-blue-600"/><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center justify-between gap-2 font-medium text-gray-900 dark:text-slate-100"><span>{candidate.displayName}</span><span className="text-xs text-gray-500 dark:text-slate-400">~{candidate.distanceKm} km</span></span><span className="mt-1 block text-xs text-gray-600 dark:text-slate-400">{candidate.categories.join(', ')} · {candidate.homeCity || candidate.region || 'Area not set'}</span><span className="mt-1 block text-xs text-gray-500 dark:text-slate-400">{candidate.availability} · {candidate.assignmentCapacity} capacity · {candidate.reviewCount ? `${candidate.averageRating}/5 (${candidate.reviewCount} reviews)` : 'No ratings yet'}</span></span></label>)}</div>
+        {distantProviders.length > 0 && <button type="button" onClick={() => setShowDistantProviders(value => !value)} className="min-h-10 rounded-lg px-2 text-sm font-semibold text-primary hover:bg-blue-50 hover:underline dark:hover:bg-blue-950/30">{showDistantProviders ? 'Show nearby matches only' : `Expand search beyond 25 km (${distantProviders.length})`}</button>}
+        {providerNeedsOverride && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Reason for assigning outside 25 km<textarea required maxLength={1000} value={providerOverrideReason} onChange={event => setProviderOverrideReason(event.target.value)} rows={2} className={`${fields} mt-1`} placeholder="Explain why this Provider is the best available match" /></label>}
+        <ActionButton disabled={busy || !selectedProvider || (providerNeedsOverride && !providerOverrideReason.trim())} onClick={assignProvider}>{record.status === 'provider_declined' ? 'Send offer to selected Provider' : 'Assign selected Provider'}</ActionButton>
+      </section>}
       <div className="flex flex-col items-start gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-5 sm:gap-y-3">
-        {record.status === 'scope_confirmed' && <ActionButton disabled={busy} onClick={() => apply('offer_provider', { providerId: 'demo-provider' })}>Send Provider offer</ActionButton>}
         <Link to="/lucid/messages" className="inline-flex min-h-10 items-center gap-2 rounded-lg px-2 text-sm font-semibold text-primary hover:bg-blue-50 hover:underline dark:hover:bg-blue-950/30"><MessageSquareText className="h-4 w-4 shrink-0" aria-hidden="true" />Open role-authorized messages</Link>
       </div>
       {record.status === 'payment_delayed' && <ActionButton disabled={busy} onClick={() => apply('confirm_delayed_payment')}>Simulate Admin confirmation</ActionButton>}
