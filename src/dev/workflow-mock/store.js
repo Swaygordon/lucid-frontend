@@ -9,6 +9,12 @@ export const OLDEST_WORKFLOW_PREVIEW_STORAGE_KEY = 'lucid-workflow-preview-v5';
 export const WORKFLOW_PREVIEW_VERSION = WORKFLOW_MOCK_SCHEMA_VERSION;
 
 const clone = value => JSON.parse(JSON.stringify(value));
+const stripClientPaymentPreferences = data => ({
+  ...data,
+  clientProfiles: (data.clientProfiles || []).map(profile => Object.fromEntries(
+    Object.entries(profile).filter(([key]) => key !== 'paymentPreference'),
+  )),
+});
 
 const validStore = isWorkflowMockDatabase;
 
@@ -82,7 +88,7 @@ const migrateLegacyPreview = (legacy, seedData) => {
 };
 
 export const createPreviewStore = ({ storage, seedData, key = WORKFLOW_PREVIEW_STORAGE_KEY, legacyKey = LEGACY_WORKFLOW_PREVIEW_STORAGE_KEY }) => {
-  const safeSeed = { ...clone(seedData), paymentMethods: Array.isArray(seedData.paymentMethods) ? clone(seedData.paymentMethods) : [], notificationPreferences: clone(seedData.notificationPreferences || {}) };
+  const safeSeed = stripClientPaymentPreferences({ ...clone(seedData), paymentMethods: Array.isArray(seedData.paymentMethods) ? clone(seedData.paymentMethods) : [], notificationPreferences: clone(seedData.notificationPreferences || {}) });
 
   const read = () => {
     let serialized;
@@ -152,14 +158,17 @@ export const createPreviewStore = ({ storage, seedData, key = WORKFLOW_PREVIEW_S
       return errorResult('PREVIEW_DATA_CORRUPT', 'Saved preview data is unreadable. Reset Preview mode to restore the sample journey.');
     }
     if (!validStore(parsed)) return errorResult('PREVIEW_DATA_UNSUPPORTED', 'Saved preview data has an unsupported version or shape. Reset Preview mode to restore the sample journey.');
-    return { data: { ...parsed, paymentMethods: Array.isArray(parsed.paymentMethods) ? parsed.paymentMethods : [], notificationPreferences: { ...clone(safeSeed.notificationPreferences), ...(parsed.notificationPreferences || {}) } }, error: null };
+    const normalized = stripClientPaymentPreferences({ ...parsed, paymentMethods: Array.isArray(parsed.paymentMethods) ? parsed.paymentMethods : [], notificationPreferences: { ...clone(safeSeed.notificationPreferences), ...(parsed.notificationPreferences || {}) } });
+    const hasOldClientPreferences = (parsed.clientProfiles || []).some(profile => Object.hasOwn(profile, 'paymentPreference'));
+    return hasOldClientPreferences ? write(normalized) : { data: normalized, error: null };
   };
 
   const write = data => {
     if (!validStore(data)) return errorResult('PREVIEW_DATA_INVALID', 'Preview data is incomplete and was not saved.');
     try {
-      storage.setItem(key, JSON.stringify(data));
-      return { data: clone(data), error: null };
+      const sanitized = stripClientPaymentPreferences(data);
+      storage.setItem(key, JSON.stringify(sanitized));
+      return { data: clone(sanitized), error: null };
     } catch {
       return errorResult('PREVIEW_STORAGE_UNAVAILABLE', 'Preview changes could not be saved in this browser.');
     }

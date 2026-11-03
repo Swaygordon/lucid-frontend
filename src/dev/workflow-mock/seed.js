@@ -206,7 +206,7 @@ export const createWorkflowPreviewSeed = () => {
       id, displayName, homeCity, region, categories, qualifications: [], availability, availableDays: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'],
       startTime: '09:00', endTime: '17:00', presenceStatus: 'offline', scheduleStatus: 'on_shift', assignmentCapacity: 'open', maxActiveAssignments: 12, payoutSetup: true, profileComplete: false,
     })),
-    clientProfiles: [{ id: 'demo-client', fullName: 'Lena Addo', phone: '', homeCity: '', region: '', paymentPreference: '', profileComplete: false }],
+    clientProfiles: [{ id: 'demo-client', fullName: 'Lena Addo', phone: '', homeCity: '', region: '', profileComplete: false }],
     providerProfiles: [{ id: 'demo-provider', fullName: 'Kwame Mensah', phone: '', homeCity: 'Accra', region: 'Greater Accra', categories: ['Home Repairs & Maintenance'], qualifications: ['Preview service qualification'], availability: 'Available', presenceStatus: 'offline', scheduleStatus: 'on_shift', assignmentCapacity: 'open', maxActiveAssignments: 12, payoutSetup: true, profileComplete: false, reviews: [] }],
     accountPolicies: [],
     accountAppeals: [],

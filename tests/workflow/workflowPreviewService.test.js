@@ -54,6 +54,34 @@ test('malformed preview data returns a recoverable error without deleting the st
   assert.equal(storage.raw(WORKFLOW_PREVIEW_STORAGE_KEY), oldValue);
 });
 
+test('Client profile setup requires no payment preference and removes legacy preference data', async () => {
+  const storage = makeStorage();
+  const seedData = createSeed();
+  seedData.clientProfiles[0].paymentPreference = 'Mobile money';
+  const service = createMockWorkflowService({ storage, seedData, clock: () => '2026-11-03T11:00:00.000Z' });
+  const saved = await service.profiles.updateAccountSetup({
+    role: 'client', userId: 'demo-client',
+    profile: { fullName: 'Lena Addo', phone: '0500000000', homeCity: 'Accra', region: 'Greater Accra' },
+  });
+  const raw = storage.raw(WORKFLOW_PREVIEW_STORAGE_KEY);
+
+  assert.equal(saved.error, null);
+  assert.equal(Object.hasOwn(saved.data, 'paymentPreference'), false);
+  assert.equal(JSON.parse(raw).clientProfiles[0].paymentPreference, undefined);
+});
+
+test('existing Client payment preferences are removed when Preview data is read', async () => {
+  const seedData = createSeed();
+  const persisted = { ...seedData, clientProfiles: [{ ...seedData.clientProfiles[0], paymentPreference: 'Card' }] };
+  const storage = makeStorage({ [WORKFLOW_PREVIEW_STORAGE_KEY]: JSON.stringify(persisted) });
+  const service = createMockWorkflowService({ storage, seedData });
+  const profile = await service.profiles.getForRole({ role: 'client', userId: 'demo-client' });
+
+  assert.equal(profile.error, null);
+  assert.equal(Object.hasOwn(profile.data, 'paymentPreference'), false);
+  assert.equal(Object.hasOwn(JSON.parse(storage.raw(WORKFLOW_PREVIEW_STORAGE_KEY)).clientProfiles[0], 'paymentPreference'), false);
+});
+
 test('reset restores all seeded scenarios', async () => {
   const storage = makeStorage();
   const seedData = createSeed();

@@ -802,13 +802,13 @@ export const createMockWorkflowService = ({ storage = defaultStorage(), seedData
       const categories = [...new Set((Array.isArray(profile?.categories) ? profile.categories : []).map(item => String(item).trim()).filter(Boolean))];
       const qualifications = [...new Set((Array.isArray(profile?.qualifications) ? profile.qualifications : []).map(item => String(item).trim()).filter(Boolean))];
       if (!fullName || !phone || !homeCity || !region) return resultError('PROFILE_INCOMPLETE', 'Add your name, phone number, region, and city or town to continue.');
-      if (normalized === 'client' && !String(profile?.paymentPreference || '').trim()) return resultError('PROFILE_INCOMPLETE', 'Choose a preferred payment method to complete Client setup.');
       if (normalized === 'provider' && (!categories.length || !qualifications.length)) return resultError('PROFILE_INCOMPLETE', 'Add at least one service category and qualification to complete Provider setup.');
       const presenceStatus = ['online', 'away', 'offline'].includes(profile?.presenceStatus) ? profile.presenceStatus : 'offline';
       const scheduleStatus = ['on_shift', 'off_shift', 'leave'].includes(profile?.scheduleStatus) ? profile.scheduleStatus : 'on_shift';
       const assignmentCapacity = ['open', 'limited', 'full', 'paused'].includes(profile?.assignmentCapacity) ? profile.assignmentCapacity : 'open';
       const maxActiveAssignments = Math.max(1, Math.min(20, Number(profile?.maxActiveAssignments) || 3));
-      const savedProfile = { ...existing, fullName, phone, homeCity, region, categories, qualifications, paymentPreference: String(profile?.paymentPreference || ''), presenceStatus: normalized === 'provider' ? presenceStatus : undefined, scheduleStatus: normalized === 'provider' ? scheduleStatus : undefined, assignmentCapacity: normalized === 'provider' ? assignmentCapacity : undefined, maxActiveAssignments: normalized === 'provider' ? maxActiveAssignments : undefined, payoutSetup: normalized === 'provider' && Boolean(profile?.payoutSetup), profileComplete: true, updatedAt: clock() };
+      const existingProfile = Object.fromEntries(Object.entries(existing).filter(([key]) => key !== 'paymentPreference'));
+      const savedProfile = { ...existingProfile, fullName, phone, homeCity, region, categories, qualifications, presenceStatus: normalized === 'provider' ? presenceStatus : undefined, scheduleStatus: normalized === 'provider' ? scheduleStatus : undefined, assignmentCapacity: normalized === 'provider' ? assignmentCapacity : undefined, maxActiveAssignments: normalized === 'provider' ? maxActiveAssignments : undefined, payoutSetup: normalized === 'provider' && Boolean(profile?.payoutSetup), profileComplete: true, updatedAt: clock() };
       const next = clone(loaded.data);
       next[key] = [...(next[key] || []).filter(item => item.id !== userId), savedProfile];
       const saved = store.write(next);
