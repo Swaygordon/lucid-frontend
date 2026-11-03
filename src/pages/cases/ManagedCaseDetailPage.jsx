@@ -1,12 +1,13 @@
 // @backend-handoff-delete Current case actions, sample disclosures, and mock-service use are Preview workflow implementation.
 import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, CircleDollarSign, Clock3, MessageSquareText, ShieldCheck } from 'lucide-react';
+import { ArrowDownToLine, ArrowLeft, CheckCircle2, CircleDollarSign, Clock3, MessageSquareText, ShieldCheck } from 'lucide-react';
 import { useNotification } from '../../contexts/NotificationContext.jsx';
 import ManagedCaseConversation from '../../components/cases/ManagedCaseConversation.jsx';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
 import { normalizeWorkflowRole } from '../../services/workflow/workflowRoles.js';
 import { getCasePresentation } from '../../services/workflow/casePresentation.js';
+import { buildReceiptPdf } from '../../services/workflow/receiptPdf.js';
 
 const dollars = (value, currency = 'GHS') => `${currency} ${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const label = value => String(value || 'unknown').replace(/([a-z])([A-Z])/g, '$1 $2').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
@@ -60,6 +61,7 @@ const ManagedCaseDetailPage = () => {
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewComment, setReviewComment] = useState('');
   const [receipt, setReceipt] = useState(null);
+  const [receiptPdfBusy, setReceiptPdfBusy] = useState(false);
   const [checkoutMethod, setCheckoutMethod] = useState('mobile_money');
 
   useEffect(() => {
@@ -109,6 +111,25 @@ const ManagedCaseDetailPage = () => {
     }
     showNotification('Preview workflow updated in this browser.', 'success');
     return true;
+  };
+
+  const downloadReceiptPdf = async () => {
+    if (!receipt || !record || receiptPdfBusy) return;
+    setReceiptPdfBusy(true);
+    try {
+      const doc = await buildReceiptPdf({
+        ...receipt,
+        caseRecord: record,
+        client: normalizedRole === 'client' ? 'You' : record.clientName || 'Client',
+        provider: normalizedRole === 'provider' ? 'You' : record.providerAssignment?.providerName || 'Provider',
+      });
+      doc.save(`LUCID-${receipt.caseId}-receipt.pdf`);
+      showNotification('A4 receipt PDF downloaded.', 'success');
+    } catch {
+      showNotification('The receipt PDF could not be created. Please try again.', 'error');
+    } finally {
+      setReceiptPdfBusy(false);
+    }
   };
 
   const pay = async outcome => {
@@ -211,7 +232,7 @@ const ManagedCaseDetailPage = () => {
               <dl className="space-y-3 text-sm"><SummaryRow label="Service" value={serviceName} /><SummaryRow label="Your description" value={record.requestAmendment?.original?.description || record.description || record.scope || 'No description saved'} />{record.requestAmendment && <div className="rounded-lg bg-amber-50 p-3 text-sm dark:bg-amber-950/20"><p className="font-semibold text-amber-950 dark:text-amber-100">Request change {label(record.requestAmendment.status)}</p>{record.requestAmendment.proposed?.description && <p className="mt-2 text-amber-900 dark:text-amber-200">Updated description: {record.requestAmendment.proposed.description}</p>}<p className="mt-2 text-xs text-amber-800 dark:text-amber-300">Reason: {record.requestAmendment.reason}</p></div>}<SummaryRow label="Service area" value={record.locationSummary || 'Managed by LUCID'} />{record.urgency && <SummaryRow label="Urgency" value={label(record.urgency)} />}{record.preferredDate && <SummaryRow label="Preferred visit" value={[record.preferredDate, record.preferredTime].filter(Boolean).join(' · ')} />}{record.alternateDate && <SummaryRow label="Alternate visit" value={[record.alternateDate, record.alternateTime].filter(Boolean).join(' · ')} />}<SummaryRow label="Expected range" value={`${dollars(range.min, range.currency)} – ${dollars(range.max, range.currency)}`} /><SummaryRow label="Inspector" value={record.inspectorAssignment?.inspectorName || (record.assignedInspectorId ? 'Assigned' : 'Not assigned')} /><SummaryRow label="Provider" value={record.assignedProviderId ? 'Assigned' : 'Not assigned'} /><SummaryRow label="Payment" value={label(record.paymentStatus)} /></dl>
             </Panel>}
             {bill && <Panel title="Bill and payment" subtitle="Provider work and LUCID charge are shown separately."><Invoice bill={bill} currency={range.currency} /><div className="mt-4 rounded-xl bg-blue-50 p-3 text-xs text-blue-900 dark:bg-blue-950/20 dark:text-blue-100"><ShieldCheck className="mr-1 inline h-4 w-4" aria-hidden="true" />Commission rate is an editable placeholder. Client-purchased materials are excluded.</div></Panel>}
-            <Panel title="Receipts and ledger" subtitle="Case payment summary for the selected account.">{receipt ? <><dl className="space-y-3 text-sm"><SummaryRow label="Receipt" value={receipt.id} /><SummaryRow label="Issued" value={new Date(receipt.issuedAt).toLocaleDateString()} /><SummaryRow label="Provider work" value={dollars(receipt.providerAmount, receipt.currency)} /><SummaryRow label="LUCID charge" value={dollars(receipt.platformAmount, receipt.currency)} /><SummaryRow label="Inspector charge" value={dollars(receipt.inspectorAmount, receipt.currency)} /><SummaryRow label="Total paid" value={dollars(receipt.totalAmount, receipt.currency)} /><SummaryRow label="Payment reference" value={receipt.paymentReference} /></dl><a className="mt-4 inline-flex items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover" download={`LUCID-${receipt.id}.html`} href={`data:text/html;charset=utf-8,${encodeURIComponent(receiptHtml(receipt, serviceName, normalizedRole))}`}>Download receipt</a></> : <p className="text-sm text-gray-600 dark:text-slate-400">A receipt is issued to each involved account after the case is completed. No receipt is available yet.</p>}<Link to="/lucid/transactions" className="mt-4 flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><CircleDollarSign className="h-4 w-4" aria-hidden="true" />Open financial history</Link></Panel>
+            <Panel title="Receipts and ledger" subtitle="Case payment summary for the selected account.">{receipt ? <><dl className="space-y-3 text-sm"><SummaryRow label="Receipt" value={receipt.id} /><SummaryRow label="Issued" value={new Date(receipt.issuedAt).toLocaleDateString()} /><SummaryRow label="Provider work" value={dollars(receipt.providerAmount, receipt.currency)} /><SummaryRow label="LUCID charge" value={dollars(receipt.platformAmount, receipt.currency)} /><SummaryRow label="Inspector charge" value={dollars(receipt.inspectorAmount, receipt.currency)} /><SummaryRow label="Total paid" value={dollars(receipt.totalAmount, receipt.currency)} /><SummaryRow label="Payment reference" value={receipt.paymentReference} /></dl><button type="button" onClick={downloadReceiptPdf} disabled={receiptPdfBusy} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover disabled:cursor-wait disabled:opacity-70"><ArrowDownToLine className="h-4 w-4" aria-hidden="true" />{receiptPdfBusy ? 'Creating PDF…' : 'Download A4 PDF'}</button></> : <p className="text-sm text-gray-600 dark:text-slate-400">A receipt is issued to each involved account after the case is completed. No receipt is available yet.</p>}<Link to="/lucid/transactions" className="mt-4 flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><CircleDollarSign className="h-4 w-4" aria-hidden="true" />Open financial history</Link></Panel>
           </aside>
         </div>
       </div>
@@ -220,11 +241,6 @@ const ManagedCaseDetailPage = () => {
 };
 
 const SummaryRow = ({ label: title, value }) => <div className="flex justify-between gap-4"><dt className="text-gray-500 dark:text-slate-400">{title}</dt><dd className="text-right font-medium text-gray-900 dark:text-slate-100">{value}</dd></div>;
-
-const receiptHtml = (receipt, serviceName, role) => {
-  const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
-  return `<!doctype html><html><head><meta charset="utf-8"><title>LUCID receipt ${escape(receipt.id)}</title><style>body{font:16px Arial,sans-serif;color:#172033;max-width:680px;margin:48px auto;padding:0 24px}header{border-bottom:2px solid #1d4ed8;padding-bottom:18px}h1{margin:0 0 8px}dl{margin:28px 0}dl div{display:flex;justify-content:space-between;border-bottom:1px solid #e5e7eb;padding:12px 0}.total{font-weight:bold;font-size:20px}small{color:#667085}</style></head><body><header><h1>LUCID service receipt</h1><small>${escape(serviceName)} · ${escape(receipt.id)}</small></header><p>Issued to: ${escape(role[0].toUpperCase()+role.slice(1))}<br>Issued: ${escape(new Date(receipt.issuedAt).toLocaleString())}</p><dl><div><dt>Provider work</dt><dd>${escape(dollars(receipt.providerAmount, receipt.currency))}</dd></div><div><dt>LUCID platform charge</dt><dd>${escape(dollars(receipt.platformAmount, receipt.currency))}</dd></div><div><dt>Inspector charge</dt><dd>${escape(dollars(receipt.inspectorAmount, receipt.currency))}</dd></div><div class="total"><dt>Total paid</dt><dd>${escape(dollars(receipt.totalAmount, receipt.currency))}</dd></div></dl><p>Payment reference: ${escape(receipt.paymentReference)}</p><small>This receipt represents a simulated Preview transaction.</small></body></html>`;
-};
 
 const Invoice = ({ bill, currency }) => (
   <dl className="space-y-3 text-sm"><SummaryRow label="Provider work" value={dollars(bill.providerAmount, currency)} /><SummaryRow label={`LUCID charge (${bill.commissionRate ?? 0}% placeholder)`} value={dollars(bill.commissionAmount, currency)} /><SummaryRow label={`Inspector charge (${bill.inspectorRate ?? 0}% placeholder)`} value={dollars(bill.inspectorAmount, currency)} /><div className="border-t border-gray-100 pt-3 dark:border-[#303a4c]"><SummaryRow label="Client total" value={dollars(bill.payableAmount, currency)} /></div>{Number(bill.clientPurchasedMaterialsAmount) > 0 && <p className="text-xs text-gray-500 dark:text-slate-400">Client-purchased materials ({dollars(bill.clientPurchasedMaterialsAmount, currency)}) are paid in person and excluded from this total.</p>}</dl>
