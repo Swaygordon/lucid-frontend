@@ -207,7 +207,7 @@ const withFallback = (element, Fallback) => (
 function Layout({ children }) {
   const location = useLocation();
   const { user } = useWorkflowMode();
-  const workspacePrefixes = ["/lucid/dashboard", "/lucid/cases", "/lucid/provider", "/lucid/messages", "/lucid/notifications", "/lucid/account", "/lucid/earnings", "/lucid/transactions", "/lucid/inspector", "/lucid/admin", "/lucid/staff/operations", "/lucid/preview", "/lucid/bookings"];
+  const workspacePrefixes = ["/lucid/dashboard", "/lucid/cases", "/lucid/provider", "/lucid/client", "/lucid/messages", "/lucid/notifications", "/lucid/account", "/lucid/earnings", "/lucid/transactions", "/lucid/inspector", "/lucid/admin", "/lucid/staff/operations", "/lucid/preview", "/lucid/bookings"];
   const isWorkspaceRoute = Boolean(user) && workspacePrefixes.some(prefix => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`));
   if (isWorkspaceRoute) return <WorkspaceShell>{children}</WorkspaceShell>;
 
