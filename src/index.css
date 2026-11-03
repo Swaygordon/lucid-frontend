@@ -117,3 +117,49 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
   background-color: transparent;
 }
+
+/* Voice note controls: custom range remains keyboard accessible while the
+   visible waveform communicates playback progress. */
+.voice-wave-range {
+  appearance: none;
+  background: transparent;
+}
+
+.voice-wave-range::-webkit-slider-runnable-track {
+  height: 100%;
+  background: transparent;
+}
+
+.voice-wave-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.voice-wave-range::-moz-range-track,
+.voice-wave-range::-moz-range-progress {
+  background: transparent;
+}
+
+.voice-wave-range::-moz-range-thumb {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+}
+
+.voice-recording-bar {
+  transform-origin: center;
+  animation: voice-wave-pulse 650ms ease-in-out infinite alternate;
+}
+
+@keyframes voice-wave-pulse {
+  from { transform: scaleY(.42); opacity: .65; }
+  to { transform: scaleY(1); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-recording-bar { animation: none; }
+}
