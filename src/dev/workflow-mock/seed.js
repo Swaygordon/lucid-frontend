@@ -80,7 +80,7 @@ export const createWorkflowPreviewSeed = () => {
     makeCase('LUCID-DEMO-1040', 'inspector_bypass_approved', {
       assignedInspectorId: '',
       inspectorWaived: true,
-      inspectorBypassConsent: { approvedAt: at(2), requestRevision: 1, scope: 'Repair the identified kitchen outlet fault.', category: 'Home Repairs & Maintenance', locationSummary: 'Osu, Accra' },
+      inspectionBypassConsent: { approvedAt: at(2), requestRevision: 1, scope: 'Inspect and repair intermittent power to the kitchen outlets.', category: 'Home Repairs & Maintenance', locationSummary: 'Osu, Accra' },
       confirmedScope: 'Repair the identified kitchen outlet fault.',
     }),
     makeCase('LUCID-DEMO-1041', 'inspector_bypass_pending', {

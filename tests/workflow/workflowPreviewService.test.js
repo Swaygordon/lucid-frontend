@@ -172,6 +172,16 @@ test('Admin may request one Client bypass consent when no Inspector is eligible,
   assert.equal(offered.data.status, 'offer_sent');
 });
 
+test('seeded Client-approved no-Inspector case can be offered to an eligible Provider', async () => {
+  const service = createMockWorkflowService({ storage: makeStorage(), seedData: createWorkflowPreviewSeed() });
+  const offered = await service.cases.apply('LUCID-DEMO-1040', {
+    role: 'admin', userId: 'demo-admin', action: 'offer_provider', payload: { providerId: 'demo-provider' },
+  });
+  assert.equal(offered.error, null);
+  assert.equal(offered.data.status, 'offer_sent');
+  assert.equal(offered.data.assignedProviderId, 'demo-provider');
+});
+
 test('Admin cannot request Inspector bypass while an eligible Inspector or usable report exists', async () => {
   const seedData = createSeed();
   seedData.cases = [{ ...seedData.cases[0], status: 'submitted', assignedInspectorId: '', inspection: null }];
