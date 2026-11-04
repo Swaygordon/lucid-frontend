@@ -129,18 +129,18 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
 
     case 'request_price_change': {
       if (next.status !== 'work_in_progress') return reject('WORK_NOT_IN_PROGRESS', 'A price change can only be requested during active work.');
+      if (next.pendingPriceChange) return reject('PRICE_CHANGE_ALREADY_PENDING', 'Wait for the Client to respond to the current added-work request.');
       if (!Number.isFinite(Number(payload.amount)) || Number(payload.amount) <= 0) return reject('INVALID_PRICE_CHANGE', 'Enter a valid revised price.');
       const reason = String(payload.reason || '').trim();
       const scope = String(payload.scope || '').trim();
       if (!scope) return reject('CHANGE_ORDER_SCOPE_REQUIRED', 'Describe the additional work before requesting approval.');
       if (!reason) return reject('PRICE_CHANGE_REASON_REQUIRED', 'Explain why the additional work is needed.');
       next.pendingPriceChange = { id: `${next.id}-change-${(next.changeOrders || []).length + 1}`, amount: Number(payload.amount), scope: scope.slice(0, 2000), reason: reason.slice(0, 1000), requestedAt: at, status: 'pending' };
-      next.status = 'price_change_pending';
       break;
     }
 
     case 'approve_price_change':
-      if (next.status !== 'price_change_pending' || !next.pendingPriceChange) return reject('NO_PENDING_PRICE_CHANGE', 'There is no price change awaiting approval.');
+      if (next.status !== 'work_in_progress' || !next.pendingPriceChange) return reject('NO_PENDING_PRICE_CHANGE', 'There is no added-work request awaiting approval.');
       {
         const approvedChange = { ...next.pendingPriceChange, approvedAt: at, approved: true, status: 'approved' };
         next.changeOrders = [...(next.changeOrders || []), approvedChange];
@@ -151,7 +151,7 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
       break;
 
     case 'reject_price_change':
-      if (next.status !== 'price_change_pending' || !next.pendingPriceChange) return reject('NO_PENDING_PRICE_CHANGE', 'There is no price change awaiting approval.');
+      if (next.status !== 'work_in_progress' || !next.pendingPriceChange) return reject('NO_PENDING_PRICE_CHANGE', 'There is no added-work request awaiting approval.');
       next.changeOrders = [...(next.changeOrders || []), { ...next.pendingPriceChange, approved: false, status: 'declined', declinedAt: at }];
       next.pendingPriceChange = null;
       next.status = 'work_in_progress';
@@ -159,7 +159,7 @@ export const applyWorkflowAction = (caseRecord, { role, action, payload = {}, at
       break;
 
     case 'submit_bill': {
-      if (next.status === 'price_change_pending' || next.pendingPriceChange) return reject('PRICE_CHANGE_APPROVAL_REQUIRED', 'Work and billing are paused until the Client approves or rejects the price change.');
+      if (next.status === 'price_change_pending' || next.pendingPriceChange) return reject('PRICE_CHANGE_APPROVAL_REQUIRED', 'Submit the final bill after the Client responds to the added-work request.');
       if (!['awaiting_provider_bill', 'bill_rejected'].includes(next.status)) return reject('WORK_NOT_COMPLETED', 'Mark the work complete before submitting the final bill.');
       const providerAmount = Number(payload.amount);
       if (!Number.isFinite(providerAmount) || providerAmount <= 0) return reject('INVALID_BILL_AMOUNT', 'Enter a final bill greater than zero.');

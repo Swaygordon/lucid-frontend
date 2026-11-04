@@ -131,7 +131,7 @@ export const createWorkflowPreviewSeed = () => {
       approvedWorkEstimate: { version: 1, amount: 600, scope: 'Inspect and repair the kitchen outlet circuit.', approvedAt: at(6), status: 'approved' }, approvedWorkAmount: 600,
       workEstimateHistory: [{ version: 1, amount: 600, scope: 'Inspect and repair the kitchen outlet circuit.', submittedAt: at(7), approvedAt: at(6), status: 'approved' }],
     }),
-    makeCase('LUCID-DEMO-1048', 'price_change_pending', {
+    makeCase('LUCID-DEMO-1048', 'work_in_progress', {
       assignedInspectorId: 'demo-inspector', assignedProviderId: 'demo-provider',
       providerAssignment: { providerName: 'Kwame Mensah', distanceKm: 5.1, assignedAt: at(6) },
       providerVisit: { scheduledAt: at(-48), notes: 'Sample Provider work window.', updatedAt: at(1) },

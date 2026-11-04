@@ -7,7 +7,7 @@ import { normalizeWorkflowRole } from '../../services/workflow/workflowRoles.js'
 const clone = value => JSON.parse(JSON.stringify(value));
 const MAX_PREVIEW_VOICE_NOTE_BYTES = 1024 * 1024;
 const resultError = (code, message) => ({ data: null, error: { code, message } });
-const actorKey = { client: 'demo-client', provider: 'demo-provider', inspector: 'demo-inspector' };
+const actorKey = { client: 'demo-client' };
 const normalizedText = value => String(value || '').trim().toLocaleLowerCase();
 const inspectorDistanceKm = (record, inspector) => {
   const caseLocation = normalizedText([record.city, record.locationSummary, record.region].join(' '));
@@ -36,8 +36,8 @@ const providerSupportsCase = (provider, record) => provider.payoutSetup !== fals
 
 const canAccessCase = (record, role, userId) => {
   if (role === 'admin') return true;
-  if (role === 'client') return record.clientRoleId === actorKey.client;
-  if (role === 'provider') return record.assignedProviderId === actorKey.provider;
+  if (role === 'client') return record.clientRoleId === userId;
+  if (role === 'provider') return record.assignedProviderId === userId;
   if (role === 'inspector') return record.assignedInspectorId === userId;
   return false;
 };
@@ -258,7 +258,7 @@ export const createMockWorkflowService = ({ storage = defaultStorage(), seedData
       submit_work_estimate: 'The Provider shared the work and estimate for your approval.',
       approve_work_estimate: 'The Client approved the work estimate. The Provider can begin the agreed work.',
       request_work_estimate_revision: 'The Client asked for a change or explanation to the estimate.',
-      request_price_change: 'The Provider requested approval for additional work. Work is paused until you respond.',
+      request_price_change: 'The Provider asked to do additional work. The original request can continue; the extra work will only be included if you approve it.',
       approve_price_change: 'The Client approved the additional work and cost.',
       reject_price_change: 'The Client declined the additional work. The Provider can continue only with the approved work.',
       complete_work: 'The Provider marked the work complete. Their final bill will be sent to you here.',

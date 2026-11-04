@@ -84,7 +84,10 @@ const AdminProviderAssignmentPanel = ({ person, cases, services, actor, onCancel
   const submit = async event => {
     event.preventDefault();
     if (!selected) return;
-    if (!window.confirm(`Send a Provider offer to ${person.name} for ${selected.record.id}? The Provider will receive the approved scope. This action is recorded in local Preview data.`)) return;
+    const scopeNotice = selected.record.inspectorWaived
+      ? 'The Provider will receive the Client-approved request and assess site conditions after accepting; no further Client form is needed.'
+      : 'The Provider will receive the approved work scope.';
+    if (!window.confirm(`Send a Provider offer to ${person.name} for ${selected.record.id}? ${scopeNotice} This action is recorded in local Preview data.`)) return;
     setBusy(true);
     setError('');
     const result = await services.cases.apply(selected.record.id, { role: actor.role, userId: actor.userId, action: 'offer_provider', payload: { providerId: person.id, distanceKm: selected.candidate.distanceKm, overrideReason } });

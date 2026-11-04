@@ -56,13 +56,20 @@ test('malformed preview data returns a recoverable error without deleting the st
 
 test('schema v8 preview data migrates to v9 without discarding saved cases', async () => {
   const seedData = createSeed();
-  const oldData = { ...seedData, version: 8, cases: [{ ...seedData.cases[0], status: 'work_in_progress' }] };
+  const oldData = { ...seedData, version: 8, cases: [
+    { ...seedData.cases[0], status: 'work_in_progress' },
+    { ...seedData.cases[0], id: 'CASE-ESTIMATE-OLD', status: 'work_estimate_pending', pendingWorkEstimate: { amount: 500 } },
+    { ...seedData.cases[0], id: 'CASE-CHANGE-OLD', status: 'price_change_pending', pendingPriceChange: { amount: 100 } },
+  ] };
   const storage = makeStorage({ 'lucid-workflow-preview-v8': JSON.stringify(oldData) });
   const service = createMockWorkflowService({ storage, seedData });
   const cases = await service.cases.listForRole({ role: 'provider', userId: 'demo-provider' });
   assert.equal(cases.error, null);
   assert.equal(cases.data.some(item => item.id === 'CASE-PREVIEW-1'), true);
-  assert.equal(JSON.parse(storage.raw(WORKFLOW_PREVIEW_STORAGE_KEY)).version, 9);
+  const migrated = JSON.parse(storage.raw(WORKFLOW_PREVIEW_STORAGE_KEY));
+  assert.equal(migrated.version, 9);
+  assert.equal(migrated.cases.find(item => item.id === 'CASE-ESTIMATE-OLD').status, 'accepted');
+  assert.equal(migrated.cases.find(item => item.id === 'CASE-CHANGE-OLD').status, 'work_in_progress');
 });
 
 test('Client profile setup requires no payment preference and removes legacy preference data', async () => {
@@ -123,6 +130,16 @@ test('wrong role cannot mutate a case or send into a private thread', async () =
   assert.equal(deniedMessage.error.code, 'NOT_AUTHORIZED');
   assert.equal(clientCase.data.status, 'offer_sent');
   assert.equal(messages.data.length, 1);
+});
+
+test('a different Client account cannot view or approve another Client case', async () => {
+  const seedData = createSeed();
+  seedData.cases[0] = { ...seedData.cases[0], status: 'inspector_bypass_pending', inspectorBypassRequest: { requestedAt: '2026-11-03T10:00:00.000Z', requestRevision: 1 } };
+  const service = createMockWorkflowService({ storage: makeStorage(), seedData });
+  const view = await service.cases.get('CASE-PREVIEW-1', { role: 'client', userId: 'another-client' });
+  const approve = await service.cases.apply('CASE-PREVIEW-1', { role: 'client', userId: 'another-client', action: 'approve_inspector_bypass' });
+  assert.equal(view.error.code, 'NOT_AUTHORIZED');
+  assert.equal(approve.error.code, 'NOT_AUTHORIZED');
 });
 
 test('client can submit a simulated request that appears in the shared case list', async () => {

@@ -34,10 +34,11 @@ test('Provider cannot start work before recording offer acceptance', () => {
   assert.equal(record.status, 'offer_sent');
 });
 
-test('a pending price change pauses bill submission until Client approval', () => {
+test('an unresolved added-work request prevents completion and bill submission without blocking original work status', () => {
   const record = baseCase({
-    status: 'price_change_pending',
+    status: 'work_in_progress',
     providerAcceptedAt: '2026-10-16T09:00:00.000Z',
+    workStartedAt: '2026-10-16T09:30:00.000Z',
     pendingPriceChange: { amount: 800, reason: 'Additional wiring required' },
   });
   const result = applyWorkflowAction(record, {
@@ -49,11 +50,14 @@ test('a pending price change pauses bill submission until Client approval', () =
 
   assert.equal(result.error.code, 'PRICE_CHANGE_APPROVAL_REQUIRED');
   assert.equal(result.caseRecord.providerBill, null);
+  const complete = applyWorkflowAction(record, { role: 'provider', action: 'complete_work', payload: {}, at: '2026-10-16T10:01:00.000Z' });
+  assert.equal(complete.error.code, 'PRICE_CHANGE_APPROVAL_REQUIRED');
+  assert.equal(complete.caseRecord.status, 'work_in_progress');
 });
 
 test('only the Client can approve a pending price change', () => {
   const record = baseCase({
-    status: 'price_change_pending',
+    status: 'work_in_progress',
     pendingPriceChange: { amount: 800, reason: 'Additional wiring required' },
   });
   const result = applyWorkflowAction(record, {
@@ -64,7 +68,7 @@ test('only the Client can approve a pending price change', () => {
   });
 
   assert.equal(result.error.code, 'ROLE_NOT_ALLOWED');
-  assert.equal(result.caseRecord.status, 'price_change_pending');
+  assert.equal(result.caseRecord.status, 'work_in_progress');
 });
 
 test('a Client reply returns a request awaiting information to the Admin queue', () => {

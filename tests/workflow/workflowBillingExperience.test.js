@@ -64,7 +64,7 @@ test('approved extra work is recorded while the final bill is not capped by an e
     payload: { amount: 120, scope: 'Replace damaged breaker', reason: 'The breaker is unsafe and must be replaced.' }, at: '2026-11-02T10:00:00.000Z',
   });
   assert.equal(proposal.error, null);
-  assert.equal(proposal.caseRecord.status, 'price_change_pending');
+  assert.equal(proposal.caseRecord.status, 'work_in_progress');
   assert.equal(proposal.caseRecord.pendingPriceChange.amount, 120);
 
   const approved = applyWorkflowAction(proposal.caseRecord, { role: 'client', action: 'approve_price_change', at: '2026-11-02T11:00:00.000Z' });

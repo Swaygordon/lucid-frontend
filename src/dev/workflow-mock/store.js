@@ -113,7 +113,13 @@ export const createPreviewStore = ({ storage, seedData, key = WORKFLOW_PREVIEW_S
             const addedSeedCases = seedData.cases.filter(record => !previousCaseIds.has(record.id));
             const addedSeedCaseIds = new Set(addedSeedCases.map(record => record.id));
             migrated.cases = [
-              ...previous.cases.map(record => ({ ...record, inspectionVisit: record.inspectionVisit || null, providerVisit: record.providerVisit || null })),
+              ...previous.cases.map(record => ({
+                ...record,
+                status: ({ work_estimate_pending: 'accepted', estimate_revision_requested: 'accepted', price_change_pending: 'work_in_progress' })[record.status] || record.status,
+                ...(record.status === 'work_estimate_pending' || record.status === 'estimate_revision_requested' ? { pendingWorkEstimate: null, approvedWorkEstimate: null, estimateRevisionRequest: null } : {}),
+                inspectionVisit: record.inspectionVisit || null,
+                providerVisit: record.providerVisit || null,
+              })),
               ...addedSeedCases,
             ];
             migrated.messages = [
