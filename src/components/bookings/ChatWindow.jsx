@@ -3,7 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../../services/supabaseClient.js';
 import { Avatar } from '../ui/Avatar.jsx';
 import { Send, ArrowLeft, Loader2, Paperclip, X, Mic, Square, Reply, Pencil, Trash2 } from 'lucide-react';
-import VoiceNotePlayer, { formatVoiceTime, RecordingWaveform } from './VoiceNotePlayer.jsx';
+import VoiceNotePlayer, { RecordingWaveform } from './VoiceNotePlayer.jsx';
+import { formatVoiceTime } from './voiceNoteUtils.js';
 import {
   getConversationMessages,
   sendMessage,
@@ -40,7 +41,7 @@ const ChatWindow = ({ conversation, currentUserId, onBack, onMessageSent, workfl
   const [sendError, setSendError] = useState('');
   const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [voiceDataUrl, setVoiceDataUrl] = useState('');
-  const [voicePreviewUrl, setVoicePreviewUrl] = useState('');
+  const [voiceObjectUrl, setVoiceObjectUrl] = useState('');
   const [recording, setRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [replyTarget, setReplyTarget] = useState(null);
@@ -89,7 +90,6 @@ const ChatWindow = ({ conversation, currentUserId, onBack, onMessageSent, workfl
  // Real-time subscription to new messages in this conversation
 useEffect(() => {
   if (conversation.workflowThread) {
-    if (conversation.preview) return undefined;
     const caseId = conversation.caseId || conversation.id;
     const channel = supabase.channel(`managed-thread:${caseId}:${currentUserId}`).on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'managed_case_messages', filter: `case_id=eq.${caseId}` }, async () => {
       const result = await workflowServices.messages.listMessages(caseId, { role: workflowRole, userId: currentUserId });
@@ -120,7 +120,7 @@ useEffect(() => {
     .subscribe();
 
   return () => { supabase.removeChannel(channel); };
-}, [conversation.id, conversation.caseId, conversation.preview, currentUserId, conversation.workflowThread, workflowServices, workflowRole]);
+}, [conversation.id, conversation.caseId, currentUserId, conversation.workflowThread, workflowServices, workflowRole]);
 
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 1000);
@@ -130,8 +130,8 @@ useEffect(() => {
   useEffect(() => () => {
     if (recordingTimerRef.current) window.clearInterval(recordingTimerRef.current);
     recordingStreamRef.current?.getTracks().forEach(track => track.stop());
-    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
-  }, [voicePreviewUrl]);
+    if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
+  }, [voiceObjectUrl]);
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -166,8 +166,8 @@ useEffect(() => {
         setEditingMessageId('');
         setSelectedAttachment(null);
         setVoiceDataUrl('');
-        if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
-        setVoicePreviewUrl('');
+        if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
+        setVoiceObjectUrl('');
         if (attachmentInputRef.current) attachmentInputRef.current.value = '';
         onMessageSent?.();
         return;
@@ -202,8 +202,8 @@ useEffect(() => {
       return;
     }
     setSendError('');
-    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
-    setVoicePreviewUrl('');
+    if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
+    setVoiceObjectUrl('');
     setVoiceDataUrl('');
     setSelectedAttachment(file);
   };
@@ -216,8 +216,8 @@ useEffect(() => {
     }
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
-      setVoicePreviewUrl('');
+      if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
+      setVoiceObjectUrl('');
       setVoiceDataUrl('');
       setSelectedAttachment(null);
       if (attachmentInputRef.current) attachmentInputRef.current.value = '';
@@ -242,9 +242,9 @@ useEffect(() => {
         if (blob.size > MAX_VOICE_NOTE_BYTES) { setSendError('This voice note is over 1 MB. Record a shorter note and try again.'); return; }
         try {
           const dataUrl = await blobToDataUrl(blob);
-          if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
+          if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
           setVoiceDataUrl(dataUrl);
-          setVoicePreviewUrl(URL.createObjectURL(blob));
+          setVoiceObjectUrl(URL.createObjectURL(blob));
           setSelectedAttachment({ name: 'Voice note', type: blob.type || 'audio/webm', size: blob.size, isVoiceNote: true });
         } catch (error) { setSendError(error.message || 'Voice note could not be prepared.'); }
       };
@@ -287,8 +287,8 @@ useEffect(() => {
     setReplyTarget(null);
     setSelectedAttachment(null);
     setVoiceDataUrl('');
-    if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl);
-    setVoicePreviewUrl('');
+    if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
+    setVoiceObjectUrl('');
     setEditingMessageId(message.id);
     setNewMessage(message.message || '');
     inputRef.current?.focus();
@@ -355,7 +355,6 @@ useEffect(() => {
           {conversation.workflowThread && <p className="truncate text-xs text-gray-500 dark:text-slate-400">{conversation.participantLabel}</p>}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {conversation.preview && <span data-preview-disclosure className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Preview</span>}
           {onReturnToCase && <button type="button" onClick={onReturnToCase} className="rounded-lg border border-gray-200 px-2.5 py-2 text-[11px] font-semibold text-gray-700 hover:bg-gray-50 dark:border-[#394458] dark:text-slate-200 dark:hover:bg-[#252b3b] sm:px-3 sm:text-xs">Back to request</button>}
         </div>
       </div>
@@ -447,7 +446,7 @@ useEffect(() => {
           <RecordingWaveform/>
           <button type="button" onClick={handleStopRecording} aria-label="Finish recording" title="Finish recording" className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-sm transition hover:bg-blue-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"><Square size={16} fill="currentColor"/></button>
         </div> : <>
-        {selectedAttachment && <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:border-[#394458] dark:bg-[#252b3b] dark:text-slate-200">{selectedAttachment.isVoiceNote && voicePreviewUrl ? <><span className="font-semibold">Preview</span><VoiceNotePlayer src={voicePreviewUrl}/></> : <><Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden="true"/><span className="min-w-0 flex-1 truncate">{selectedAttachment.name}</span><span>{Math.max(1, Math.round(selectedAttachment.size / 1024))} KB</span></>}<button type="button" onClick={() => { setSelectedAttachment(null); setVoiceDataUrl(''); if (voicePreviewUrl) URL.revokeObjectURL(voicePreviewUrl); setVoicePreviewUrl(''); if (attachmentInputRef.current) attachmentInputRef.current.value = ''; }} aria-label="Remove attachment" className="rounded p-1 hover:bg-gray-200 dark:hover:bg-[#394458]"><X className="h-4 w-4"/></button></div>}
+        {selectedAttachment && <div className="flex flex-wrap items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-700 dark:border-[#394458] dark:bg-[#252b3b] dark:text-slate-200">{selectedAttachment.isVoiceNote && voiceObjectUrl ? <><span className="font-semibold">Recording</span><VoiceNotePlayer src={voiceObjectUrl}/></> : <><Paperclip className="h-3.5 w-3.5 shrink-0" aria-hidden="true"/><span className="min-w-0 flex-1 truncate">{selectedAttachment.name}</span><span>{Math.max(1, Math.round(selectedAttachment.size / 1024))} KB</span></>}<button type="button" onClick={() => { setSelectedAttachment(null); setVoiceDataUrl(''); if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl); setVoiceObjectUrl(''); if (attachmentInputRef.current) attachmentInputRef.current.value = ''; }} aria-label="Remove attachment" className="rounded p-1 hover:bg-gray-200 dark:hover:bg-[#394458]"><X className="h-4 w-4"/></button></div>}
         <div className="flex items-center gap-1.5 sm:gap-2">
           <input ref={inputRef} type="text" value={newMessage} onChange={event => setNewMessage(event.target.value)} placeholder={editingMessageId ? 'Edit your message...' : 'Type a message...'} className="min-w-0 flex-1 rounded-full bg-gray-100 px-4 py-2.5 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-[#252b3b] dark:text-slate-100" disabled={sending || recording}/>
           <button type="button" onClick={() => attachmentInputRef.current?.click()} disabled={sending || recording} className="rounded-full p-2.5 text-gray-600 hover:bg-gray-100 disabled:opacity-50 dark:text-slate-300 dark:hover:bg-[#252b3b]" aria-label="Attach a file"><Paperclip className="h-5 w-5"/></button>
@@ -457,7 +456,6 @@ useEffect(() => {
         </div>
         </>}
       </form>}
-      {!archived && conversation.preview && <p data-preview-disclosure className="border-t border-gray-100 bg-white px-4 pb-2 text-[10px] text-gray-500 dark:border-[#1e293b] dark:bg-[#1a1f2e] dark:text-slate-500">Voice notes up to 1 MB are stored locally in this Preview. Other attachments save the file name and size only.</p>}
     </div>
   );
 };

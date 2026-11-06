@@ -1,84 +1,94 @@
-// @backend-handoff-delete Entire local identity/session implementation; preserve the hook shape only if useful to the new auth provider.
+// Auth boundary: Supabase owns identity and role lookup. Authorization still belongs in RLS/RPCs.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { supabase } from '../services/supabaseClient.js';
 import { getWorkflowServices } from '../services/workflow/workflowService.js';
+import { normalizeWorkflowRole } from '../services/workflow/workflowRoles.js';
 
-const AUTH_KEY = 'lucid:preview-session';
-const ROLE_KEY = 'lucid:workflow-preview-role';
-const INSPECTOR_KEY = 'lucid:workflow-preview-inspector';
-const PREVIEW_UI_KEY = 'lucid:preview-ui-visible';
-const ROLES = ['client', 'provider', 'inspector', 'admin'];
 const Context = createContext(null);
+const publicRoles = new Set(['client', 'provider', 'inspector']);
 
-const readSession = () => {
-  try { return JSON.parse(window.localStorage.getItem(AUTH_KEY) || 'null'); } catch { return null; }
-};
-const readRole = () => {
-  try { const role = window.localStorage.getItem(ROLE_KEY); return ROLES.includes(role) ? role : null; } catch { return null; }
-};
-const readPreviewUiVisible = () => {
-  try { return window.localStorage.getItem(PREVIEW_UI_KEY) !== 'false'; } catch { return true; }
-};
-const idForEmail = email => `preview-${String(email).trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+async function resolvePrincipal(authUser) {
+  const [profileResult, membershipResult] = await Promise.all([
+    supabase.from('profiles').select('id, role, first_name, last_name, avatar_url').eq('id', authUser.id).maybeSingle(),
+    supabase.from('lucid_staff_memberships').select('role').eq('user_id', authUser.id).eq('is_active', true),
+  ]);
+  if (profileResult.error) return { error: profileResult.error };
+  if (membershipResult.error) return { error: membershipResult.error };
+
+  const role = normalizeWorkflowRole(profileResult.data?.role)
+    || normalizeWorkflowRole(membershipResult.data?.[0]?.role);
+  if (!['client', 'provider', 'inspector', 'admin'].includes(role)) {
+    return { error: { message: 'This account does not have an active LUCID role. Contact LUCID support.' } };
+  }
+  const fullName = [profileResult.data?.first_name, profileResult.data?.last_name].filter(Boolean).join(' ')
+    || authUser.user_metadata?.full_name
+    || '';
+  return { data: { id: authUser.id, email: authUser.email || '', role, name: fullName, avatarUrl: profileResult.data?.avatar_url || '' } };
+}
 
 export const WorkflowModeProvider = ({ children }) => {
-  const [user, setUser] = useState(readSession);
-  const [accountRole, setAccountRole] = useState(() => readSession()?.role || null);
-  const [role, setRole] = useState(readRole);
-  const [previewUiVisible, setPreviewUiVisible] = useState(readPreviewUiVisible);
+  const [user, setUser] = useState(null);
+  const [role, setRole] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
+  const applySession = useCallback(async session => {
+    if (!session?.user) { setUser(null); setRole(null); return; }
+    const principal = await resolvePrincipal(session.user);
+    if (principal.error) { setUser(null); setRole(null); return; }
+    setUser(principal.data);
+    setRole(principal.data.role);
+  }, []);
+
   useEffect(() => {
-    document.documentElement.classList.toggle('preview-ui-hidden', !previewUiVisible);
-    return () => document.documentElement.classList.remove('preview-ui-hidden');
-  }, [previewUiVisible]);
-  const [previewInspectorId, setPreviewInspectorIdState] = useState(() => {
-    try { return window.localStorage.getItem(INSPECTOR_KEY) || 'demo-inspector'; } catch { return 'demo-inspector'; }
-  });
-
-  const signIn = useCallback(({ email, role: selectedRole }) => {
-    const normalizedEmail = String(email || '').trim().toLowerCase();
-    if (!normalizedEmail || !ROLES.includes(selectedRole)) return { error: 'Enter an email and choose one of the four Preview roles.' };
-    const nextUser = { id: idForEmail(normalizedEmail), email: normalizedEmail, role: selectedRole };
-    window.localStorage.setItem(AUTH_KEY, JSON.stringify(nextUser));
-    window.localStorage.setItem(ROLE_KEY, selectedRole);
-    setUser(nextUser); setAccountRole(selectedRole); setRole(selectedRole);
-    return { data: nextUser, error: null };
-  }, []);
-
-  const signUp = useCallback(({ email, role: selectedRole, name }) => {
-    const result = signIn({ email, role: selectedRole });
-    if (result.error) return result;
-    const nextUser = { ...result.data, name: String(name || '').trim() };
-    window.localStorage.setItem(AUTH_KEY, JSON.stringify(nextUser));
-    setUser(nextUser);
-    return { data: nextUser, error: null };
-  }, [signIn]);
-
-  const signOut = useCallback(() => {
-    window.localStorage.removeItem(AUTH_KEY); window.localStorage.removeItem(ROLE_KEY); window.localStorage.removeItem(INSPECTOR_KEY);
-    setUser(null); setAccountRole(null); setRole(null); setPreviewInspectorIdState('demo-inspector');
-  }, []);
-  const setPreviewRole = useCallback(nextRole => {
-    if (!ROLES.includes(nextRole)) return false;
-    window.localStorage.setItem(ROLE_KEY, nextRole); setRole(nextRole); return true;
-  }, []);
-  const setPreviewInspector = useCallback(nextId => {
-    if (!String(nextId || '').startsWith('demo-inspector')) return false;
-    window.localStorage.setItem(INSPECTOR_KEY, nextId); setPreviewInspectorIdState(nextId); return true;
-  }, []);
-  const togglePreviewUi = useCallback(() => {
-    setPreviewUiVisible(current => {
-      const next = !current;
-      window.localStorage.setItem(PREVIEW_UI_KEY, String(next));
-      return next;
+    let active = true;
+    supabase.auth.getSession().then(async ({ data, error }) => {
+      if (error) console.error('Could not restore the Supabase session.', error);
+      if (active) await applySession(data?.session || null);
+      if (active) setAuthLoading(false);
+    }).catch(error => {
+      console.error('Could not restore the Supabase session.', error);
+      if (active) { setUser(null); setRole(null); setAuthLoading(false); }
     });
-  }, []);
-  const resetPreviewData = useCallback(async () => {
-    if (!user) return { data: null, error: { code: 'PREVIEW_SIGNIN_REQUIRED', message: 'Sign in to reset Preview data.' } };
-    const result = await getWorkflowServices({ mode: 'preview' }).reset();
-    if (!result.error) window.dispatchEvent(new Event('lucid:workflow-preview-reset'));
-    return result;
-  }, [user]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (active) void applySession(session);
+    });
+    return () => { active = false; subscription?.unsubscribe(); };
+  }, [applySession]);
 
-  const value = useMemo(() => ({ mode: 'preview', user, role, accountRole, previewRole: role, canEnablePreview: true, previewInspectorId, previewUiVisible, togglePreviewUi, enablePreview: () => true, setPreviewRole, setPreviewInspectorId: setPreviewInspector, disablePreview: () => {}, resetPreviewData, signIn, signUp, signOut }), [user, role, accountRole, previewInspectorId, previewUiVisible, togglePreviewUi, setPreviewRole, setPreviewInspector, resetPreviewData, signIn, signUp, signOut]);
+  const signIn = useCallback(async ({ email, password }) => {
+    const result = await supabase.auth.signInWithPassword({ email: String(email || '').trim(), password: String(password || '') });
+    if (result.error) return { error: result.error.message };
+    const principal = await resolvePrincipal(result.data.user);
+    if (principal.error) {
+      await supabase.auth.signOut();
+      return { error: principal.error.message || 'Your account role could not be loaded.' };
+    }
+    setUser(principal.data); setRole(principal.data.role);
+    return { data: principal.data, error: null };
+  }, []);
+
+  const signUp = useCallback(async ({ email, password, role: requestedRole, name }) => {
+    if (!publicRoles.has(requestedRole)) return { error: 'Choose Client, Service provider, or Inspector. Admin access is provisioned by LUCID IT.' };
+    const result = await supabase.auth.signUp({
+      email: String(email || '').trim(),
+      password: String(password || ''),
+      options: { data: { signup_role: requestedRole, full_name: String(name || '').trim() } },
+    });
+    if (result.error) return { error: result.error.message };
+    if (!result.data.session) return { data: { confirmationRequired: true, email: result.data.user?.email || email }, error: null };
+    const principal = await resolvePrincipal(result.data.user);
+    if (principal.error) return { error: 'Your account was created, but its role profile is not ready yet. Confirm your email and contact support if the problem continues.' };
+    setUser(principal.data); setRole(principal.data.role);
+    return { data: principal.data, error: null };
+  }, []);
+
+  const signOut = useCallback(async () => {
+    const result = await supabase.auth.signOut();
+    setUser(null); setRole(null);
+    return result;
+  }, []);
+
+  const value = useMemo(() => ({ mode: 'live', user, role, accountRole: role, authLoading, signIn, signUp, signOut }), [user, role, authLoading, signIn, signUp, signOut]);
   return <Context.Provider value={value}>{children}</Context.Provider>;
 };
 
@@ -87,12 +97,13 @@ export const useWorkflowMode = () => {
   if (!context) throw new Error('WorkflowModeProvider is missing from the app tree.');
   return context;
 };
+
 export const useWorkflowServices = () => {
   const { user, role } = useWorkflowMode();
-  return useMemo(() => getWorkflowServices({ mode: 'preview', user: user ? { id: user.id, role } : null }), [user, role]);
+  return useMemo(() => getWorkflowServices({ mode: 'live', user: user ? { id: user.id, role } : null }), [user, role]);
 };
+
 export const useWorkflowActor = () => {
-  const { mode, user, role, previewInspectorId } = useWorkflowMode();
-  const userId = role === 'client' ? 'demo-client' : role === 'provider' ? 'demo-provider' : role === 'admin' ? 'demo-admin' : role === 'inspector' ? previewInspectorId : user?.id || null;
-  return { mode, role, userId, isAuthenticated: Boolean(user) };
+  const { user, role } = useWorkflowMode();
+  return { mode: 'live', role, userId: user?.id || null, isAuthenticated: Boolean(user) };
 };

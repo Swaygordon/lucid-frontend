@@ -3,18 +3,19 @@ import { normalizeWorkflowRole } from './workflowRoles.js';
 
 const unsupported = feature => ({
   data: null,
-  error: { code: 'LIVE_FEATURE_NOT_AVAILABLE', message: `Live ${feature} is not connected yet. Enable Preview mode to walk through the simulated workflow.` },
+  error: { code: 'BACKEND_OPERATION_NOT_IMPLEMENTED', message: `${feature} is not connected to Supabase yet.` },
 });
 
 const normalizeRole = normalizeWorkflowRole;
 
 export const createLiveWorkflowService = () => {
   const cases = {
+    async create() { return unsupported('Service request submission'); },
     async listForRole({ role, userId, filters = {} }) {
       const normalized = normalizeRole(role);
       let query = supabase
         .from('managed_service_cases')
-        .select('id, service_name, description, status, budget_min, budget_max, currency, preferred_date, preferred_time, created_at, client_id')
+        .select('id, service_name, description, status, suggested_range_min, suggested_range_max, currency, preferred_date, preferred_time, created_at, client_id')
         .neq('status', 'draft')
         .order('created_at', { ascending: false });
 
@@ -47,7 +48,7 @@ export const createLiveWorkflowService = () => {
         if (assignmentError) return { data: null, error: assignmentError };
         if (!assignments?.length) return { data: null, error: { code: 'NOT_AUTHORIZED', message: 'This case is not assigned to this Inspector.' } };
       }
-      let query = supabase.from('managed_service_cases').select('id, service_name, description, status, budget_min, budget_max, currency, preferred_date, preferred_time, created_at').eq('id', caseId);
+      let query = supabase.from('managed_service_cases').select('id, service_name, description, status, suggested_range_min, suggested_range_max, currency, preferred_date, preferred_time, created_at').eq('id', caseId);
       if (normalized === 'client') query = query.eq('client_id', userId);
       const { data, error } = await query.single();
       return { data, error };
@@ -55,6 +56,9 @@ export const createLiveWorkflowService = () => {
     async apply() {
       return unsupported('workflow actions');
     },
+    async listInspectorPrincipals() { return unsupported('Inspector assignments'); },
+    async searchEligible() { return unsupported('Inspector search and assignment'); },
+    async searchProviderCandidates() { return unsupported('Provider search and assignment'); },
   };
 
   const messages = {
@@ -79,7 +83,6 @@ export const createLiveWorkflowService = () => {
           lastMessage: null,
           lastMessageAt: record.created_at,
           unreadCount: 0,
-          preview: false,
           status: record.status,
         })),
         error: null,
@@ -120,14 +123,12 @@ export const createLiveWorkflowService = () => {
       });
       return { data: error ? null : { sent: true }, error };
     },
+    async editMessage() { return unsupported('Message editing history'); },
   };
 
   const finance = {
     async listEntries() {
       return unsupported('finance history');
-    },
-    async simulatePayment() {
-      return unsupported('payment');
     },
     async decideRefund() {
       return unsupported('refund decisions');
@@ -144,6 +145,10 @@ export const createLiveWorkflowService = () => {
     async requestWithdrawal() {
       return unsupported('withdrawals');
     },
+    async createPaymentCheckout() { return unsupported('Secure payment checkout'); },
+    async createPayoutOnboardingLink() { return unsupported('Secure payout onboarding'); },
+    async getPayoutStatus() { return unsupported('Payout account status'); },
+    async getEarningsSummary() { return unsupported('Earnings summary'); },
   };
 
   const notifications = {
@@ -153,6 +158,39 @@ export const createLiveWorkflowService = () => {
     async markRead() {
       return unsupported('workflow notification updates');
     },
+    async markAllRead() { return unsupported('notification updates'); },
+    async getPreferences() { return unsupported('notification preferences'); },
+    async savePreferences() { return unsupported('notification preferences'); },
+    async listConsentHistory() { return unsupported('notification consent history'); },
+  };
+
+  const assignments = {
+    async listInspectorPrincipals() { return unsupported('Inspector assignments'); },
+    async searchEligible() { return unsupported('Inspector search'); },
+    async searchProviderCandidates() { return unsupported('Provider search'); },
+  };
+
+  const receipts = {
+    async listForRole() { return unsupported('receipts'); },
+  };
+
+  const credentials = {
+    async listTypes() { return unsupported('credential type lookup'); },
+    async uploadEvidence() { return unsupported('secure credential evidence uploads'); },
+    async createEvidenceLink() { return unsupported('private credential evidence access'); },
+  };
+
+  const operations = {
+    async listDirectory() { return unsupported('account directory'); },
+    async reviewCredential() { return unsupported('credential review'); },
+    async listPolicyActions() { return unsupported('policy history'); },
+    async applyAccountPolicy() { return unsupported('account policy actions'); },
+    async submitAccountAppeal() { return unsupported('account appeals'); },
+    async listAccountAppeals() { return unsupported('appeal review'); },
+    async listMyAccountAppeals() { return unsupported('account appeals'); },
+    async decideAccountAppeal() { return unsupported('appeal decisions'); },
+    async listReviewFlags() { return unsupported('review moderation'); },
+    async decideReviewFlag() { return unsupported('review moderation'); },
   };
 
   const profiles = {
@@ -161,7 +199,7 @@ export const createLiveWorkflowService = () => {
       const normalized = normalizeRole(role);
       if (normalized === 'inspector' || normalized === 'admin') {
         const [profileResult, membershipResult] = await Promise.all([
-          supabase.from('profiles').select('id, role, first_name, last_name, avatar_url').eq('id', userId).maybeSingle(),
+          supabase.from('profiles').select('id, role, first_name, last_name, avatar_url, profile_complete').eq('id', userId).maybeSingle(),
           supabase.from('lucid_staff_memberships').select('role').eq('user_id', userId).eq('is_active', true),
         ]);
         if (profileResult.error) return { data: null, error: profileResult.error };
@@ -169,14 +207,30 @@ export const createLiveWorkflowService = () => {
         const profileMatches = normalizeRole(profileResult.data?.role) === normalized;
         const membershipMatches = (membershipResult.data || []).some(item => normalizeRole(item.role) === normalized);
         if (!profileMatches && !membershipMatches) return { data: null, error: { code: 'ROLE_MISMATCH', message: 'The signed-in account does not have this staff role.' } };
-        return { data: { ...(profileResult.data || {}), id: userId, role: normalized, editable: false, preview: false }, error: null };
+        return { data: { ...(profileResult.data || {}), id: userId, role: normalized, editable: normalized === 'inspector', profileComplete: Boolean(profileResult.data?.profile_complete) }, error: null };
       }
-      const { data, error } = await supabase.from('profiles').select('id, role, first_name, last_name, avatar_url').eq('id', userId).single();
+      const { data, error } = await supabase.from('profiles').select('id, role, first_name, last_name, avatar_url, profile_complete').eq('id', userId).single();
       if (error) return { data: null, error };
       if (normalizeRole(data.role) !== normalized) return { data: null, error: { code: 'ROLE_MISMATCH', message: 'The signed-in account does not match this profile role.' } };
-      return { data, error: null };
+      return { data: { ...data, editable: true, profileComplete: Boolean(data.profile_complete) }, error: null };
     },
+    async updateAccountSetup() { return unsupported('role profile updates'); },
+    async updateInspectorWorkProfile() { return unsupported('Inspector profile updates'); },
+    async updatePayoutOnboardingState() { return unsupported('payout onboarding state changes'); },
+    async listMyPrivacyRequests() { return unsupported('privacy requests'); },
+    async submitPrivacyRequest() { return unsupported('privacy requests'); },
+    async replyToReview() { return unsupported('Provider review responses'); },
+    async flagReview() { return unsupported('review reports'); },
   };
 
-  return { cases, messages, finance, notifications, profiles };
+  const extendedOperations = {
+    ...operations,
+    async listReviewFlags() { return unsupported('review moderation'); },
+  };
+
+  const publicReviews = {
+    async listForProvider() { return unsupported('public Provider reviews'); },
+  };
+
+  return { cases, assignments, messages, finance, notifications, receipts, profiles, credentials, operations: extendedOperations, reviews: publicReviews };
 };

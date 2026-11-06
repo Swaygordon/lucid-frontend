@@ -1,17 +1,19 @@
-// @backend-handoff-delete Preview request flow and local-data disclosure; replace storage/actions with backend API while retaining approved form UI.
-import React, { useMemo, useState } from 'react';
+// Backend contract: create the request and private contact/location details atomically through a validated service function.
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2, ClipboardList, MapPin, ShieldCheck } from 'lucide-react';
 import { ALL_CATEGORIES } from '../../data/catalog/categories.js';
+import { CONSTRUCTION_WORK_TYPES, validateLaunchServiceRequest } from '../../data/catalog/launchServices.js';
 import { GHANA_LOCATIONS } from '../../contexts/LocationContext.jsx';
 import { useNotification } from '../../contexts/NotificationContext.jsx';
 import { Input } from '../../components/ui';
-import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
+import { useWorkflowActor, useWorkflowMode, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
 
 const INITIAL_FORM = {
   description: '', urgency: 'normal', preferredDate: '', preferredTime: '', alternateDate: '', alternateTime: '',
-  region: '', city: '', area: '', streetAddress: '', landmark: '', postalCode: '',
+  region: '', city: '', area: '', streetAddress: '', landmark: '', postalCode: '', accessNotes: '',
   contactName: '', contactPhone: '', contactEmail: '', contactPreference: 'phone',
+  constructionWorkTypeId: '', preferVerifiedCredential: false,
   budgetMin: '', budgetMax: '', additionalNotes: '',
 };
 
@@ -36,12 +38,31 @@ const ManagedServiceRequest = () => {
   const { category: categorySlug, service: serviceSlug } = useParams();
   const { showNotification } = useNotification();
   const actor = useWorkflowActor();
+  const { user } = useWorkflowMode();
   const workflowServices = useWorkflowServices();
   const [form, setForm] = useState(INITIAL_FORM);
   const [step, setStep] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [submittedCaseId, setSubmittedCaseId] = useState('');
+  const [savedLocations, setSavedLocations] = useState([]);
+  const [selectedSavedLocation, setSelectedSavedLocation] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    workflowServices.profiles.getForRole({ role: actor.role, userId: actor.userId }).then(result => {
+      if (!active || result.error) return;
+      const locations = result.data?.serviceLocations || [];
+      setSavedLocations(locations);
+      setForm(current => ({ ...current, contactName: result.data?.fullName || current.contactName, contactPhone: result.data?.phone || current.contactPhone, contactEmail: user?.email || current.contactEmail }));
+      const defaultLocation = locations.find(item => item.isDefault);
+      if (defaultLocation) {
+        setSelectedSavedLocation(defaultLocation.id);
+        setForm(current => ({ ...current, region: defaultLocation.region, city: defaultLocation.city, area: defaultLocation.area || '', streetAddress: defaultLocation.address || '', accessNotes: defaultLocation.accessNotes || '' }));
+      }
+    }).catch(() => { /* A Client can continue with a manually entered location if their profile is unavailable. */ });
+    return () => { active = false; };
+  }, [workflowServices, actor.role, actor.userId, user?.email]);
 
   const selectedService = useMemo(() => {
     const category = ALL_CATEGORIES.find(item => item.slug === categorySlug);
@@ -49,20 +70,25 @@ const ManagedServiceRequest = () => {
     return category && service ? { category, service } : null;
   }, [categorySlug, serviceSlug]);
   const selectedRegion = GHANA_LOCATIONS.find(item => item.region === form.region);
+  const selectedConstructionWorkType = CONSTRUCTION_WORK_TYPES.find(item => item.id === form.constructionWorkTypeId);
 
   const handleChange = event => {
     const { name, value } = event.target;
     setForm(current => ({ ...current, [name]: value }));
+    if (['region', 'city', 'area', 'streetAddress', 'accessNotes'].includes(name)) setSelectedSavedLocation('');
     setError('');
   };
 
   const handleRegionChange = event => {
     setForm(current => ({ ...current, region: event.target.value, area: '' }));
+    setSelectedSavedLocation('');
     setError('');
   };
 
   const validateStep = currentStep => {
     if (currentStep === 0) {
+      const serviceCheck = validateLaunchServiceRequest({ serviceId: selectedService?.service.id, constructionWorkTypeId: form.constructionWorkTypeId, preferVerifiedCredential: form.preferVerifiedCredential });
+      if (!serviceCheck.valid) return serviceCheck.error || 'Choose a valid service and work type.';
       if (!form.description.trim()) return 'Describe the issue so LUCID can review your request.';
       if (form.description.trim().length < 10) return 'Add a little more detail about the work you need.';
       const hasMinimum = form.budgetMin.trim() !== '';
@@ -112,8 +138,15 @@ const ManagedServiceRequest = () => {
     setError('');
     try {
       const result = await workflowServices.cases.create({
+        serviceId: selectedService.service.id,
+        serviceSlug: selectedService.service.slug,
+        constructionWorkTypeId: selectedConstructionWorkType?.id || null,
+        constructionWorkType: selectedConstructionWorkType?.label || null,
+        preferVerifiedCredential: form.preferVerifiedCredential,
         service: selectedService.service.name,
+        serviceNameSnapshot: selectedService.service.name,
         category: selectedService.category.name,
+        categoryNameSnapshot: selectedService.category.name,
         scope: form.description.trim(),
         description: form.description.trim(),
         urgency: form.urgency,
@@ -127,6 +160,8 @@ const ManagedServiceRequest = () => {
           ? { min: Number(form.budgetMin), max: Number(form.budgetMax), currency: 'GHS', binding: false }
           : null,
         locationSummary: [form.city.trim(), form.region].filter(Boolean).join(', '),
+        serviceLocation: { area: form.area, address: form.streetAddress.trim(), landmark: form.landmark.trim(), postalCode: form.postalCode.trim(), accessNotes: form.accessNotes?.trim() || '' },
+        requestContact: { name: form.contactName.trim(), phone: form.contactPhone.trim(), email: form.contactEmail.trim(), preference: form.contactPreference },
       }, { role: actor.role, userId: actor.userId });
       if (result.error) throw result.error;
       const caseId = result.data?.id;
@@ -135,7 +170,7 @@ const ManagedServiceRequest = () => {
       showNotification('Your request has been sent to LUCID.', 'success');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (submitError) {
-      console.error('Preview service request could not be submitted:', submitError);
+      console.error('Service request could not be submitted:', submitError);
       setError(submitError.message || 'We could not submit your request. Your details are still here; please try again.');
     } finally {
       setLoading(false);
@@ -148,7 +183,7 @@ const ManagedServiceRequest = () => {
         <div className="mx-auto max-w-xl rounded-2xl bg-white p-8 text-center shadow-sm dark:bg-[#1a1f2e]">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Service not found</h1>
           <p className="mt-2 text-gray-600 dark:text-slate-400">Choose a service from the catalog to start a request.</p>
-          <Link className="mt-6 inline-block font-semibold text-primary" to="/lucid/services">Browse services</Link>
+          <Link className="mt-6 inline-block font-semibold text-primary" to="/lucid/services">arowse services</Link>
         </div>
       </main>
     );
@@ -166,9 +201,8 @@ const ManagedServiceRequest = () => {
           </div>
           <div className="mt-7 rounded-xl bg-gray-50 p-4 text-sm leading-relaxed text-gray-700 dark:bg-[#252b3b] dark:text-slate-300">
             <p><strong>What happens next:</strong> LUCID reviews the details and will message you if clarification is needed. No Provider has been assigned. You can cancel without a fee before a Provider accepts an assignment.</p>
-            <p className="mt-3">Your budget is an estimate, not a fixed quote. You will see the final itemized amount before deciding whether to pay.</p>
+            <p className="mt-3">This optional range is only guidance and does not set the Provider's bill. You will see the Provider's final bill after the work is ready, before deciding whether to pay.</p>
           </div>
-          {actor.mode === 'preview' && <p data-preview-disclosure className="mt-4 text-xs leading-relaxed text-amber-900 dark:text-amber-100">This is a simulated Preview request. Its broad service area and workflow status are stored locally; the exact address and contact details shown in your form were discarded.</p>}
           <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-center">
             <Link className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 px-5 py-2.5 text-sm font-semibold text-gray-800 dark:border-[#394458] dark:text-slate-100" to="/lucid/cases">View my requests</Link>
             <Link className="inline-flex min-h-11 items-center justify-center rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white" to={`/lucid/cases/${submittedCaseId}`}>Open this request</Link>
@@ -192,7 +226,7 @@ const ManagedServiceRequest = () => {
         </nav>
 
         <header className="mb-6">
-          <Link to={`/lucid/services/${categorySlug}/${serviceSlug}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ArrowLeft size={16} aria-hidden="true" /> Back to {selectedService.service.name}</Link>
+          <Link to={`/lucid/services/${categorySlug}/${serviceSlug}`} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"><ArrowLeft size={16} aria-hidden="true" /> aack to {selectedService.service.name}</Link>
           <p className="mt-5 text-sm font-semibold text-primary">Request through LUCID</p>
           <h1 className="mt-1 text-3xl font-bold tracking-tight text-gray-950 dark:text-slate-100">{selectedService.service.name}</h1>
           <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">{selectedService.category.name}</p>
@@ -200,10 +234,6 @@ const ManagedServiceRequest = () => {
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
             <p>LUCID receives your request, reviews it, and coordinates an inspection and Provider assignment. The Provider is not selected when you submit this form.</p>
           </div>
-          {actor.mode === 'preview' && <div data-preview-disclosure className="mt-3 flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:border-amber-800/50 dark:bg-amber-950/20 dark:text-amber-100">
-            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
-            <p data-preview-disclosure><strong>Local Preview:</strong> enter fictional contact and address details. Only the service request, broad city/region, schedule and optional budget guidance are saved in this browser; exact address, contact details and notes are discarded.</p>
-          </div>}
         </header>
 
         {error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-200">{error}</p>}
@@ -213,6 +243,8 @@ const ManagedServiceRequest = () => {
           <label htmlFor="request-description" className="block text-sm font-medium text-gray-700 dark:text-slate-300">What issue needs attention? <span className="font-normal text-gray-500">Required</span></label>
           <textarea id="request-description" name="description" value={form.description} onChange={handleChange} required rows={5} maxLength={4000} className={`${fieldClass} mt-2`} placeholder="Describe the issue and what you would like LUCID to arrange." />
           <p className="mt-1 text-right text-xs text-gray-500">{form.description.length}/4000</p>
+          {selectedService.service.slug === 'construction-worker' && <label htmlFor="construction-work-type" className="mt-5 block text-sm font-medium text-gray-700 dark:text-slate-300">Type of construction work <span className="font-normal text-gray-500">Required</span><select id="construction-work-type" value={form.constructionWorkTypeId} onChange={event => setForm(current => ({ ...current, constructionWorkTypeId: event.target.value }))} required className={`${fieldClass} mt-2`}><option value="">Choose the closest match</option>{CONSTRUCTION_WORK_TYPES.map(type => <option key={type.id} value={type.id}>{type.label}</option>)}</select><span className="mt-1 block text-xs font-normal text-gray-500">This helps LUCID route the request to a suitable team.</span></label>}
+          <label className="mt-5 flex items-start gap-3 rounded-xl border border-gray-200 p-4 text-sm dark:border-[#394458]"><input type="checkbox" checked={form.preferVerifiedCredential} onChange={event => setForm(current => ({ ...current, preferVerifiedCredential: event.target.checked }))} className="mt-1 accent-blue-600"/><span><span className="font-semibold text-gray-900 dark:text-slate-100">Prefer a Provider with a relevant LUCID-verified credential</span><span className="mt-1 block text-xs font-normal text-gray-600 dark:text-slate-400">Optional preference only. It is not guaranteed and will not delay your request or assignment.</span></span></label>
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
             <label htmlFor="request-urgency" className="text-sm font-medium text-gray-700 dark:text-slate-300">When do you need help?
               <select id="request-urgency" name="urgency" value={form.urgency} onChange={handleChange} className={`${fieldClass} mt-2`}><option value="normal">Within the next few days</option><option value="urgent">As soon as possible</option></select>
@@ -232,6 +264,7 @@ const ManagedServiceRequest = () => {
         {step === 1 && <section className="space-y-6">
           <div className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e] sm:p-7">
             <div className="mb-5 flex items-center gap-3"><MapPin className="h-5 w-5 text-primary" aria-hidden="true" /><div><h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Service location</h2><p className="mt-1 text-sm text-gray-600 dark:text-slate-400">LUCID uses the service area to plan a suitable inspection.</p></div></div>
+            {savedLocations.length > 0 && <label className="mb-4 block text-sm font-medium text-gray-700 dark:text-slate-300">Use a saved location<select className={`${fieldClass} mt-2`} value={selectedSavedLocation} onChange={event => { const id = event.target.value; setSelectedSavedLocation(id); const saved = savedLocations.find(item => item.id === id); if (saved) setForm(current => ({ ...current, region: saved.region, city: saved.city, area: saved.area || '', streetAddress: saved.address || '', accessNotes: saved.accessNotes || '' })); else setForm(current => ({ ...current, region: '', city: '', area: '', streetAddress: '', accessNotes: '' })); }}><option value="">Enter another location</option>{savedLocations.map(item => <option key={item.id} value={item.id}>{item.label} · {item.city}, {item.region}</option>)}</select></label>}
             <div className="grid gap-4 sm:grid-cols-2">
               <label htmlFor="request-region" className="text-sm font-medium text-gray-700 dark:text-slate-300">Region <span className="font-normal text-gray-500">Required</span><select id="request-region" name="region" value={form.region} onChange={handleRegionChange} required className={`${fieldClass} mt-2`}><option value="">Choose a region</option>{GHANA_LOCATIONS.map(item => <option key={item.region} value={item.region}>{item.region}</option>)}</select></label>
               <label htmlFor="request-city" className="text-sm font-medium text-gray-700 dark:text-slate-300">City or town <span className="font-normal text-gray-500">Required</span><input id="request-city" name="city" value={form.city} onChange={handleChange} required className={`${fieldClass} mt-2`} /></label>
@@ -239,6 +272,7 @@ const ManagedServiceRequest = () => {
               <Input label="Street address" name="streetAddress" value={form.streetAddress} onChange={handleChange} required />
               <Input label="Nearby landmark (optional)" name="landmark" value={form.landmark} onChange={handleChange} />
               <Input label="Postal code (optional)" name="postalCode" value={form.postalCode} onChange={handleChange} />
+              <label htmlFor="request-access-notes" className="text-sm font-medium text-gray-700 dark:text-slate-300 sm:col-span-2">Access notes (optional)<textarea id="request-access-notes" name="accessNotes" value={form.accessNotes} onChange={handleChange} maxLength={500} rows={2} className={`${fieldClass} mt-2`} placeholder="Entry instructions or the best time to visit"/></label>
             </div>
             <p className="mt-4 text-xs leading-relaxed text-gray-500 dark:text-slate-400">Your exact location is for LUCID’s request review and inspection coordination. Providers receive only the location details needed after an offer is accepted.</p>
           </div>
@@ -273,13 +307,12 @@ const ManagedServiceRequest = () => {
             </dl>
           </div>
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-relaxed text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-100">
-            <strong>Before you send:</strong> this request goes to LUCID for review. No Provider is assigned now. You can cancel without a fee before a Provider accepts an assignment. Any budget guidance is optional and non-binding. Before work starts, you will review the agreed work and estimate; the Provider sends the final bill when the work is ready.
+            <strong>Before you send:</strong> this request goes to LUCID for review. No Provider is assigned now. You can cancel without a fee before a Provider is assigned. Any budget guidance is optional and non-binding. After accepting an assignment, the Provider can start the agreed work without a quote. Added work and its cost must be approved by you before it begins. The Provider sends the final bill after the work is ready.
           </div>
-          {actor.mode === 'preview' && <p data-preview-disclosure className="text-xs leading-relaxed text-gray-500 dark:text-slate-400">Preview note: only the service details, broad city/region, availability and optional budget guidance are stored in this browser. The exact location, contact information and access notes shown above are discarded after submission.</p>}
         </section>}
 
         <form onSubmit={event => { event.preventDefault(); if (step < 2) goToNextStep(); else handleSubmit(event); }} className="mt-6 flex flex-col-reverse items-stretch justify-between gap-3 sm:flex-row sm:items-center">
-          {step === 0 ? <Link to={`/lucid/services/${categorySlug}/${serviceSlug}`} className="inline-flex min-h-11 items-center justify-center font-semibold text-primary hover:underline">Back to service</Link> : <button type="button" onClick={goToPreviousStep} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60 dark:border-[#394458] dark:text-slate-100 dark:hover:bg-[#1a1f2e]"><ArrowLeft size={17} aria-hidden="true" /> Back</button>}
+          {step === 0 ? <Link to={`/lucid/services/${categorySlug}/${serviceSlug}`} className="inline-flex min-h-11 items-center justify-center font-semibold text-primary hover:underline">aack to service</Link> : <button type="button" onClick={goToPreviousStep} disabled={loading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-60 dark:border-[#394458] dark:text-slate-100 dark:hover:bg-[#1a1f2e]"><ArrowLeft size={17} aria-hidden="true" /> aack</button>}
           {step < 2 ? <button type="submit" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white hover:bg-primary/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">Continue <ArrowRight size={18} aria-hidden="true" /></button> : <button type="submit" disabled={loading} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-6 py-3 font-semibold text-white hover:bg-primary/90 disabled:cursor-wait disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary">{loading ? 'Sending request…' : 'Send request to LUCID'} {!loading && <ArrowRight size={18} aria-hidden="true" />}</button>}
         </form>
       </div>

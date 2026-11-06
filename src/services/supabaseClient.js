@@ -9,22 +9,33 @@ const isConfigured =
   supabaseUrl.startsWith('http') &&
   !supabaseUrl.includes('your_supabase');
 
-// Returns a no-op stub when env vars are missing so the app doesn't crash.
+// Fail closed if deployment configuration is missing; never fake empty backend data.
+const missingConfigError = { code: 'SUPABASE_NOT_CONFIGURED', message: 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY before using authenticated features.' };
+const createUnavailableQuery = () => {
+  let proxy;
+  const result = Promise.resolve({ data: null, error: missingConfigError });
+  proxy = new Proxy({}, {
+    get: (_target, property) => property === 'then' ? result.then.bind(result)
+      : property === 'catch' ? result.catch.bind(result)
+        : property === 'finally' ? result.finally.bind(result)
+          : () => proxy,
+  });
+  return proxy;
+};
+
 const createStub = () => ({
   auth: {
-    getSession:          () => Promise.resolve({ data: { session: null }, error: null }),
+    getSession:          () => Promise.resolve({ data: { session: null }, error: missingConfigError }),
     onAuthStateChange:   () => ({ data: { subscription: { unsubscribe: () => {} } } }),
-    signInWithPassword:  () => Promise.resolve({ data: null, error: { message: 'Supabase not configured. Add VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to your .env file.' } }),
-    signUp:              () => Promise.resolve({ data: null, error: { message: 'Supabase not configured.' } }),
+    signInWithPassword:  () => Promise.resolve({ data: null, error: missingConfigError }),
+    signUp:              () => Promise.resolve({ data: null, error: missingConfigError }),
     signOut:             () => Promise.resolve({ error: null }),
-    signInWithOAuth:     () => Promise.resolve({ error: { message: 'Supabase not configured.' } }),
-    setSession:          () => Promise.resolve({ error: null }),
-    resend:              () => Promise.resolve({ error: null }),
+    signInWithOAuth:     () => Promise.resolve({ error: missingConfigError }),
+    setSession:          () => Promise.resolve({ error: missingConfigError }),
+    resend:              () => Promise.resolve({ error: missingConfigError }),
   },
-  from: () => ({
-    select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: null }), order: () => Promise.resolve({ data: [], error: null }) }), order: () => Promise.resolve({ data: [], error: null }) }),
-    update: () => ({ eq: () => Promise.resolve({ error: null }) }),
-  }),
+  from: createUnavailableQuery,
+  rpc: () => Promise.resolve({ data: null, error: missingConfigError }),
 });
 
 export const supabase = isConfigured

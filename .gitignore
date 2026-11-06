@@ -32,5 +32,17 @@ lh-reports/
 .playwright-mcp/
 supabase/.temp/
 
-# Local project documentation; grouped in docs/ but not published to GitHub
-/docs/
+# Local-only Preview source backup. Do not add this directory to Git.
+/.local-preview-backup/
+
+# Publish backend handoff material only. Other working documents remain local.
+/docs/*
+!/docs/
+!/docs/backend/
+!/docs/backend/**
+
+# Local image-generation API credential
+/OPENAI_API_KEY
+
+# Local visual review exports and generation prompts
+/tmp/

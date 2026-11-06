@@ -1,38 +1,30 @@
 import React, { memo, useState, useMemo, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Zap, Sparkles, Truck, Droplets, Car, Scissors, Shirt, PaintRoller, ChevronRight } from 'lucide-react';
+import { Search, ChevronRight } from 'lucide-react';
 import ServicesCarousel from '../../components/catalog/ServicesCarousel.jsx';
-import BackToTop from '../../components/layout/BackToTopButton.jsx';
+import BackToTop from '../../components/shared/BackToTopButton.jsx';
 import LocationPicker from '../../components/catalog/LocationPicker.jsx';
 import BusinessCategorySection from '../../components/catalog/CategoryShowcase.jsx';
-import { DownloadSection } from '../../components/layout/DownloadAppSection.jsx';
+import { DownloadSection } from '../../components/shared/DownloadAppSection.jsx';
 import { ALL_CATEGORIES, getCategoryBySlug } from '../../data/catalog/categories.js';
 import Breadcrumb from '../../components/catalog/Breadcrumb.jsx';
+import CatalogImage from '../../components/catalog/CatalogImage.jsx';
 import SearchAutocomplete from '../../components/catalog/SearchAutocomplete.jsx';
 import { resolveSearch } from '../../utils/catalog/search.js';
-import { Hammer, Truck as TruckIcon, Car as CarIcon, HardHat } from 'lucide-react';
+import { Hammer, Car as CarIcon, HardHat, Sparkles as SparklesIcon } from 'lucide-react';
 
 // [API] GET /services/popular?region={region}&limit=8 → [{name, slug, icon}]
 // Hardcoded until API provides trending/most-searched data
-const POPULAR_SERVICES = [
-  { icon: Zap,         name: 'Electrician',    slug: 'home-repairs/electrical-repairs' },
-  { icon: Sparkles,    name: 'House Cleaning', slug: 'cleaning/house-cleaning' },
-  { icon: Truck,       name: 'Moving',         slug: 'moving/furniture-moving' },
-  { icon: Droplets,    name: 'Plumber',        slug: 'home-repairs/plumbing' },
-  { icon: Car,         name: 'Auto Repair',    slug: 'auto-repairs/engine-repair' },
-  { icon: Scissors,    name: 'Hair Braiding',  slug: 'beauty/hair-braiding' },
-  { icon: Shirt,       name: 'Tailoring',      slug: 'beauty/tailoring' },
-  { icon: PaintRoller, name: 'House Painting', slug: 'home-repairs/painting' },
-];
+const POPULAR_SERVICES = ALL_CATEGORIES.flatMap(category => category.services.map(service => ({
+  icon: service.icon, name: service.name, slug: `${category.slug}/${service.slug}`,
+})));
 
 // [API] GET /categories/featured?limit=4 → [{id, name, slug, icon}]
 // Hardcoded until admin can configure featured categories
-const SERVICE_ICONS = [
-  { id: 1, icon: Hammer,   name: 'Home Repairs', slug: 'home-repairs' },
-  { id: 2, icon: TruckIcon, name: 'Moving',       slug: 'moving' },
-  { id: 3, icon: CarIcon,   name: 'Auto Repairs', slug: 'auto-repairs' },
-  { id: 4, icon: HardHat,   name: 'Construction', slug: 'construction' },
-];
+const SERVICE_ICONS = ALL_CATEGORIES.map(category => ({
+  id: category.id, icon: category.icon || (category.slug === 'construction' ? HardHat : category.slug === 'auto-repairs' ? CarIcon : category.slug === 'cleaning' ? SparklesIcon : Hammer),
+  name: category.name, slug: category.slug,
+}));
 
 // Build hero-card data from ALL_CATEGORIES
 const BUSINESS_CARDS = Object.fromEntries(
@@ -67,72 +59,12 @@ const _collagePool = [
   ...ALL_CATEGORIES.map(cat => ({ src: cat.image, label: cat.name })),
   ...ALL_CATEGORIES.flatMap(cat => cat.services.map(s => ({ src: s.image, label: s.name }))),
 ];
-const COLLAGE_ROW1 = _collagePool.slice(0, 16);
-const COLLAGE_ROW2 = _collagePool.slice(16, 32);
-const COLLAGE_ROW3 = _collagePool.slice(32, 48);
-
-const ServicesSkeleton = () => (
-  <div className="w-full min-h-screen bg-gray-50 animate-pulse">
-    {/* Hero — 3 stacked rows mimicking the marquee collage */}
-    <div className="relative flex flex-col gap-1.5 overflow-hidden" style={{ minHeight: 460 }}>
-      <div className="flex-1 bg-gray-300" />
-      <div className="flex-1 bg-gray-200" />
-      <div className="flex-1 bg-gray-300" />
-      <div className="absolute inset-0 bg-blue-950/30" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-5 text-center">
-        <div className="h-10 w-64 bg-white/20 rounded-xl" />
-        <div className="h-5 w-72 bg-white/20 rounded-lg" />
-        <div className="max-w-2xl w-full h-12 bg-white/25 rounded-xl" />
-      </div>
-    </div>
-
-    {/* Breadcrumb */}
-    <div className="max-w-6xl mx-auto px-5 pt-5 pb-1 flex items-center gap-2">
-      <div className="h-4 w-10 bg-gray-200 rounded" />
-      <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-16 bg-gray-200 rounded" />
-    </div>
-
-    {/* Popular Services */}
-    <div className="max-w-6xl mx-auto px-5 py-14">
-      <div className="flex items-center justify-between mb-8">
-        <div className="h-8 w-56 bg-gray-200 rounded-lg" />
-        <div className="h-4 w-16 bg-gray-200 rounded" />
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-24 bg-gray-200 rounded-2xl" />
-        ))}
-      </div>
-    </div>
-
-    {/* Carousel strip 1 */}
-    <div className="bg-white px-5 py-8">
-      <div className="h-5 w-40 bg-gray-200 rounded mb-5" />
-      <div className="flex gap-4 overflow-hidden">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex-shrink-0 w-64 h-44 bg-gray-200 rounded-xl" />
-        ))}
-      </div>
-    </div>
-
-    {/* Featured category tabs + card grid */}
-    <div className="bg-white px-5 pb-16 pt-10">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex gap-3 mb-8 flex-wrap">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="h-10 w-32 bg-gray-200 rounded-full" />
-          ))}
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-44 bg-gray-200 rounded-xl" />
-          ))}
-        </div>
-      </div>
-    </div>
-  </div>
+// The launch catalog has 11 photo entries, so 16-item slices left two marquee rows empty.
+// Reuse the catalog images with staggered starting points to keep all three rows populated.
+const buildMarqueeRows = (pool, count = 3) => Array.from({ length: count }, (_, rowIndex) =>
+  Array.from({ length: Math.max(8, pool.length) }, (_, index) => pool[(rowIndex * 3 + index) % pool.length])
 );
+const [COLLAGE_ROW1, COLLAGE_ROW2, COLLAGE_ROW3] = buildMarqueeRows(_collagePool);
 
 const ServiceCard = memo(({ service }) => {
   const Icon = service.icon;
@@ -170,14 +102,8 @@ const shuffle = (arr) => {
 
 const Services = () => {
   const [query, setQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  useEffect(() => {
-    const id = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(id);
-  }, []);
 
   // Auto-resolve ?q= from home page search bar handoff
   useEffect(() => {
@@ -203,8 +129,6 @@ const Services = () => {
     const route = resolveSearch(query);
     navigate(route ?? `/lucid/services/all?q=${encodeURIComponent(query.trim())}`);
   };
-
-  if (isLoading) return <ServicesSkeleton />;
 
   return (
     <div className="w-full min-h-screen bg-gray-50 dark:bg-[#0f1117]">
@@ -238,7 +162,7 @@ const Services = () => {
               >
                 {[...row, ...row].map((img, i) => (
                   <div key={i} className="flex-shrink-0 w-44 md:w-56 h-full overflow-hidden">
-                    <img
+                    <CatalogImage
                       src={img.src}
                       alt={img.label}
                       className="w-full h-full object-cover"
@@ -260,7 +184,7 @@ const Services = () => {
             Lucid is here for you
           </h1>
           <p className="text-blue-200 text-base md:text-lg mb-8">
-            Find trusted professionals for any job across Ghana
+            Browse plumbing, electrical, auto mechanic, cleaning, carpentry, construction, and handyman services.
           </p>
           <form
             onSubmit={handleSearch}
@@ -352,7 +276,7 @@ const Services = () => {
         <h2 className="text-white text-2xl md:text-3xl font-bold mb-3">
           Browse all service categories
         </h2>
-        <p className="text-blue-200 mb-7">10 categories · 50+ services across Ghana</p>
+        <p className="text-blue-200 mb-7">{ALL_CATEGORIES.length} service categories · {ALL_CATEGORIES.reduce((total, category) => total + category.services.length, 0)} launch services</p>
         <Link
           to="/lucid/services/all"
           className="inline-block bg-white text-blue-700 font-bold px-8 py-3 rounded-full hover:bg-blue-50 transition-colors shadow"

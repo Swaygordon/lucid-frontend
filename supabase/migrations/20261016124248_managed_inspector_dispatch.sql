@@ -1,3 +1,5 @@
+-- HISTORICAL DRAFT: reconcile this migration with docs/backend/BACKEND_WORKFLOW_IMPLEMENTATION_GUIDE.md and the deployed schema before applying.
+-- It predates the final workflow and is not approved for production application.
 -- Adds the first secure staff-to-inspector handoff.
 -- Assignment is a single database transaction: a request cannot appear
 -- assigned unless the inspection row and durable notification are committed.

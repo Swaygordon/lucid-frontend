@@ -38,7 +38,7 @@ const HelpSupport = () => {
   const [loading, setLoading] = useState(false);
   const handleBackClick = useNavigateBack('/lucid/', 600);
 
-  // [MOCK] If FAQs are managed via CMS or admin panel, replace these with:
+  // FAQ copy is currently maintained in the frontend.
   //   GET /faqs/categories → [{ id, name }]
   //   GET /faqs?categoryId={id} → [{ id, question, answer, category }]
   // FAQ search below is client-side; for large sets use: GET /faqs/search?q={query}
@@ -51,66 +51,16 @@ const HelpSupport = () => {
   ];
 
   const faqs = [
-    {
-      category: 'getting-started',
-      question: 'How do I start accepting bookings?',
-      answer: 'Complete your provider profile with your skills, service areas, availability, and required documents. After LUCID reviews it, you may receive suitable service offers from LUCID. Clients do not browse provider profiles.'
-    },
-    {
-      category: 'getting-started',
-      question: 'What documents do I need to provide?',
-      answer: 'You need to provide a valid government ID, proof of address, and any professional certifications relevant to your trade. These help build trust with clients.'
-    },
-    {
-      category: 'bookings',
-      question: 'How do I accept or decline a LUCID offer?',
-      answer: 'When LUCID offers you inspected work, open the offer to review its scope and the client\'s expected price range. Record your acceptance or decline in the app, even if you first agreed in person.'
-    },
-    {
-      category: 'bookings',
-      question: 'Can I reschedule a booking?',
-      answer: 'Contact your assigned Inspector or LUCID Admin through the booking messages to request a schedule change. LUCID will coordinate the update with the client.'
-    },
-    {
-      category: 'bookings',
-      question: 'What happens if a client cancels?',
-      answer: 'A client cancellation before a provider accepts is fee-free. After provider acceptance, the documented cancellation-fee and recovery process applies. Contact LUCID Admin if you need help.'
-    },
-    {
-      category: 'payments',
-      question: 'When do I receive payment?',
-      answer: 'After the client approves and pays the final bill, the payment provider confirms the transaction and LUCID automatically releases your share. Payment timing depends on the selected payment service.'
-    },
-    {
-      category: 'payments',
-      question: 'What payment methods are supported?',
-      answer: 'Available payment methods are shown at checkout. Client-purchased work materials are paid for directly in person and are not included in the app bill.'
-    },
-    {
-      category: 'payments',
-      question: 'Are there any fees?',
-      answer: 'The client sees the provider\'s bill and a separate percentage-based LUCID platform charge before paying. The commission rate is still being finalized and will be shown before payment.'
-    },
-    {
-      category: 'account',
-      question: 'How do I update my profile?',
-      answer: 'Go to Account > Account Settings to update your personal information, professional details, and service areas. Keep your profile updated to attract more clients.'
-    },
-    {
-      category: 'account',
-      question: 'How can I improve my rating?',
-      answer: 'Provide excellent service, communicate clearly, arrive on time, and maintain professionalism. Respond promptly to messages and complete jobs as agreed.'
-    },
-    {
-      category: 'technical',
-      question: 'The app is not working properly',
-      answer: 'Try closing and reopening the app. If issues persist, clear the app cache or update to the latest version. Contact support if problems continue.'
-    },
-    {
-      category: 'technical',
-      question: 'I\'m not receiving notifications',
-      answer: 'Check your notification settings in both the app and your device settings. Ensure notifications are enabled and that Do Not Disturb mode is off.'
-    }
+    { category: 'getting-started', question: 'Which services can I request?', answer: 'LUCID currently covers plumbing, electrical work, auto mechanic services, cleaning, carpentry, construction work, and handyman services.' },
+    { category: 'getting-started', question: 'Can I request a service as a Provider or Inspector?', answer: 'Provider and Inspector accounts can browse public services, but service requests require a Client account.' },
+    { category: 'bookings', question: 'How does a service request work?', answer: 'LUCID reviews the request, clarifies details with you when needed, and coordinates an Inspector and Provider assignment. If no Inspector is available, you may agree once to proceed without one.' },
+    { category: 'bookings', question: 'Can I choose or contact a Provider directly?', answer: 'No. LUCID coordinates the assignment. Provider profiles and direct contact details are not shown to Clients.' },
+    { category: 'bookings', question: 'Do I have to agree to proceed without an Inspector?', answer: 'No. If LUCID cannot assign a suitable Inspector, you can choose whether to continue. If you agree, no additional Client setup form is required.' },
+    { category: 'payments', question: 'Do I enter payment details when I submit a request?', answer: 'No. Payment details are not collected on the request form. If a Provider sends a final bill, you review it and use the secure checkout options available.' },
+    { category: 'payments', question: 'Can I question or reject a bill?', answer: 'Yes. You can accept and pay, or reject the bill with an optional note so the Provider can discuss or revise it.' },
+    { category: 'payments', question: 'Do I have to leave a review?', answer: 'No. A review after service completion is optional.' },
+    { category: 'account', question: 'Are credentials required to create a Provider or Inspector account?', answer: 'No. Relevant credentials are optional. If evidence is submitted, it remains unverified until authorized LUCID staff review it.' },
+    { category: 'account', question: 'Can Clients view Provider profile details?', answer: 'Clients cannot browse Provider profiles or see direct contact details. After assignment, the case may show a relevant credential title and LUCID verification badge if one has been verified.' },
   ];
 
   const filteredFaqs = faqs.filter(faq => 

@@ -1,4 +1,4 @@
-// @backend-handoff-delete Local Preview messaging implementation; replace data operations with backend messaging.
+// Role-authorized conversations are loaded through the workflow service.
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,7 +16,7 @@ const mapConversation = (item, role) => {
   const currentRole = normalizeRole(role);
   const participants = item.audience.split('-');
   const otherRole = participants.find(value => value !== currentRole);
-  return { ...item, otherUser: { name: ROLE_LABELS[otherRole] || 'LUCID team' }, participantLabel: participants.map(value => ROLE_LABELS[value] || value).join(' · '), lastMessage: { message: item.lastMessage, created_at: item.lastMessageAt }, booking: { service_type: item.serviceName, service_date: item.preview ? 'Preview case' : 'Managed request' }, preview: item.preview, workflowThread: true };
+  return { ...item, otherUser: { name: ROLE_LABELS[otherRole] || 'LUCID team' }, participantLabel: participants.map(value => ROLE_LABELS[value] || value).join(' · '), lastMessage: { message: item.lastMessage, created_at: item.lastMessageAt }, booking: { service_type: item.serviceName, service_date: 'Managed request' }, workflowThread: true };
 };
 const caseStatusLabel = status => String(status || 'open').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 
@@ -193,7 +193,7 @@ const Messages = () => {
                           )}
                           <p className="mt-1 truncate text-[11px] text-blue-700 dark:text-blue-300">{conv.caseId || 'LUCID support'} · {caseStatusLabel(conv.caseStatus)}</p>
                           <p className="mt-1 truncate text-[11px] text-gray-500 dark:text-slate-400">{conv.participantLabel}</p>
-                          {conv.preview && <span data-preview-disclosure className="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 dark:bg-amber-950/30 dark:text-amber-200">Preview</span>}
+
                         </div>
                       </button>
                     );

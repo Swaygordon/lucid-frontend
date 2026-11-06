@@ -6,7 +6,7 @@ import {
   Star, Bell, BarChart2, FileText, RotateCcw, Smartphone
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import BackToTop from '../../components/layout/BackToTopButton.jsx';
+import BackToTop from '../../components/shared/BackToTopButton.jsx';
 
 // ── Animation variants ────────────────────────────────────────────────────────
 const fadeUp  = { hidden: { opacity: 0, y: 30 }, visible: { opacity: 1, y: 0 } };
@@ -99,14 +99,16 @@ const VALUES = [
   { icon: Shield,     title: 'Trust & Safety',   desc: 'LUCID coordinates inspections, provider assignment, private communication, payment confirmation, and client support.',                           color: 'from-blue-500 to-blue-700' },
   { icon: Zap,        title: 'Clear coordination', desc: 'A shared booking timeline shows each person what happens next and who is responsible for the next action.',            color: 'from-orange-500 to-amber-600' },
   { icon: Heart,      title: 'Community First',  desc: 'We create economic opportunity for skilled tradespeople while making quality services accessible to every household.', color: 'from-violet-500 to-purple-700' },
-  { icon: TrendingUp, title: 'Transparency',     desc: 'Upfront pricing, no hidden fees, and clear cancellation policies. What you agree to is what you pay.',                color: 'from-teal-500 to-emerald-700' },
+  { icon: TrendingUp, title: 'Payment clarity',     desc: 'Review the Provider?s final bill before paying. Any added work and its cost should be approved before that work begins.',                color: 'from-teal-500 to-emerald-700' },
 ];
 
 const TIMELINE = [
-  { year: '2023', title: 'Founded',      desc: 'Lucid launched in Accra with 50 verified providers and a vision to fix the broken way people find local services.', icon: Sparkles },
-  { year: '2024', title: 'City Rollout', desc: 'Expanded to 15 major cities across Ghana, onboarding over 5,000 providers and completing 20,000+ jobs.',           icon: TrendingUp },
-  { year: '2025', title: 'Platform v2',  desc: 'Launched in-app chat, the provider earnings dashboard, map discovery, and the mobile payments integration.',        icon: Target },
-  { year: 'Next', title: 'West Africa',  desc: 'Planning expansion into Nigeria, Côte d\'Ivoire, and Senegal — bringing the Lucid model to 300M+ people.',          icon: MapPin },
+  { year: 'Stage 1', title: 'Send a request', desc: 'Choose one of the launch services, describe the work, and share the service location.', icon: Sparkles },
+  { year: 'Stage 2', title: 'LUCID reviews details', desc: 'The Admin team may message the Client to clarify the request before coordinating the next step.', icon: TrendingUp },
+  { year: 'Stage 3', title: 'Assess the site', desc: 'An Inspector is assigned when available. The Client may agree to proceed without one if none is suitable.', icon: Target },
+  { year: 'Stage 4', title: 'Assign a Provider', desc: 'LUCID selects a suitable Provider. Clients cannot browse Provider profiles or contact them directly.', icon: Users },
+  { year: 'Stage 5', title: 'Complete work and bill', desc: 'The Provider completes agreed work and sends a final bill. Added work needs the Client?s approval before it begins.', icon: CheckCircle },
+  { year: 'Stage 6', title: 'Client pays', desc: 'The Client reviews the bill and accepts payment or rejects it with an optional note. A service review is optional.', icon: Clock },
 ];
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -214,7 +216,7 @@ const About = () => (
               Lucid connects clients and skilled providers through a managed service process. LUCID coordinates inspection, matching, communication, and payment so every participant knows what happens next.
             </p>
             <div className="flex flex-wrap gap-4 pt-2">
-              {['Verified Workers', 'Structured Booking', 'Secure Payments', 'Honest Reviews'].map(t => (
+              {['Credential review when submitted', 'LUCID-coordinated requests', 'Client-reviewed final bills', 'Optional service reviews'].map(t => (
                 <div key={t} className="flex items-center gap-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 px-4 py-2 rounded-full">
                   <CheckCircle className="w-4 h-4" />
                   <span className="text-sm font-semibold">{t}</span>
@@ -306,7 +308,7 @@ const About = () => (
     {/* Timeline */}
     <section className="py-24 bg-gray-50 dark:bg-[#0f1117]">
       <div className="max-w-4xl mx-auto px-4">
-        <SectionHeading label="Our journey" title="From Accra to West Africa" sub="A platform built incrementally, shaped by real feedback from providers and clients." />
+        <SectionHeading label="How it works" title="A request from start to finish" sub="LUCID coordinates the request, assessment, service assignment, work, and payment decision." />
 
         <div className="relative">
           <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-600 to-purple-600" />
@@ -352,7 +354,7 @@ const About = () => (
         <motion.p initial="hidden" whileInView="visible" viewport={vp} variants={fadeUp}
           transition={{ delay: 0.1 }} className="text-xl text-white/70"
         >
-          Join thousands of clients and providers already using the platform.
+          Request one of seven launch services and follow each next step in one place.
         </motion.p>
         <motion.div initial="hidden" whileInView="visible" viewport={vp} variants={fadeUp}
           transition={{ delay: 0.2 }} className="flex flex-wrap gap-4 justify-center"

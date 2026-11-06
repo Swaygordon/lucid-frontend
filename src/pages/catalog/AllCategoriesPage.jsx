@@ -3,52 +3,13 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import { ALL_CATEGORIES } from '../../data/catalog/categories.js';
 
-// Skeleton card count MUST match real content count or the swap produces a
-// massive CLS (Lighthouse measured 0.9 with mismatched counts).
-const CATEGORY_COUNT = ALL_CATEGORIES.length;
 import Breadcrumb from '../../components/catalog/Breadcrumb.jsx';
-import BackToTop from '../../components/layout/BackToTopButton.jsx';
+import CatalogImage from '../../components/catalog/CatalogImage.jsx';
+import BackToTop from '../../components/shared/BackToTopButton.jsx';
 import LocationPicker from '../../components/catalog/LocationPicker.jsx';
 import SearchAutocomplete from '../../components/catalog/SearchAutocomplete.jsx';
 import { resolveSearch } from '../../utils/catalog/search.js';
 import { useSearchLocation, getLocationBackground, buildBackgroundStyle } from '../../contexts/LocationContext.jsx';
-
-const AllCategoriesSkeleton = () => (
-  <div className="min-h-screen bg-gray-50 animate-pulse">
-    {/* Hero */}
-    <div className="relative py-14 px-5 text-center bg-gray-300" style={{ minHeight: 180 }}>
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
-      <div className="relative z-10 flex flex-col items-center gap-4">
-        <div className="h-9 w-36 bg-gray-200 rounded-lg" />
-        <div className="h-5 w-64 bg-gray-200 rounded" />
-        <div className="max-w-xl w-full h-12 bg-gray-200 rounded-xl" />
-      </div>
-    </div>
-
-    {/* Breadcrumb */}
-    <div className="max-w-6xl mx-auto px-5 pt-5 pb-1 flex items-center gap-2">
-      <div className="h-4 w-10 bg-gray-200 rounded" />
-      <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-20 bg-gray-200 rounded" />
-    </div>
-
-    {/* Category cards grid */}
-    <div className="max-w-6xl mx-auto px-5 py-8">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: CATEGORY_COUNT }).map((_, i) => (
-          <div key={i} className="rounded-2xl overflow-hidden border border-gray-100 bg-white">
-            <div className="h-44 bg-gray-300" />
-            <div className="p-5 space-y-2">
-              <div className="h-5 w-32 bg-gray-200 rounded" />
-              <div className="h-4 w-48 bg-gray-200 rounded" />
-              <div className="h-3 w-24 bg-gray-200 rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  </div>
-);
 
 const AllCategories = () => {
   const [query, setQuery] = useState('');
@@ -147,7 +108,7 @@ const AllCategories = () => {
                   <div className="rounded-2xl overflow-hidden shadow-sm hover:shadow-xl border border-gray-100 dark:border-[#1e293b] transition-all duration-300 group bg-white dark:bg-[#1a1f2e] h-full flex flex-col">
                     {/* Image */}
                     <div className="relative h-44 overflow-hidden">
-                      <img
+                      <CatalogImage
                         src={cat.image}
                         alt={cat.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

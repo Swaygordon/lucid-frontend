@@ -1,15 +1,18 @@
 ﻿import React, { memo, lazy, Suspense, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Clock, CheckCircle2, ChevronDown } from 'lucide-react';
-import Search from '../../assets/search_options.webp';
-import Review from '../../assets/Ratings.webp';
-import Book from '../../assets/book.webp';
-import InstantQuotes from '../../assets/instant_qoutes.webp';
-
-import SearchDark from '../../assets/search_options-black.webp';
-import ReviewDark from '../../assets/Ratings-black.webp';
-import BookDark from '../../assets/book-black.webp';
-import InstantQuotesDark from '../../assets/instant_qoutes-black.webp';
+import requestLight from '../../assets/workflow-illustrations/request-light.webp';
+import requestDark from '../../assets/workflow-illustrations/request-dark.webp';
+import reviewLight from '../../assets/workflow-illustrations/review-light.webp';
+import reviewDark from '../../assets/workflow-illustrations/review-dark.webp';
+import assessmentLight from '../../assets/workflow-illustrations/assessment-light.webp';
+import assessmentDark from '../../assets/workflow-illustrations/assessment-dark.webp';
+import assignmentLight from '../../assets/workflow-illustrations/assignment-light.webp';
+import assignmentDark from '../../assets/workflow-illustrations/assignment-dark.webp';
+import workAndBillLight from '../../assets/workflow-illustrations/work-and-bill-light.webp';
+import workAndBillDark from '../../assets/workflow-illustrations/work-and-bill-dark.webp';
+import paymentLight from '../../assets/workflow-illustrations/payment-light.webp';
+import paymentDark from '../../assets/workflow-illustrations/payment-dark.webp';
 
 // Lazy load heavy components
 const Carousel = lazy(() => import('../catalog/ServiceCategoryCarousel.jsx'));
@@ -102,22 +105,12 @@ const HowItWorksStep = memo(({ step, index }) => (
     transition={{ duration: 0.5, delay: index * 0.15 }}
   >
     <motion.div
-      className="w-full h-44 mt-2 bg-blue-700 dark:bg-[#1a1f2e] rounded-2xl transition-all duration-300 overflow-hidden flex items-center justify-center flex-shrink-0"
+      className="mt-2 aspect-[3/2] w-full flex-shrink-0 overflow-hidden rounded-2xl bg-gray-100 transition-all duration-300 dark:bg-[#1a1f2e]"
       whileHover={{ scale: 1.05, boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.2)" }}
       transition={{ duration: 0.3 }}
     >
-      <img
-        src={step.imageUrl}
-        alt={step.alt}
-        className="object-cover w-full h-full dark:hidden"
-        loading="lazy"
-      />
-      <img
-        src={step.darkImageUrl}
-        alt={step.alt}
-        className="object-cover w-full h-full hidden dark:block"
-        loading="lazy"
-      />
+      <img src={step.lightImage} alt={step.imageAlt} className="block h-full w-full object-contain dark:hidden" loading="lazy" />
+      <img src={step.darkImage} alt="" aria-hidden="true" className="hidden h-full w-full object-contain dark:block" loading="lazy" />
     </motion.div>
     <motion.div 
       className="flex items-center justify-center w-14 h-14 rounded-full bg-orange-500 text-white font-bold text-2xl mt-4 flex-shrink-0"
@@ -188,120 +181,118 @@ const FEATURE_CARDS_DATA = [
     id: 1,
     icon: Shield,
     title: "Secure & Trusted",
-    description: "All workers are verified and background-checked to ensure your safety and peace of mind"
+    description: "LUCID reviews requests and coordinates the people involved in delivering the service."
   },
   {
     id: 2,
     icon: Clock,
     title: "Quick Response",
-    description: "Get instant matches with available workers in your area. Fast response times guaranteed"
+    description: "LUCID checks location, service fit, availability, and capacity when coordinating assignments."
   },
   {
     id: 3,
     icon: CheckCircle2,
-    title: "Quality Guaranteed",
-    description: "All services come with our satisfaction guarantee. Rate and review every experience"
+    title: "Clear payment decisions",
+    description: "Review the Provider final bill before paying. A service review is optional after completion."
   }
 ];
 
 const PLATFORM_FEATURES_DATA = [
   {
     id: 1,
-    title: "Easy Booking",
-    description: "Book services in just a few clicks. Choose your preferred time, worker, and service type with our intuitive interface"
+    title: "Managed request coordination",
+    description: "Submit your request once. LUCID reviews the details, clarifies anything by in-app message, and coordinates the next steps for you."
   },
   {
     id: 2,
-    title: "Transparent Pricing",
-    description: "No hidden fees. See upfront pricing for all services before you book. Pay securely through our platform"
+    title: "Inspector assessment when needed",
+    description: "An Inspector may assess the site before a Provider is assigned. If none is available, you can agree to proceed without one; no extra Client setup is needed."
   },
   {
     id: 3,
-    title: "Real-Time Tracking",
-    description: "Track your worker's arrival in real-time. Get notifications and updates throughout the entire service"
+    title: "A Provider can start without an estimate",
+    description: "After accepting an assignment, the Provider can begin the agreed work without a pre-work quote. Any added work and its cost need your approval before it starts."
   },
   {
     id: 4,
-    title: "24/7 Support",
-    description: "Our customer support team is available round the clock to assist you with any questions or concerns"
+    title: "The Provider sends the final bill",
+    description: "After the work is complete, review the Provider's bill and accept and pay through LUCID, or reject it with an optional note so the Provider can revise it."
   },
   {
     id: 5,
-    title: "Verified Reviews",
-    description: "Read authentic reviews from real customers. Make informed decisions based on genuine experiences"
+    title: "Communication stays coordinated",
+    description: "Message LUCID staff and your assigned Inspector when involved. Provider profiles and direct contact details are not shown to Clients."
   },
   {
     id: 6,
-    title: "Flexible Scheduling",
-    description: "Book services at your convenience. Schedule for same-day or plan ahead for future dates"
+    title: "Updates, records, and optional reviews",
+    description: "Follow request updates and keep the service history together. Payment confirms completion, and leaving a review afterward is optional."
   }
 ];
 
 const STEPS_DATA = [
   {
     id: 1,
-    alt: "Search for a service",
     num: "1",
-    title: "Search",
-    description: "Search for your desired service or browse through our diverse categories.",
-    imageUrl: Search,
-    darkImageUrl: SearchDark,
+    title: "Browse & request",
+    description: "Choose a service and share the work details and location. A budget range is optional and non-binding; you do not enter payment details here.",
+    lightImage: requestLight,
+    darkImage: requestDark,
+    imageAlt: "Client browsing services and submitting a request on a phone",
   },
   {
     id: 2,
-    alt: "Get instant quotes",
     num: "2",
-    title: "Get Instant Quotes",
-    description: "Receive offers from local workers within minutes. Compare prices, reviews, and availability.",
-    imageUrl: InstantQuotes,
-    darkImageUrl: InstantQuotesDark,
+    title: "We review the request",
+    description: "LUCID's Admin team reviews the request and messages you in the app if details need clarifying.",
+    lightImage: reviewLight,
+    darkImage: reviewDark,
+    imageAlt: "LUCID staff reviewing a request and clarifying details with a client",
   },
   {
     id: 3,
-    alt: "Choose and book a provider",
     num: "3",
-    title: "Choose & Book",
-    description: "Select the best worker for your task based on reviews, ratings, and price. Book instantly through our secure platform.",
-    imageUrl: Book,
-    darkImageUrl: BookDark,
+    title: "Site assessment",
+    description: "LUCID assigns a suitable Inspector when available. If none can be assigned, you can agree once to proceed without one.",
+    lightImage: assessmentLight,
+    darkImage: assessmentDark,
+    imageAlt: "Inspector assessing a service site and recording observations",
   },
   {
     id: 4,
-    alt: "Leave feedback and review",
     num: "4",
-    title: "Feedback & Review",
-    description: "Leave feedback to help future customers and build our trusted community network.",
-    imageUrl: Review,
-    darkImageUrl: ReviewDark,
+    title: "Provider assignment",
+    description: "Admin assigns a Provider, who must accept before starting. Without an Inspector, the Provider assesses the site and starts without another Client form. Clients do not choose or contact Providers directly.",
+    lightImage: assignmentLight,
+    darkImage: assignmentDark,
+    imageAlt: "LUCID coordinator assigning a work order to a service provider",
+  },
+  {
+    id: 5,
+    num: "5",
+    title: "Work & final bill",
+    description: "The Provider completes the agreed work and sends the final bill. If added work is needed, you approve its scope and cost before it begins.",
+    lightImage: workAndBillLight,
+    darkImage: workAndBillDark,
+    imageAlt: "Provider completing repair work and preparing a final bill",
+  },
+  {
+    id: 6,
+    num: "6",
+    title: "Review the bill & pay",
+    description: "Accept and pay through LUCID, or reject the bill with an optional note for revision. Payment completes the request and makes your receipt available. Leaving a review is optional.",
+    lightImage: paymentLight,
+    darkImage: paymentDark,
+    imageAlt: "Client reviewing a bill, making payment, and optionally leaving a review",
   },
 ];
 
 const FAQ_DATA = [
-  {
-    id: 0,
-    question: "How quickly can I get help through your neighbourhood services platform?",
-    answer: "Most tasks receive responses within 15 minutes, and many workers offer same-day availability for urgent needs."
-  },
-  {
-    id: 1,
-    question: "Are all workers on the platform verified?",
-    answer: "Yes, all workers undergo thorough background checks and verification processes to ensure your safety and peace of mind."
-  },
-  {
-    id: 2,
-    question: "What payment methods do you accept?",
-    answer: "We accept all major credit cards, debit cards, and secure online payment methods through our platform."
-  },
-  {
-    id: 3,
-    question: "Can I cancel or reschedule my booking?",
-    answer: "Yes, you can cancel or reschedule your booking up to 24 hours before the scheduled time without any penalties."
-  },
-  {
-    id: 4,
-    question: "What if I'm not satisfied with the service?",
-    answer: "We offer a satisfaction guarantee. Contact our support team within 24 hours, and we'll work to resolve any issues or provide a refund."
-  }
+  { id: 0, question: "Which services can I request?", answer: "LUCID currently covers plumbing, electrical work, auto mechanic services, cleaning, carpentry, construction work, and handyman services." },
+  { id: 1, question: "Can I choose or contact a Provider directly?", answer: "No. LUCID reviews your request and coordinates assignment. Provider identity and direct contact details remain private to Clients." },
+  { id: 2, question: "Do I need to enter payment details with my request?", answer: "No. Request submission does not collect payment details. If a Provider submits a final bill, you review it and continue to the available checkout options." },
+  { id: 3, question: "Can the Provider charge more if extra work is needed?", answer: "Any added work and its cost should be shown to you for approval before that extra work starts." },
+  { id: 4, question: "Do I have to leave a review?", answer: "No. Leaving a review after the service is complete is optional." },
 ];
 
 const Section1 = () => {
@@ -352,7 +343,7 @@ const Section1 = () => {
             viewport={{ once: true }}
             transition={{ delay: 0.2 }}
           >
-            Discover what makes our platform the best choice for connecting with trusted workers
+            Managed requests, clear decisions, and service records in one place.
           </motion.p>
         </div>
       </motion.div>
@@ -377,10 +368,10 @@ const Section1 = () => {
 
       {/* How It Works Section */}
       <div className="flex flex-col min-h-screen bg-white dark:bg-[#0f1117]">
-        <SectionHeader title="How it works" />
+        <SectionHeader title="How your request works" description="Six stages from the first request to payment and completion." />
 
         <motion.div 
-          className="max-w-[1240px] mx-auto grid grid-cols-1 lg:grid-cols-4 md:grid-cols-2 gap-x-24 gap-y-8 px-6 mb-6 pb-8"
+          className="max-w-[1240px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-10 px-6 mb-6 pb-8"
           variants={staggerContainer}
           initial="hidden"
           whileInView="visible"

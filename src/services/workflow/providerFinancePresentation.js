@@ -5,10 +5,10 @@ export const toProviderTransactions = entries => (entries || [])
   .map(entry => ({
     id: entry.id,
     amount: entry.type === 'provider_withdrawal' ? -Math.abs(Number(entry.amount) || 0) : Math.abs(Number(entry.amount) || 0),
-    description: entry.type === 'provider_withdrawal' ? 'Preview withdrawal request' : 'Managed service payout',
-    date: entry.at ? new Date(entry.at).toLocaleDateString() : 'Preview record',
+    description: entry.type === 'provider_withdrawal' ? 'Payout request' : 'Managed service payout',
+    date: entry.at ? new Date(entry.at).toLocaleDateString() : 'Date unavailable',
     timestamp: entry.at || '',
-    method: entry.method || 'Preview ledger',
+    method: entry.method || 'Payout ledger',
     jobType: entry.caseId || 'Managed service',
     status: entry.type === 'provider_withdrawal' ? 'pending' : completedStatus(entry.status) ? 'completed' : entry.status === 'failed' ? 'failed' : 'pending',
   }));

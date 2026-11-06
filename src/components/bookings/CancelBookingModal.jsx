@@ -66,7 +66,7 @@ const CancelBookingModalComponent = ({ booking, isOpen, onClose, onConfirm }) =>
             Are you sure you want to cancel <span className="font-semibold">{booking.title}</span>?
           </p>
 
-          {/* Booking Preview */}
+          {/* Booking summary */}
           <div className="bg-gray-50 dark:bg-[#252b3b] p-4 rounded-lg mb-6 border border-gray-200 dark:border-[#2d3748]">
             <p className="text-sm font-semibold text-gray-900 dark:text-slate-100 mb-1">
               {booking.title}

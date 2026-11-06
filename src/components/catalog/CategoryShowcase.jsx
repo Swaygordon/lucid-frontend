@@ -13,7 +13,6 @@
 //      Example:
 //      const serviceIcons = [
 //      { id: 1, icon: FaScrewdriver, name: 'Home repairs' },
-//     { id: 2, icon: FaTruck, name: 'Moving' },
 //      { id: 3, icon: FaPaintRoller, name: 'Auto repairs' },
 //      { id: 4, icon: FaWrench, name: 'Construction' }
 //    ];
@@ -51,6 +50,7 @@
 
 import React, { useState, memo } from 'react';
 import { Link } from 'react-router-dom';
+import CatalogImage from './CatalogImage.jsx';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MapPin } from "lucide-react";
 import { FaEllipsisH } from 'react-icons/fa';
@@ -210,13 +210,11 @@ const ServiceCard = memo(({ service, index }) => {
           whileHover={{ y: -8 }}
         >
           <figure>
-            <motion.img
+            <CatalogImage
               src={service.image}
               alt={service.title}
               className="w-full h-48 object-cover"
               loading="lazy"
-              whileHover={{ scale: 1.05 }}
-              transition={{ duration: 0.3 }}
             />
           </figure>
           <div className="flex flex-col gap-2 p-4">

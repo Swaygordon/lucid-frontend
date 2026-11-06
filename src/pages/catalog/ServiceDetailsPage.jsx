@@ -5,16 +5,17 @@ import { motion } from 'framer-motion';
 import { Link, useParams } from 'react-router-dom';
 import { MapPin } from 'lucide-react';
 import BusinessCategorySection from '../../components/catalog/CategoryShowcase.jsx';
-import { DownloadSection } from '../../components/layout/DownloadAppSection.jsx';
+import { DownloadSection } from '../../components/shared/DownloadAppSection.jsx';
 import Breadcrumb from '../../components/catalog/Breadcrumb.jsx';
+import CatalogImage from '../../components/catalog/CatalogImage.jsx';
 import { getCategoryBySlug, getServiceBySlug } from '../../data/catalog/categories.js';
 
 // Lazy load heavy components
-const BackToTop = lazy(() => import('../../components/layout/BackToTopButton.jsx'));
+const BackToTop = lazy(() => import('../../components/shared/BackToTopButton.jsx'));
 
 
 // Build category data from the database categories
-const _FEATURED_SLUGS = ['home-repairs', 'moving', 'auto-repairs', 'construction'];
+const _FEATURED_SLUGS = ['home-repairs', 'auto-repairs', 'cleaning', 'construction'];
 
 const SERVICE_ICONS = _FEATURED_SLUGS.map((slug, i) => {
   const cat = getCategoryBySlug(slug);
@@ -71,7 +72,7 @@ const SelectedService = () => {
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-[#0f1117] pb-20">
       <div className="relative w-full h-52 md:h-64 overflow-hidden">
-        <img src={heroImage} alt={heroTitle} className="w-full h-full object-cover" />
+        <CatalogImage src={heroImage} alt={heroTitle} className="w-full h-full object-cover" />
         <div className="absolute inset-0 bg-black bg-opacity-50" />
         <div className="absolute inset-0 flex flex-col items-center justify-center text-white px-5 text-center">
           <h1 className="text-2xl md:text-3xl font-bold mb-1">{heroTitle} Services</h1>
@@ -90,7 +91,7 @@ const SelectedService = () => {
             <p className="text-sm font-semibold uppercase tracking-wide text-primary">Managed by LUCID</p>
             <h2 className="mt-1 text-xl font-bold text-gray-900 dark:text-slate-100">Let LUCID arrange this service</h2>
             <p className="mt-1 max-w-2xl text-sm text-gray-600 dark:text-slate-400">
-              Send us the issue and your expected price range. LUCID coordinates the inspection and provider assignment.
+              Describe the work and location. An optional price range can guide the team, but it does not set the Provider's final bill.
             </p>
           </div>
           <Link
@@ -104,7 +105,7 @@ const SelectedService = () => {
         <section className="rounded-2xl bg-white p-6 text-center shadow-sm dark:bg-[#1a1f2e] sm:p-10">
           <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Your service, coordinated by LUCID</h2>
           <p className="mx-auto mt-3 max-w-2xl text-gray-600 dark:text-slate-400">
-            Tell LUCID what needs attention. Our team reviews the request, arranges a field inspection, and selects a suitable provider. Provider profiles and client details stay private from each other.
+            Tell LUCID what needs attention. Our team reviews the request and coordinates an Inspector when one is available. If none is suitable, you can choose whether to continue; the Provider can assess the site without another Client form. Clients do not choose or directly contact Providers. LUCID shares only the request details needed by the assigned people.
           </p>
         </section>
       </div>

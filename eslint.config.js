@@ -6,7 +6,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 import jsxUsesVars from './eslint-plugins/jsx-uses-vars.js'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  globalIgnores(['dist', '.local-preview-backup']),
   {
     files: ['**/*.{js,jsx}'],
     extends: [

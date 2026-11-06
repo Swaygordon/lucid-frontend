@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import CatalogImage from './CatalogImage.jsx';
 
 const getVisibleCards = () => {
   if (typeof window === 'undefined') return 4;
@@ -48,7 +49,7 @@ export default function ServicesCarousel({ services = [] }) {
                 <Link to={service.slug}>
                   <div className="bg-white dark:bg-[#1a1f2e] rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 hover:-translate-y-1 group cursor-pointer">
                     <div className="relative overflow-hidden h-48">
-                      <img
+                      <CatalogImage
                         src={service.image}
                         alt={service.name}
                         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"

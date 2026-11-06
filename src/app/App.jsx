@@ -1,4 +1,4 @@
-// @backend-handoff-delete Local Preview provider, route gate, and development notices are removed/replaced at auth integration.
+// Application route map and authenticated entry point. Supabase protects workspace actions.
 // ─────────────────────────────────────────────────────────────────────────────
 // App.jsx — Root of the Lucid application
 //
@@ -34,9 +34,8 @@ import Navbar from "./layout/Navbar.jsx";
 import Footer from "./layout/Footer.jsx";
 import ProfileSetupBanner from "./layout/ProfileSetupBanner.jsx";
 import CancellationFeeRecoveryBanner from "./layout/CancellationFeeRecoveryBanner.jsx";
-import InspectorPreviewSetupGate from "./layout/InspectorPreviewSetupGate.jsx";
+import AccountSetupGate from "./layout/AccountSetupGate.jsx";
 import WorkspaceShell from "./layout/WorkspaceShell.jsx";
-import WorkflowModeBanner from "../components/workflow/WorkflowModeBanner.jsx";
 
 // ─── Admin Dashboard — statically imported (not route-level code-split) ──────
 
@@ -45,13 +44,26 @@ import WorkflowModeBanner from "../components/workflow/WorkflowModeBanner.jsx";
 // so navigating to /signin doesn't briefly flash a home-shaped skeleton.
 import {
   HomeSkeleton,
-  AuthFormSkeleton,
   ServicesSkeleton,
-  ProfileSkeleton,
-  BookingsSkeleton,
   ContentPageSkeleton,
-  DashboardSkeleton,
   NotificationsSkeleton,
+  AuthPageSkeleton,
+  AllCategoriesPageSkeleton,
+  CategoryPageSkeleton,
+  ServiceDetailPageSkeleton,
+  WorkspaceOverviewSkeleton,
+  AdminWorkbenchSkeleton,
+  AdminRecordsSkeleton,
+  FinancePageSkeleton,
+  RequestQueueSkeleton,
+  CaseDetailSkeleton,
+  RequestFormSkeleton,
+  AccountProfilePageSkeleton,
+  ProfileEditorPageSkeleton,
+  AccountSettingsPageSkeleton,
+  NotificationSettingsPageSkeleton,
+  TransactionsPageSkeleton,
+  ChatSkeleton,
 } from "./components/RouteSkeletons.jsx";
 
 // ─── Page-level code splitting ────────────────────────────────────────────────
@@ -63,10 +75,10 @@ const Home = lazy(() => import("../pages/public/HomePage.jsx"));
 const About = lazy(() => import("../pages/public/AboutPage.jsx"));
 const HelpSupport = lazy(() => import("../pages/public/HelpSupportPage.jsx"));
 
-// Auth & onboarding (Phase 1)
+// Authentication and onboarding
 const Signup = lazy(() => import("../pages/auth/SignUpPage.jsx"));
 const Signin = lazy(() => import("../pages/auth/SignInPage.jsx"));
-// Services discovery (Phase 2)
+// Service discovery
 const Service = lazy(() => import("../pages/catalog/ServicesPage.jsx"));
 const AllCategories = lazy(
   () => import("../pages/catalog/AllCategoriesPage.jsx"),
@@ -76,18 +88,18 @@ const Selected_service = lazy(
   () => import("../pages/catalog/ServiceDetailsPage.jsx"),
 );
 
-// Provider profile (Phase 3)
-const PreviewAccountSetup = lazy(
-  () => import("../pages/accounts/PreviewAccountSetupPage.jsx"),
+// Account profiles and settings
+const AccountSetup = lazy(
+  () => import("../pages/accounts/AccountSetupPage.jsx"),
 );
-const PreviewAccountProfile = lazy(
-  () => import("../pages/accounts/PreviewAccountProfilePage.jsx"),
+const AccountProfile = lazy(
+  () => import("../pages/accounts/AccountProfilePage.jsx"),
 );
-const PreviewAccountSettings = lazy(
-  () => import("../pages/accounts/PreviewAccountSettingsPage.jsx"),
+const AccountSettings = lazy(
+  () => import("../pages/accounts/AccountSettingsPage.jsx"),
 );
 
-// Bookings (Phase 4)
+// Requests and managed cases
 // ClientBookings / ProviderBookings / ClientHistory / ProviderHistory are sub-components
 // imported directly by BookingsPage and BookingHistoryPage — not lazy-loaded here.
 const ManagedServiceRequest = lazy(
@@ -119,9 +131,6 @@ const AdminWorkflowHub = lazy(
 const AdminFinancialRecords = lazy(
   () => import("../pages/admin/AdminFinancialRecordsPage.jsx"),
 );
-const ManagedWorkflowPreviewRoute = lazy(
-  () => import("../dev/ManagedWorkflowPreviewRoute.jsx"),
-);
 
 // Dashboard and provider finance pages.
 // Client/Provider dashboards are sub-components of DashboardPage and don't need their own routes.
@@ -135,12 +144,11 @@ const TransactionsPage = lazy(
   () => import("../pages/finance/TransactionsPage.jsx"),
 );
 // Account & settings pages.
-// Preview notification surface.
-const PreviewNotificationsPage = lazy(
-  () => import("../pages/notifications/PreviewNotificationsPage.jsx"),
+const NotificationsPage = lazy(
+  () => import("../pages/notifications/NotificationsPage.jsx"),
 );
-const PreviewNotificationSettingsPage = lazy(
-  () => import("../pages/notifications/PreviewNotificationSettingsPage.jsx"),
+const NotificationSettingsPage = lazy(
+  () => import("../pages/notifications/NotificationSettingsPage.jsx"),
 );
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -149,7 +157,7 @@ const PreviewNotificationSettingsPage = lazy(
 // Wrap any <Route> element with this to require authentication.
 // Optionally pass allowedRoles={['service_provider']} to also enforce role.
 //
-// Local Preview identity and role checks guard authenticated prototype routes.
+// Client-side checks guide navigation. Supabase RLS and RPC authorization are authoritative.
 const NO_REQUIRED_ROLES = Object.freeze([]);
 const CLIENT_ONLY = Object.freeze(["client"]);
 const PROVIDER_ONLY = Object.freeze(["service_provider"]);
@@ -171,7 +179,17 @@ const ProtectedRoute = ({
   staffRoles = NO_REQUIRED_ROLES,
 }) => {
   const location = useLocation();
-  const { user, role } = useWorkflowMode();
+  const { user, role, authLoading } = useWorkflowMode();
+  if (authLoading) {
+    return (
+      <main
+        role="status"
+        className="min-h-[45vh] px-4 py-16 text-center text-sm text-gray-600"
+      >
+        Checking your account...
+      </main>
+    );
+  }
   if (!user)
     return <Navigate to="/lucid/signin" replace state={{ from: location }} />;
   const roleMap = {
@@ -186,24 +204,28 @@ const ProtectedRoute = ({
       roleMap[role]?.includes(required),
     );
   if (!permitted) return <Navigate to="/lucid/dashboard" replace />;
-  return <InspectorPreviewSetupGate>{children}</InspectorPreviewSetupGate>;
+  return <AccountSetupGate>{children}</AccountSetupGate>;
 };
 
-const PreviewSetupRoute = () => {
+const AccountSetupRoute = () => {
   const { role } = useWorkflowMode();
   if (role === "inspector")
     return <Navigate to="/lucid/inspector/profile" replace />;
   if (role === "admin") return <Navigate to="/lucid/admin/workflow" replace />;
-  return <PreviewAccountSetup />;
+  return <AccountSetup />;
 };
 
 const ClientRequestRoute = () => {
   const { user, role } = useWorkflowMode();
   const location = useLocation();
-  if (!user) return <Navigate to="/lucid/signin" replace state={{ from: location }} />;
-  if (role === "client") return withFallback(<ManagedServiceRequest />, BookingsSkeleton);
+  if (!user) {
+    return <Navigate to="/lucid/signin" replace state={{ from: location }} />;
+  }
+  if (role === "client") {
+    return withFallback(<ManagedServiceRequest />, RequestFormSkeleton);
+  }
   if (role === "provider" || role === "inspector") {
-    return withFallback(<ClientRequestAccountPrompt />, BookingsSkeleton);
+    return withFallback(<ClientRequestAccountPrompt />, RequestFormSkeleton);
   }
   return <Navigate to="/lucid/dashboard" replace />;
 };
@@ -224,29 +246,48 @@ const withFallback = (element, Fallback) => (
 function Layout({ children }) {
   const location = useLocation();
   const { user } = useWorkflowMode();
-  const workspacePrefixes = ["/lucid/dashboard", "/lucid/cases", "/lucid/provider", "/lucid/client", "/lucid/messages", "/lucid/notifications", "/lucid/account", "/lucid/earnings", "/lucid/transactions", "/lucid/inspector", "/lucid/admin", "/lucid/staff/operations", "/lucid/preview", "/lucid/bookings"];
-  const isWorkspaceRoute = Boolean(user) && workspacePrefixes.some(prefix => location.pathname === prefix || location.pathname.startsWith(`${prefix}/`));
+  const workspacePrefixes = [
+    "/lucid/dashboard",
+    "/lucid/cases",
+    "/lucid/provider",
+    "/lucid/client",
+    "/lucid/messages",
+    "/lucid/notifications",
+    "/lucid/account",
+    "/lucid/earnings",
+    "/lucid/transactions",
+    "/lucid/inspector",
+    "/lucid/admin",
+    "/lucid/staff/operations",
+    "/lucid/bookings",
+  ];
+  const isWorkspaceRoute =
+    Boolean(user) &&
+    workspacePrefixes.some(
+      (prefix) =>
+        location.pathname === prefix ||
+        location.pathname.startsWith(`${prefix}/`),
+    );
   if (isWorkspaceRoute) return <WorkspaceShell>{children}</WorkspaceShell>;
 
   // Exact paths where the shared Navbar/Footer are hidden.
   const hideNavAndFooterExact = [
-    "/lucid/dashboard", // DashboardPage (Phase 5)
-    "/lucid/earnings", // EarningsPayments (Phase 5)
-    "/lucid/transactions", // TransactionsPage (Phase 5)
-    "/lucid/favourites", // Favourites (Phase 5)
-    "/lucid/account", // AccountPage (Phase 6)
-    "/lucid/account/settings", // AccountSettings (Phase 6)
-    "/lucid/notifications", // NotificationsPage (Phase 6)
-    "/lucid/notifications/settings", // NotificationSettings (Phase 6)
-    "/lucid/messages", // Messages (Phase 7)
-    "/lucid/preview", // Public preview app
-    "/lucid/bookings", // BookingsPage (Phase 4)
-    "/lucid/bookings/history", // BookingHistoryPage (Phase 4)
-    "/lucid/bookings/confirmation", // BookingConfirmation (Phase 4)
+    "/lucid/dashboard", // DashboardPage
+    "/lucid/earnings", // EarningsPayments
+    "/lucid/transactions", // TransactionsPage
+    "/lucid/favourites", // Favourites
+    "/lucid/account", // AccountPage
+    "/lucid/account/settings", // AccountSettings
+    "/lucid/notifications", // NotificationsPage
+    "/lucid/notifications/settings", // NotificationSettings
+    "/lucid/messages", // Messages
+    "/lucid/bookings", // BookingsPage
+    "/lucid/bookings/history", // BookingHistoryPage
+    "/lucid/bookings/confirmation", // BookingConfirmation
     "/lucid/cases", // Client's LUCID-managed request list
-    "/lucid/account/profile", // UserProfile (Phase 3)
-    "/lucid/account/profile/edit", // EditProfile (Phase 3)
-    "/lucid/account/profile/setup", // ProviderProfileSetup (Phase 3)
+    "/lucid/account/profile", // UserProfile
+    "/lucid/account/profile/edit", // EditProfile
+    "/lucid/account/profile/setup", // ProviderProfileSetup
     "/lucid/help", // Help & Support (public, shell hidden)
     "/lucid/account/client-profile", // ClientProfile
     "/lucid/admin", // Admin Dashboard
@@ -254,16 +295,19 @@ function Layout({ children }) {
     "/lucid/inspector/visits", // Inspector visit list
     "/lucid/signin", // Sign-in page (public, shell hidden)
     "/lucid/signup", // Sign-up page (public, shell hidden)
-    "/lucid/preview", // Shared public workflow walkthrough
   ];
 
   // Prefix-based hide — catches full-screen dynamic routes. Provider-profile
   // and provider-specific booking paths now redirect to service discovery.
   const hideNavAndFooterPrefix = [
     "/lucid/providers/", // Legacy provider IDs redirect to service discovery
-    "/lucid/bookings/new/", // BookingRequest — dynamic :providerId segment (Phase 4)
+    "/lucid/bookings/new/", // BookingRequest — dynamic :providerId segment
     "/lucid/bookings/request/", // Managed service request — category/service route
   ];
+
+  const isAuthRoute = ["/lucid/signin", "/lucid/signup"].includes(
+    location.pathname,
+  );
 
   const shouldHideLayout =
     hideNavAndFooterExact.includes(location.pathname) ||
@@ -275,9 +319,8 @@ function Layout({ children }) {
     <>
       {!shouldHideLayout && <Navbar />}{" "}
       {/* shown wherever the shared shell is enabled */}
-      <WorkflowModeBanner />
-      <ProfileSetupBanner />{" "}
-      <CancellationFeeRecoveryBanner />
+      {!isAuthRoute && <ProfileSetupBanner />}{" "}
+      {!isAuthRoute && <CancellationFeeRecoveryBanner />}
       {/* renders for incomplete providers on eligible routes */}
       <main>{children}</main> {/* landmark required for screen readers */}
       {!shouldHideLayout && <Footer />}{" "}
@@ -285,37 +328,26 @@ function Layout({ children }) {
     </>
   );
 }
+// Root application: global providers, router, layout, and route definitions.
 
-// ─────────────────────────────────────────────────────────────────────────────
-// App — root component
-//
-// Tree:
-//   NotificationProvider         — global toast system (outermost, wraps everything)
-//     Router (BrowserRouter)     — enables client-side routing
-//       Layout                   — conditionally renders Navbar + Footer
-//         Routes                 — matches current URL to a page component
-//           Route ...            — each URL pattern mapped to a component
-// ─────────────────────────────────────────────────────────────────────────────
 function App() {
   return (
     // NotificationProvider must be outside Router so navbar and pages
     // can both call useNotification() for the same notification queue.
     <ThemeProvider>
       <NotificationProvider>
-        <LocationProvider>
-          {/* basename matches vite's production base ("/lucid-frontend"), so URLs    */}
+        {/* basename matches vite's production base ("/lucid-frontend"), so URLs    */}
           {/* like /lucid-frontend/lucid/bookings resolve to the /lucid/bookings route. */}
           {/* In dev (base "/lucid/") import.meta.env.PROD is false → basename is "".   */}
-          <Router basename={import.meta.env.PROD ? "/lucid-frontend" : ""}>
-            {/* ScrollToTop resets scroll position on every route change */}
-            <ScrollToTop />
-            {/* Layout reads location from Router context — must be inside <Router> */}
-            <WorkflowModeProvider>
+        <Router basename={import.meta.env.PROD ? "/lucid-frontend" : ""}>
+          {/* ScrollToTop resets scroll position on every route change */}
+          <ScrollToTop />
+          {/* Layout reads location from Router context — must be inside <Router> */}
+          <WorkflowModeProvider>
+            <LocationProvider>
               <Layout>
                 <Routes>
-                  {/* ── PUBLIC ROUTES ─────────────────────────────────────────────
-                No authentication needed. Anyone can reach these pages.      */}
-
+                  {/* Public routes are available without authentication. */}
                   <Route
                     path="/lucid/"
                     element={withFallback(<Home />, HomeSkeleton)}
@@ -324,13 +356,13 @@ function App() {
 
                   <Route
                     path="/lucid/signup"
-                    element={withFallback(<Signup />, AuthFormSkeleton)}
+                    element={withFallback(<Signup />, AuthPageSkeleton)}
                   />
                   {/* New user registration — both client and provider accounts. */}
 
                   <Route
                     path="/lucid/signin"
-                    element={withFallback(<Signin />, AuthFormSkeleton)}
+                    element={withFallback(<Signin />, AuthPageSkeleton)}
                   />
                   {/* Login. ProtectedRoute redirects here when session is missing. */}
 
@@ -354,7 +386,7 @@ function App() {
                         allowedRoles={ADMIN_ONLY}
                         staffRoles={OPERATIONS_STAFF}
                       >
-                        {withFallback(<AdminWorkflowHub />, DashboardSkeleton)}
+                        {withFallback(<AdminWorkflowHub />, AdminWorkbenchSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -366,7 +398,7 @@ function App() {
                         allowedRoles={ADMIN_ONLY}
                         staffRoles={OPERATIONS_STAFF}
                       >
-                        {withFallback(<AdminFinancialRecords />, DashboardSkeleton)}
+                        {withFallback(<AdminFinancialRecords />, AdminRecordsSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -375,7 +407,7 @@ function App() {
                     path="/lucid/admin"
                     element={
                       <ProtectedRoute allowedRoles={ADMIN_ONLY}>
-                        {withFallback(<AdminWorkflowHub />, DashboardSkeleton)}
+                        {withFallback(<AdminWorkflowHub />, AdminWorkbenchSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -387,26 +419,11 @@ function App() {
                         allowedRoles={ADMIN_ONLY}
                         staffRoles={OPERATIONS_STAFF}
                       >
-                        {withFallback(<AdminWorkflowHub />, DashboardSkeleton)}
+                        {withFallback(<AdminWorkflowHub />, AdminWorkbenchSkeleton)}
                       </ProtectedRoute>
                     }
                   />
 
-                  <Route
-                    path="/lucid/preview"
-                    element={
-                      <ProtectedRoute>
-                        {withFallback(
-                          <ManagedWorkflowPreviewRoute />,
-                          DashboardSkeleton,
-                        )}
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/lucid/staff/workflow-preview"
-                    element={<Navigate to="/lucid/admin/workflow" replace />}
-                  />
 
                   <Route
                     path="/lucid/inspector/visits"
@@ -414,7 +431,7 @@ function App() {
                       <ProtectedRoute staffRoles={INSPECTOR_ONLY}>
                         {withFallback(
                           <InspectorDashboard />,
-                          DashboardSkeleton,
+                          WorkspaceOverviewSkeleton,
                         )}
                       </ProtectedRoute>
                     }
@@ -427,7 +444,7 @@ function App() {
                         allowedRoles={ADMIN_ONLY}
                         staffRoles={INSPECTOR_PROFILE_ACCESS}
                       >
-                        {withFallback(<InspectorProfile />, ProfileSkeleton)}
+                        {withFallback(<InspectorProfile />, ProfileEditorPageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -435,7 +452,7 @@ function App() {
                     path="/lucid/client/profile/setup"
                     element={
                       <ProtectedRoute allowedRoles={CLIENT_ONLY}>
-                        {withFallback(<PreviewAccountSetup />, ProfileSkeleton)}
+                        {withFallback(<AccountSetup />, ProfileEditorPageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -446,18 +463,14 @@ function App() {
                         allowedRoles={ADMIN_ONLY}
                         staffRoles={INSPECTOR_PROFILE_ACCESS}
                       >
-                        {withFallback(<InspectorFinance />, DashboardSkeleton)}
+                        {withFallback(<InspectorFinance />, FinancePageSkeleton)}
                       </ProtectedRoute>
                     }
-                  />
-                  <Route
-                    path="/lucid/inspector/workflow-preview"
-                    element={<Navigate to="/lucid/inspector/visits" replace />}
                   />
 
                   <Route
                     path="/lucid/become-provider"
-                    element={withFallback(<Signup />, AuthFormSkeleton)}
+                    element={withFallback(<Signup />, AuthPageSkeleton)}
                   />
                   {/* Same sign-up page, different entry point from marketing CTAs.
                 The Signup component can detect this path to pre-select "provider". */}
@@ -468,16 +481,13 @@ function App() {
                     element={
                       <ProtectedRoute allowedRoles={CLIENT_ONLY}>
                         {withFallback(
-                          <PreviewAccountProfile />,
-                          ProfileSkeleton,
+                          <AccountProfile />,
+                          AccountProfilePageSkeleton,
                         )}
                       </ProtectedRoute>
                     }
                   />
-                  {/* ── SERVICES DISCOVERY (Phase 2) ──────────────────────────────
-                /lucid/services/all is more specific than /lucid/services/:category.
-                React Router ranks static segments above dynamic segments, so this
-                declaration order is for readability rather than match precedence. */}
+                  {/* Service discovery routes. */}
 
                   <Route
                     path="/lucid/search"
@@ -494,13 +504,13 @@ function App() {
 
                   <Route
                     path="/lucid/services/all"
-                    element={withFallback(<AllCategories />, ServicesSkeleton)}
+                    element={withFallback(<AllCategories />, AllCategoriesPageSkeleton)}
                   />
-                  {/* Grid of all 10 categories. The static "all" route outranks :category. */}
+                  {/* Grid of the four launch categories. The static "all" route outranks :category. */}
 
                   <Route
                     path="/lucid/services/:category"
-                    element={withFallback(<Category />, ServicesSkeleton)}
+                    element={withFallback(<Category />, CategoryPageSkeleton)}
                   />
                   {/* :category = slug from categories.js, e.g. "home-repairs".
                 category.jsx calls getCategoryBySlug(params.category) to find the data. */}
@@ -509,15 +519,12 @@ function App() {
                     path="/lucid/services/:category/:service"
                     element={withFallback(
                       <Selected_service />,
-                      ServicesSkeleton,
+                      ServiceDetailPageSkeleton,
                     )}
                   />
                   {/* :service = service slug within the category, e.g. "electrical-repairs".
-                Selecting a service leads to the client-only LUCID intake. */}
 
-                  {/* ── PROVIDER PROFILE (Phase 3) ────────────────────────────────
-                Public — a client can view any provider's profile without logging in. */}
-
+                  {/* Provider identities are private in the managed-service model. */}
                   <Route
                     path="/lucid/providers/:id"
                     element={<Navigate to="/lucid/services" replace />}
@@ -525,39 +532,38 @@ function App() {
                   {/* Provider identities are private in the managed-service model. */}
 
                   {/* ── PROTECTED — ANY AUTHENTICATED USER ────────────────────────
-                ProtectedRoute checks the local Preview identity and selected role. */}
 
-                  {/* Phase 5 — Dashboard */}
+                  {/* Dashboard */}
                   <Route
                     path="/lucid/dashboard"
                     element={
                       <ProtectedRoute>
-                        {withFallback(<DashboardPage />, DashboardSkeleton)}
+                        {withFallback(<DashboardPage />, WorkspaceOverviewSkeleton)}
                       </ProtectedRoute>
                     }
                   />
                   {/* Role-aware: routes to client_dashboard or provider_dashboard based on profile.role. */}
 
-                  {/* Phase 6 — Account overview */}
+                  {/* Account overview */}
                   <Route
                     path="/lucid/account"
                     element={
                       <ProtectedRoute>
                         {withFallback(
-                          <PreviewAccountProfile />,
-                          ProfileSkeleton,
+                          <AccountProfile />,
+                          AccountProfilePageSkeleton,
                         )}
                       </ProtectedRoute>
                     }
                   />
                   {/* Role-aware hub: client_account_overview or provider_account_overview. */}
 
-                  {/* Phase 6 — Account settings */}
+                  {/* Account settings */}
                   <Route
                     path="/lucid/account/settings"
                     element={
                       <ProtectedRoute>
-                        {withFallback(<PreviewAccountSettings />, ProfileSkeleton)}
+                        {withFallback(<AccountSettings />, AccountSettingsPageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -567,8 +573,8 @@ function App() {
                     element={
                       <ProtectedRoute>
                         {withFallback(
-                          <PreviewAccountProfile />,
-                          ProfileSkeleton,
+                          <AccountProfile />,
+                          AccountProfilePageSkeleton,
                         )}
                       </ProtectedRoute>
                     }
@@ -580,7 +586,7 @@ function App() {
                     path="/lucid/account/profile/edit"
                     element={
                       <ProtectedRoute>
-                        {withFallback(<PreviewSetupRoute />, ProfileSkeleton)}
+                        {withFallback(<AccountSetupRoute />, ProfileEditorPageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -590,15 +596,13 @@ function App() {
                     path="/lucid/account/profile/setup"
                     element={
                       <ProtectedRoute allowedRoles={PROVIDER_ONLY}>
-                        {withFallback(<PreviewAccountSetup />, ProfileSkeleton)}
+                        {withFallback(<AccountSetup />, ProfileEditorPageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
                   {/* Provider-only onboarding. Skip → /lucid/. Save → /lucid/account/profile. */}
 
-                  {/* ── BOOKINGS (Phase 4) ────────────────────────────────────
-                Keep the booking routes grouped for readability. React Router
-                ranks the more specific paths above the exact /bookings path. */}
+                  {/* Client requests and managed cases. */}
 
                   {/* LUCID-managed intake. This stores no provider ID and is client-only. */}
                   <Route
@@ -610,7 +614,7 @@ function App() {
                     path="/lucid/cases"
                     element={
                       <ProtectedRoute allowedRoles={CLIENT_ONLY}>
-                        {withFallback(<ManagedCases />, BookingsSkeleton)}
+                        {withFallback(<ManagedCases />, RequestQueueSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -619,20 +623,16 @@ function App() {
                     path="/lucid/cases/:caseId"
                     element={
                       <ProtectedRoute>
-                        {withFallback(<ManagedCaseDetail />, BookingsSkeleton)}
+                        {withFallback(<ManagedCaseDetail />, CaseDetailSkeleton)}
                       </ProtectedRoute>
                     }
-                  />
-                  <Route
-                    path="/lucid/cases/preview"
-                    element={<Navigate to="/lucid/cases" replace />}
                   />
 
                   <Route
                     path="/lucid/provider/work"
                     element={
                       <ProtectedRoute allowedRoles={PROVIDER_ONLY}>
-                        {withFallback(<ProviderWork />, BookingsSkeleton)}
+                        {withFallback(<ProviderWork />, RequestQueueSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -640,7 +640,7 @@ function App() {
                     path="/lucid/provider/work/:caseId"
                     element={
                       <ProtectedRoute allowedRoles={PROVIDER_ONLY}>
-                        {withFallback(<ManagedCaseDetail />, BookingsSkeleton)}
+                        {withFallback(<ManagedCaseDetail />, CaseDetailSkeleton)}
                       </ProtectedRoute>
                     }
                   />
@@ -665,7 +665,7 @@ function App() {
                   />
                   {/* Legacy marketplace booking pages are no longer client entry points. */}
 
-                  {/* Phase 5 — Favourites (client only) */}
+                  {/* Favourites (client only) */}
                   <Route
                     path="/lucid/favourites"
                     element={
@@ -675,24 +675,24 @@ function App() {
                     }
                   />
 
-                  {/* Phase 7 — Messaging */}
+                  {/* Messaging */}
                   <Route
                     path="/lucid/messages"
                     element={
                       <ProtectedRoute>
-                        {withFallback(<MessagesPage />, BookingsSkeleton)}
+                        {withFallback(<MessagesPage />, ChatSkeleton)}
                       </ProtectedRoute>
                     }
                   />
 
-                  {/* Phase 6 — Notifications */}
+                  {/* Notifications */}
                   <Route
                     path="/lucid/notifications"
                     element={
                       <ProtectedRoute>
                         {withFallback(
-                          <PreviewNotificationsPage />,
-                          BookingsSkeleton,
+                          <NotificationsPage />,
+                          NotificationsSkeleton,
                         )}
                       </ProtectedRoute>
                     }
@@ -702,48 +702,65 @@ function App() {
                     path="/lucid/notifications/settings"
                     element={
                       <ProtectedRoute>
-                        {withFallback(<PreviewNotificationSettingsPage />, ProfileSkeleton)}
+                        {withFallback(<NotificationSettingsPage />, NotificationSettingsPageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
 
                   {/* ── PROTECTED — SERVICE_PROVIDER ONLY ─────────────────────────
-                ProtectedRoute checks session AND role.
-                Clients hitting this route are bounced to /lucid/ with a toast. */}
 
-                  {/* Phase 5 — Earnings (provider only) */}
+                  {/* Earnings (provider only) */}
                   <Route
                     path="/lucid/earnings"
                     element={
                       <ProtectedRoute allowedRoles={PROVIDER_ONLY}>
-                        {withFallback(<EarningsPayments />, DashboardSkeleton)}
+                        {withFallback(<EarningsPayments />, FinancePageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
 
-                  {/* Phase 5 — Transactions (provider only) */}
+                  {/* Transactions (provider only) */}
                   <Route
                     path="/lucid/transactions"
                     element={
                       <ProtectedRoute>
-                        {withFallback(<TransactionsPage />, BookingsSkeleton)}
+                        {withFallback(<TransactionsPage />, TransactionsPageSkeleton)}
                       </ProtectedRoute>
                     }
                   />
 
-                  {/* ── CATCH-ALL ─────────────────────────────────────────────────
-                Any URL not matched above redirects to the home page.
-                Prevents blank "not found" screens on mistyped URLs. */}
+                  {/* Unknown routes return to the home page. */}
 
                   <Route path="*" element={<Navigate to="/lucid/" replace />} />
                 </Routes>
               </Layout>
-            </WorkflowModeProvider>
-          </Router>
-        </LocationProvider>
+            </LocationProvider>
+          </WorkflowModeProvider>
+        </Router>
       </NotificationProvider>
     </ThemeProvider>
   );
 }
 
 export default App;
+
+/*
+ * Backend implementation checklist (see docs/backend/BACKEND_WORKFLOW_IMPLEMENTATION_GUIDE.md):
+ * - Public catalogue, categories, service search, service detail, support/contact submissions.
+ * - Supabase Auth, email confirmation, role provisioning, profile completion, security, consent,
+ *   notification preferences, privacy export/deletion requests, suspension and appeals.
+ * - Client/provider/Inspector private and public profile reads, updates, verification files,
+ *   portfolio media, saved service locations, availability and assignment capacity.
+ * - Service request create/read/update/cancel, private addresses, Admin clarification/amendments,
+ *   Inspector assignment/reassignment, proximity search and Client no-Inspector consent.
+ * - Provider discovery/assignment, acceptance/decline, work start/completion, final bills,
+ *   optional bill notes, client accept/reject/negotiation revisions and optional reviews.
+ * - Role-authorized messaging, thread/reply/edit history, voice/media storage, read receipts,
+ *   notifications, email/SMS/push delivery and audit trail.
+ * - Payment-gateway checkout, signed webhook verification, ledger/fees/refunds, receipts,
+ *   provider and Inspector secure payout onboarding/status/transfer reconciliation.
+ * - Admin account directory, policy actions/notices, credential review, appeals, case audit,
+ *   transaction/receipt search, review moderation and message access with explicit audit events.
+ * - Enforce every role, case-state and private-field rule in Postgres RLS or trusted Edge Functions.
+ *   Never trust client-supplied role, amount, fee, assignment, payment, payout, or lifecycle state.
+ */

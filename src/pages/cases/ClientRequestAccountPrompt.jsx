@@ -1,4 +1,4 @@
-// @backend-handoff-delete Preview-only account guidance for non-Client request attempts.
+// Routes non-Client account holders to public browsing or Client signup.
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, ClipboardList } from 'lucide-react';

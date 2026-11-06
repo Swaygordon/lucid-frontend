@@ -1,4 +1,4 @@
-import LucidLogo from '../../assets/Lucid.webp';
+import LucidLogo from '../../assets/brand/Lucid.webp';
 
 const amountLabel = (amount, currency = 'GHS') => `${currency} ${Number(amount || 0).toLocaleString('en-GH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pretty = value => String(value || 'Unknown').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());

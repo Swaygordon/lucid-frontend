@@ -1,10 +1,10 @@
-// @backend-handoff-delete Local Preview cases, sample labels, and mock-service data access.
+// Backend contract: fetch only cases visible to the signed-in role, with server-side filters and pagination.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, Bell, ClipboardList, MessageSquareText, RefreshCw, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
 import { CLIENT_CASE_FILTERS, getCasePresentation } from '../../services/workflow/casePresentation.js';
-import FilterPills from '../../components/common/FilterPills.jsx';
+import FilterPills from '../../components/shared/FilterPills.jsx';
 
 const dateLabel = value => {
   if (!value) return 'Date unavailable';
@@ -41,10 +41,10 @@ const ManagedCases = () => {
         ...item,
         serviceName: item.service || item.service_name || 'Service request',
         createdAt: item.createdAt || item.created_at || item.history?.[0]?.at,
-        range: item.clientRange || { min: item.budget_min, max: item.budget_max, currency: item.currency || 'GHS' },
+        range: item.clientRange || { min: item.suggested_range_min, max: item.suggested_range_max, currency: item.currency || 'GHS' },
       })));
     } catch (error) {
-      console.error('Unable to load Preview requests:', error);
+      console.error('Unable to load requests:', error);
       setLoadError(error.message || 'Your requests could not be loaded. Please try again.');
     } finally {
       setLoading(false);
@@ -67,6 +67,10 @@ const ManagedCases = () => {
       const matchesSearch = !normalizedSearch || [item.serviceName, item.category, item.id, item.locationSummary]
         .some(value => String(value || '').toLocaleLowerCase().includes(normalizedSearch));
       return matchesFilter && matchesSearch;
+    }).sort((a, b) => {
+      const aDate = new Date(a.createdAt || 0).getTime();
+      const bDate = new Date(b.createdAt || 0).getTime();
+      return (Number.isFinite(bDate) ? bDate : 0) - (Number.isFinite(aDate) ? aDate : 0);
     });
   }, [cases, filter, search]);
 
@@ -79,7 +83,7 @@ const ManagedCases = () => {
             <div><h1 className="text-3xl font-bold tracking-tight text-gray-950 dark:text-slate-100">My requests</h1><p className="mt-2 max-w-2xl text-gray-600 dark:text-slate-400">See what is happening, who acts next, and where to continue each request.</p></div>
             <Link to="/lucid/services" className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary/90">Request a service <ArrowRight size={17} aria-hidden="true" /></Link>
           </div>
-          <p data-preview-disclosure className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />Local Preview requests</p>
+          <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:bg-amber-950/30 dark:text-amber-100"><span className="h-2 w-2 rounded-full bg-amber-500" aria-hidden="true" />My requests</p>
         </header>
 
         <section className="mt-6 rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e] sm:p-6" aria-label="Request filters">
@@ -116,7 +120,7 @@ const ManagedCases = () => {
               </section>}
 
         <div className="mt-7 flex flex-wrap items-center justify-between gap-3 text-sm"><Link to="/lucid/notifications" className="inline-flex items-center gap-2 font-semibold text-primary hover:underline"><Bell size={16} aria-hidden="true" />View notifications</Link><Link to="/lucid/messages" className="inline-flex items-center gap-2 font-semibold text-primary hover:underline"><MessageSquareText size={16} aria-hidden="true" />Open messages</Link></div>
-        <p data-preview-disclosure className="mt-5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">Sample workflow records are stored locally in this browser. No payment is collected through Preview.</p>
+        <p className="mt-5 text-xs leading-relaxed text-gray-500 dark:text-slate-400">Your submitted requests appear here with their latest status and next action.</p>
       </div>
     </main>
   );

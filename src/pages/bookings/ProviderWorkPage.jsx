@@ -1,4 +1,4 @@
-// @backend-handoff-delete Provider assignment dashboard uses local workflow sample data.
+// Backend contract: hydrate this queue from assigned cases and ledger/payout APIs; never infer payout state in the browser.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, Bell, BriefcaseBusiness, CalendarClock, CircleDollarSign, ClipboardCheck, Clock3, MessageSquareText, ReceiptText, UserRound } from 'lucide-react';
@@ -7,6 +7,11 @@ import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowMo
 const formatMoney = (amount, currency = 'GHS') => `${currency} ${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const formatStatus = status => String(status || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 const dateTime = value => value ? new Date(value).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' }) : '';
+const caseCreatedAt = record => {
+  const value = record.createdAt || record.created_at || record.history?.[0]?.at || 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
 
 const stateLabel = record => ({
   offer_sent: 'Offer awaiting your response', accepted: 'Accepted · plan work', work_in_progress: 'Work in progress',
@@ -42,7 +47,7 @@ const Card = ({ record, group }) => {
           {record.clientRange && <p><span className="font-medium text-gray-800 dark:text-slate-200">Optional Client budget guidance:</span> {formatMoney(record.clientRange.min, record.clientRange.currency)} – {formatMoney(record.clientRange.max, record.clientRange.currency)} <span className="text-xs">(non-binding)</span></p>}
           {record.approvedWorkEstimate && <p><span className="font-medium text-gray-800 dark:text-slate-200">Approved work estimate:</span> {formatMoney(record.approvedWorkEstimate.amount, record.clientRange?.currency)}</p>}
           {bill && <p><span className="font-medium text-gray-800 dark:text-slate-200">Your submitted work amount:</span> {formatMoney(bill.providerAmount, record.clientRange?.currency)}</p>}
-          {record.providerPayoutStatus === 'released' && <p><span className="font-medium text-gray-800 dark:text-slate-200">Payout status:</span> Released in sample ledger · {formatMoney(record.providerPayoutAmount, record.clientRange?.currency)}</p>}
+          {record.providerPayoutStatus === 'released' && <p><span className="font-medium text-gray-800 dark:text-slate-200">Payout status:</span> Released · {formatMoney(record.providerPayoutAmount, record.clientRange?.currency)}</p>}
         </div>
         <p className="mt-3 text-sm text-gray-600 dark:text-slate-400">{action}</p>
       </div>
@@ -89,19 +94,21 @@ const ProviderWorkPage = () => {
     return () => { active = false; };
   }, [services, actor.role, actor.userId]);
 
-  const groups = useMemo(() => ({
-    offers: cases.filter(record => record.status === 'offer_sent'),
-    active: cases.filter(record => ['accepted', 'work_estimate_pending', 'estimate_revision_requested', 'work_in_progress', 'price_change_pending', 'paid'].includes(record.status)),
-    action: cases.filter(record => ['awaiting_client_approval', 'awaiting_payment', 'payment_delayed', 'payment_failed', 'disputed', 'refund_pending'].includes(record.status)),
-    payouts: cases.filter(record => record.providerBill && record.status !== 'completed'),
-    history: cases.filter(record => ['completed', 'cancelled', 'cancelled_fee_due', 'provider_declined', 'not_feasible'].includes(record.status)),
-  }), [cases]);
+  const groups = useMemo(() => {
+    const newestCases = [...cases].sort((a, b) => caseCreatedAt(b) - caseCreatedAt(a));
+    return {
+      offers: newestCases.filter(record => record.status === 'offer_sent'),
+      active: newestCases.filter(record => ['accepted', 'work_estimate_pending', 'estimate_revision_requested', 'work_in_progress', 'price_change_pending', 'paid'].includes(record.status)),
+      action: newestCases.filter(record => ['awaiting_client_approval', 'awaiting_payment', 'payment_delayed', 'payment_failed', 'disputed', 'refund_pending'].includes(record.status)),
+      payouts: newestCases.filter(record => record.providerBill && record.status !== 'completed'),
+      history: newestCases.filter(record => ['completed', 'cancelled', 'cancelled_fee_due', 'provider_declined', 'not_feasible'].includes(record.status)),
+    };
+  }, [cases]);
   const released = cases.filter(record => record.providerPayoutStatus === 'released').reduce((sum, record) => sum + Number(record.providerPayoutAmount || 0), 0);
 
   return <main className="min-h-screen bg-gray-50 dark:bg-[#0f1117]">
-    <header className="border-b border-gray-100 bg-white dark:border-[#1e293b] dark:bg-[#1a1f2e]"><div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8"><div><p data-preview-disclosure className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Provider workspace {actor.mode === 'preview' && '· Preview'}</p><h1 className="mt-1 text-xl font-bold text-gray-950 dark:text-slate-100">Your work</h1></div><div className="flex items-center gap-2"><Link to="/lucid/notifications" aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`} className="relative rounded-lg bg-gray-100 p-3 text-gray-700 hover:bg-gray-200 dark:bg-[#252b3b] dark:text-slate-200"><Bell className="h-5 w-5" aria-hidden="true" />{unread > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-xs font-bold text-white dark:border-[#1a1f2e]">{unread > 99 ? '99+' : unread}</span>}</Link><Link to="/lucid/account/profile" aria-label="Provider profile" className="rounded-lg bg-gray-100 p-3 text-gray-700 hover:bg-gray-200 dark:bg-[#252b3b] dark:text-slate-200"><UserRound className="h-5 w-5" aria-hidden="true" /></Link></div></div></header>
+    <header className="border-b border-gray-100 bg-white dark:border-[#1e293b] dark:bg-[#1a1f2e]"><div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8"><div><p className="text-xs font-semibold uppercase tracking-[0.16em] text-primary">Provider workspace</p><h1 className="mt-1 text-xl font-bold text-gray-950 dark:text-slate-100">Your work</h1></div><div className="flex items-center gap-2"><Link to="/lucid/notifications" aria-label={`Notifications${unread ? `, ${unread} unread` : ''}`} className="relative rounded-lg bg-gray-100 p-3 text-gray-700 hover:bg-gray-200 dark:bg-[#252b3b] dark:text-slate-200"><Bell className="h-5 w-5" aria-hidden="true" />{unread > 0 && <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border-2 border-white bg-red-500 px-1 text-xs font-bold text-white dark:border-[#1a1f2e]">{unread > 99 ? '99+' : unread}</span>}</Link><Link to="/lucid/account/profile" aria-label="Provider profile" className="rounded-lg bg-gray-100 p-3 text-gray-700 hover:bg-gray-200 dark:bg-[#252b3b] dark:text-slate-200"><UserRound className="h-5 w-5" aria-hidden="true" /></Link></div></div></header>
     <div className="mx-auto max-w-7xl space-y-6 px-4 py-7 sm:px-6 lg:px-8">
-      {actor.mode === 'preview' && <p data-preview-disclosure className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-100"><strong>Preview data.</strong> Offers, work updates, conversations, notices, and payout history are local examples. No Client identity, contact details, or real payment information is included.</p>}
       <section className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Provider work summary">
         {[['New offers', groups.offers.length, 'Review and respond', ClipboardCheck], ['Active work', groups.active.length, 'Accepted, scheduled, or in progress', BriefcaseBusiness], ['Needs follow-up', groups.action.length, 'Client response, payment, or issue', Clock3], ['Released payouts', formatMoney(released), 'Payout status', CircleDollarSign]].map(([title, value, helper, Icon]) => <article key={title} className="min-w-0 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e] sm:p-5"><div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="line-clamp-2 text-xs leading-4 text-gray-500 dark:text-slate-400 sm:text-sm">{title}</p><p className="mt-1 break-words text-lg font-bold leading-tight text-gray-950 dark:text-slate-100 sm:mt-2 sm:text-2xl">{value}</p><p className="mt-1 line-clamp-2 text-[11px] leading-4 text-gray-500 dark:text-slate-400 sm:text-xs">{helper}</p></div><span className="shrink-0 rounded-lg bg-blue-50 p-2 text-blue-700 dark:bg-blue-950/30 dark:text-blue-300 sm:rounded-xl sm:p-3"><Icon className="h-4 w-4 sm:h-5 sm:w-5" aria-hidden="true" /></span></div></article>)}
       </section>
@@ -112,7 +119,7 @@ const ProviderWorkPage = () => {
         <Section title="New offers" description="Review the approved scope, Inspector assessment, optional Client budget guidance, and work window before responding." icon={ClipboardCheck} records={groups.offers} group="offers" empty="No Provider offers are waiting for your response." />
         <Section title="Accepted and active work" description="Share an estimate for Client approval before starting. Request approval for extra work before doing it." icon={CalendarClock} records={groups.active} group="active" empty="Accepted assignments and active jobs will appear here." />
         <Section title="Client and payment follow-up" description="Check the bill, payment, or case issue that needs a response. Payout remains pending until payment is confirmed." icon={Clock3} records={groups.action} group="action" empty="No Client response or payment follow-up is needed." />
-        <Section title="Open bills and payout status" description="Review submitted work amounts and sample payout states. Actual payout and withdrawal availability require backend confirmation." icon={CircleDollarSign} records={groups.payouts} group="payouts" empty="Submitted bills and payout records will appear here." />
+        <Section title="Open bills and payout status" description="Review submitted work amounts and payout states confirmed by the payment provider." icon={CircleDollarSign} records={groups.payouts} group="payouts" empty="Submitted bills and payout records will appear here." />
         <Section title="Recent work history" description="Review completed, declined, cancelled, or closed assignments." icon={ReceiptText} records={groups.history} group="history" empty="Completed work and past assignment decisions will appear here." />
       </div>}
     </div>

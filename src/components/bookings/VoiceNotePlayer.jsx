@@ -1,11 +1,8 @@
 import React, { useRef, useState } from 'react';
 import { Pause, Play } from 'lucide-react';
+import { formatVoiceTime } from './voiceNoteUtils.js';
 
 const BARS = [28, 47, 36, 62, 43, 74, 52, 33, 67, 45, 82, 54, 37, 70, 48, 91, 58, 40, 76, 50, 64, 35, 84, 47, 69, 42, 96, 57, 38, 72, 49, 86, 60, 34, 78, 53, 66, 41, 89, 55];
-export const formatVoiceTime = value => {
-  const seconds = Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-};
 
 export function RecordingWaveform() {
   return <div aria-hidden="true" className="flex h-8 min-w-0 flex-1 items-center justify-center gap-[2px] overflow-hidden px-1">

@@ -1,4 +1,4 @@
-// @backend-handoff-delete Local workflow data disclosure note on role dashboards.
+// Backend contract: load dashboard counts and queue rows from the authenticated, role-scoped case and notification APIs.
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Bell, BriefcaseBusiness, CircleDollarSign, ClipboardList, Clock3, MessageSquareText, ReceiptText, RefreshCw, UserRound } from 'lucide-react';
@@ -12,6 +12,11 @@ const PROVIDER_PENDING = new Set(['offer_sent']);
 const PROVIDER_FOLLOW_UP = new Set(['awaiting_client_approval', 'awaiting_payment', 'payment_delayed', 'payment_failed']);
 const money = (amount, currency = 'GHS') => `${currency} ${Number(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const prettyStatus = status => String(status || '').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+const caseCreatedAt = record => {
+  const value = record.createdAt || record.created_at || record.history?.[0]?.at || 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
 
 const Stat = ({ label, value, helper, icon: Icon, tone = 'blue' }) => (
   <article className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-[#293244] dark:bg-[#1a1f2e] sm:p-5">
@@ -45,7 +50,7 @@ const WorkspacePanel = ({ title, description, icon: Icon, action, children }) =>
 
 const WorkflowRoleDashboard = ({ role }) => {
   const { userId } = useWorkflowActor();
-  const { mode, user } = useWorkflowMode();
+  const { user } = useWorkflowMode();
   const services = useWorkflowServices();
   const [records, setRecords] = useState([]);
   const [loadState, setLoadState] = useState('loading');
@@ -75,13 +80,14 @@ const WorkflowRoleDashboard = ({ role }) => {
       setDisplayName(user?.name || user?.email?.split('@')[0] || 'there');
       if (!notificationResult.error) setNotificationCount((notificationResult.data || []).filter(item => !item.read).length);
     }).catch(() => {
-      // The authenticated Preview dashboard can still render if either auxiliary lookup fails.
+      // The dashboard remains usable if an auxiliary summary lookup fails.
     });
 
     return () => { active = false; };
   }, [services, role, userId, user]);
 
-  const attentionCases = useMemo(() => records.filter(record => role === 'client' ? getCasePresentation(record.status).group === 'needs_action' : PROVIDER_PENDING.has(record.status) || PROVIDER_FOLLOW_UP.has(record.status)), [records, role]);
+  const newestRecords = useMemo(() => [...records].sort((a, b) => caseCreatedAt(b) - caseCreatedAt(a)), [records]);
+  const attentionCases = useMemo(() => newestRecords.filter(record => role === 'client' ? getCasePresentation(record.status).group === 'needs_action' : PROVIDER_PENDING.has(record.status) || PROVIDER_FOLLOW_UP.has(record.status)), [newestRecords, role]);
   const activeCases = useMemo(() => records.filter(record => role === 'client' ? !['completed', 'cancelled'].includes(record.status) : PROVIDER_ACTIVE.has(record.status)), [records, role]);
   const completedCases = useMemo(() => records.filter(record => ['completed', 'paid'].includes(record.status)), [records]);
   const totalDue = records.reduce((sum, record) => sum + (role === 'provider' && record.providerPayoutStatus === 'released' ? Number(record.providerPayoutAmount || 0) : 0), 0);
@@ -89,7 +95,7 @@ const WorkflowRoleDashboard = ({ role }) => {
 
   return (
     <main className="min-h-[75vh] bg-gray-50 dark:bg-[#0f1117]">
-      <header className="sticky top-0 z-30 border-b border-gray-100 bg-white dark:border-[#1e293b] dark:bg-[#1a1f2e]">
+      <header className="border-b border-gray-100 bg-white dark:border-[#1e293b] dark:bg-[#1a1f2e]">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <button onClick={handleBackClick} aria-label="Go back" className="shrink-0 rounded-lg p-2 transition-colors hover:bg-gray-100 dark:hover:bg-[#252b3b]">
@@ -121,12 +127,12 @@ const WorkflowRoleDashboard = ({ role }) => {
           <Stat label={isClient ? 'Open requests' : 'Active assignments'} value={activeCases.length} helper="Across your current workspace" icon={ClipboardList} />
           <Stat label="Needs your attention" value={attentionCases.length} helper={isClient ? 'A reply, approval, or payment is due' : 'Offer or Client response pending'} icon={Clock3} tone="amber" />
           <Stat label={isClient ? 'Receipts and paid work' : 'Completed work'} value={completedCases.length} helper="Available in your history" icon={ReceiptText} tone="green" />
-          <Stat label={isClient ? 'Messages' : 'Released earnings'} value={isClient ? 'Open inbox' : money(totalDue)} helper={isClient ? 'LUCID and assigned Inspector' : mode === 'preview' ? <span data-preview-disclosure>Preview ledger total</span> : 'Recorded payout total'} icon={isClient ? MessageSquareText : CircleDollarSign} />
+          <Stat label={isClient ? 'Messages' : 'Released earnings'} value={isClient ? 'Open inbox' : money(totalDue)} helper={isClient ? 'LUCID and assigned Inspector' : 'Recorded payout total'} icon={isClient ? MessageSquareText : CircleDollarSign} />
         </div>
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(280px,0.8fr)]">
-          <WorkspacePanel title={isClient ? 'Needs your attention' : 'Offers and follow-up'} description={isClient ? 'These requests have a pending action or need LUCID support.' : 'Review new offers and work waiting for a Client decision.'} icon={Clock3} action={<Link to="/lucid/messages" className="text-sm font-semibold text-primary hover:underline">Messages</Link>}>
-            {loadState === 'loading' ? <p role="status" className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500 dark:bg-[#252b3b] dark:text-slate-400">Loading your cases…</p> : loadState === 'error' ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200">Cases could not be loaded. Refresh the page or contact LUCID support.</p> : attentionCases.length ? <div className="space-y-3">{attentionCases.slice(0, 5).map(record => <CaseRow key={record.id} record={record} role={role} />)}</div> : <div className="rounded-xl bg-gray-50 p-5 text-sm text-gray-600 dark:bg-[#252b3b] dark:text-slate-300">Nothing needs your attention right now.</div>}
+          <WorkspacePanel title={isClient ? 'Needs your attention' : 'Offers and follow-up'} description={isClient ? 'These requests have a pending action or need LUCID support.' : 'Review new offers and work waiting for a Client decision.'} icon={Clock3} action={<div className="flex items-center gap-4"><Link to="/lucid/messages" className="text-sm font-semibold text-primary hover:underline">Messages</Link><Link to={isClient ? '/lucid/cases' : '/lucid/provider/work'} className="text-sm font-semibold text-primary hover:underline">View all</Link></div>}>
+            {loadState === 'loading' ? <p role="status" className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500 dark:bg-[#252b3b] dark:text-slate-400">Loading your cases…</p> : loadState === 'error' ? <p role="alert" className="rounded-xl bg-red-50 p-4 text-sm text-red-800 dark:bg-red-950/30 dark:text-red-200">Cases could not be loaded. Refresh the page or contact LUCID support.</p> : attentionCases.length ? <div className="space-y-3">{attentionCases.slice(0, 3).map(record => <CaseRow key={record.id} record={record} role={role} />)}</div> : <div className="rounded-xl bg-gray-50 p-5 text-sm text-gray-600 dark:bg-[#252b3b] dark:text-slate-300">Nothing needs your attention right now.</div>}
           </WorkspacePanel>
 
           <div className="space-y-6">
@@ -137,12 +143,11 @@ const WorkflowRoleDashboard = ({ role }) => {
                 <Link to="/lucid/messages" className="flex items-center justify-between rounded-xl bg-gray-50 px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-100 dark:bg-[#252b3b] dark:text-slate-200 dark:hover:bg-[#303a4c]">Messages <MessageSquareText className="h-4 w-4" /></Link>
               </div>
             </WorkspacePanel>
-          {mode === 'preview' && <p data-preview-disclosure className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-xs leading-relaxed text-blue-900 dark:border-blue-900/40 dark:bg-blue-950/20 dark:text-blue-100"><strong>Preview data.</strong> Requests, messages, receipts, and finance values are browser-local examples. The selected role is a simulated persona; no real account or payment is involved.</p>}
           </div>
         </div>
 
-        <WorkspacePanel title={isClient ? 'Recent requests' : 'Assigned work'} description={isClient ? 'The same case records are reflected in your Messages and transaction views.' : 'Only the job details needed for your work are shown here.'} icon={isClient ? ClipboardList : BriefcaseBusiness} action={<Link to={isClient ? '/lucid/cases' : '/lucid/provider/work'} className="text-sm font-semibold text-primary hover:underline">View all</Link>}>
-          {loadState === 'loading' ? <p role="status" className="text-sm text-gray-500 dark:text-slate-400">Loading…</p> : loadState === 'error' ? <p className="text-sm text-gray-500 dark:text-slate-400">Your case list is unavailable.</p> : records.length ? <div className="grid gap-3 lg:grid-cols-2">{records.slice(0, 8).map(record => <CaseRow key={record.id} record={record} role={role} />)}</div> : <div className="rounded-xl bg-gray-50 p-5 text-sm text-gray-600 dark:bg-[#252b3b] dark:text-slate-300">{isClient ? 'Your service requests will appear here.' : 'Offers and assignments sent to you will appear here.'}</div>}
+        <WorkspacePanel title={isClient ? 'Recent requests' : 'Assigned work'} description={isClient ? 'The same case records are reflected in your Messages and transaction views.' : 'Only the job details needed for your work are shown here.'} icon={isClient ? ClipboardList : BriefcaseBusiness} action={<Link to={isClient ? '/lucid/cases' : '/lucid/provider/work'} className="rounded-lg border border-primary/30 px-3 py-1.5 text-sm font-semibold text-primary hover:bg-primary/5">View all</Link>}>
+          {loadState === 'loading' ? <p role="status" className="text-sm text-gray-500 dark:text-slate-400">Loading…</p> : loadState === 'error' ? <p className="text-sm text-gray-500 dark:text-slate-400">Your case list is unavailable.</p> : newestRecords.length ? <div className="grid gap-3 lg:grid-cols-2">{newestRecords.slice(0, 3).map(record => <CaseRow key={record.id} record={record} role={role} />)}</div> : <div className="rounded-xl bg-gray-50 p-5 text-sm text-gray-600 dark:bg-[#252b3b] dark:text-slate-300">{isClient ? 'Your service requests will appear here.' : 'Offers and assignments sent to you will appear here.'}</div>}
         </WorkspacePanel>
         <div className="flex justify-end"><Link to={isClient ? '/lucid/transactions' : '/lucid/transactions'} className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">Financial records <ArrowRight className="h-4 w-4" /></Link></div>
       </div>

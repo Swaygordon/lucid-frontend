@@ -1,77 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ChevronRight, MapPin } from 'lucide-react';
-import { DownloadSection } from '../../components/layout/DownloadAppSection.jsx';
-import BackToTop from '../../components/layout/BackToTopButton.jsx';
+import { DownloadSection } from '../../components/shared/DownloadAppSection.jsx';
+import BackToTop from '../../components/shared/BackToTopButton.jsx';
 import Breadcrumb from '../../components/catalog/Breadcrumb.jsx';
+import CatalogImage from '../../components/catalog/CatalogImage.jsx';
 import { getCategoryBySlug, ALL_CATEGORIES } from '../../data/catalog/categories.js';
-
-const CategorySkeleton = () => (
-  <div className="min-h-screen bg-gray-50 animate-pulse">
-    {/* Hero */}
-    <div className="relative w-full h-56 md:h-72 bg-gray-300">
-      <div className="absolute inset-0 bg-black/20" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-        <div className="w-14 h-14 bg-gray-200 rounded-2xl" />
-        <div className="h-8 w-48 bg-gray-200 rounded" />
-        <div className="h-4 w-64 bg-gray-200 rounded" />
-      </div>
-    </div>
-
-    {/* Breadcrumb — 4 crumbs: Home › Services › All Services › Category */}
-    <div className="max-w-6xl mx-auto px-5 pt-5 pb-2 flex items-center gap-2">
-      <div className="h-4 w-10 bg-gray-200 rounded" />
-      <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-16 bg-gray-200 rounded" />
-      <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-24 bg-gray-200 rounded" />
-      <div className="h-3 w-3 bg-gray-200 rounded" />
-      <div className="h-4 w-32 bg-gray-200 rounded" />
-    </div>
-
-    {/* Sub-services grid */}
-    <div className="max-w-6xl mx-auto px-5 py-8">
-      <div className="h-7 w-52 bg-gray-200 rounded mb-6" />
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-2xl overflow-hidden border border-gray-100">
-            <div className="h-44 bg-gray-300" />
-            <div className="p-4 flex items-center justify-between">
-              <div className="space-y-2">
-                <div className="h-4 w-32 bg-gray-200 rounded" />
-                <div className="h-3 w-24 bg-gray-200 rounded" />
-              </div>
-              <div className="h-5 w-5 bg-gray-200 rounded" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    {/* Other category pills */}
-    <div className="max-w-6xl mx-auto px-5 pb-14">
-      <div className="h-6 w-44 bg-gray-200 rounded mb-4" />
-      <div className="flex flex-wrap gap-3">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div key={i} className="h-9 w-24 bg-gray-200 rounded-full" />
-        ))}
-      </div>
-    </div>
-  </div>
-);
 
 const Category = () => {
   const { category: categorySlug } = useParams();
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const id = setTimeout(() => setIsLoading(false), 800);
-    return () => clearTimeout(id);
-  }, [categorySlug]);
-
   const cat = getCategoryBySlug(categorySlug);
-
-  if (isLoading) return <CategorySkeleton />;
 
   // Fallback: unknown slug → show all categories
   if (!cat) {
@@ -94,7 +32,7 @@ const Category = () => {
 
       {/* ── Hero ── */}
       <div className="relative w-full h-56 md:h-72 overflow-hidden">
-        <img
+        <CatalogImage
           src={cat.image}
           alt={cat.name}
           className="w-full h-full object-cover"
@@ -133,7 +71,7 @@ const Category = () => {
             >
               <div className="bg-white dark:bg-[#1a1f2e] rounded-2xl overflow-hidden shadow-sm hover:shadow-lg border border-gray-100 dark:border-[#1e293b] transition-all duration-200 group">
                 <div className="relative h-44 overflow-hidden">
-                  <img
+                  <CatalogImage
                     src={svc.image}
                     alt={svc.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"

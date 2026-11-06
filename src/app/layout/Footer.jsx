@@ -9,9 +9,9 @@ import {
   FaThreads
 } from 'react-icons/fa6';
 import { ArrowRight } from 'lucide-react';
-import LogoMark from '../../assets/Lucid-L.webp';
-import LogoHorizontalBlack from '../../assets/Lucid-horizontal black.webp';
-import LogoHorizontalWhite from '../../assets/Lucid-horizontal white.webp';
+import LogoMark from '../../assets/brand/Lucid-L.webp';
+import LogoHorizontalBlack from '../../assets/brand/Lucid-horizontal black.webp';
+import LogoHorizontalWhite from '../../assets/brand/Lucid-horizontal white.webp';
 
 const fadeInUp = {
   hidden: { opacity: 0, y: 20 },
@@ -106,7 +106,7 @@ const Footer = () => {
               Connecting Ghana with trusted local service providers.
             </p>
             <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed max-w-xs">
-              From everyday repairs to skilled professionals — booked in minutes.
+              From home repairs and cleaning to auto services and construction, coordinated by LUCID.
             </p>
             <div className="flex flex-wrap items-center gap-1 mt-1">
               {SOCIAL_LINKS.map((s, i) => (
@@ -162,7 +162,7 @@ const Footer = () => {
               </button>
             </form>
             <p className="text-sm text-gray-600 dark:text-slate-400 leading-relaxed max-w-xs">
-              Every booking carries a system behind it. Built to keep your home running.
+              Every request has a clear next step, with the people involved and service record in one place.
             </p>
           </motion.div>
         </div>

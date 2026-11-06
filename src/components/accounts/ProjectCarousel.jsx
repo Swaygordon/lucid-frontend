@@ -1,17 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-// A carousel component to showcase project images with navigation and auto-play features
-//STEP 1: Import the component where needed: import ProjectCarousel from './ProjectCarousel.jsx';
-//STEP 2: Pass an array of project image URLs as props to the component in your desired page like so:
-
-//const projects = [
-//    "../assets/2150721533.jpg"
-//    "../assets/delivery.jpg"
-//    "../assets/19605.jpg"
-//    "../assets/2150721533.jpg"
-//  ];
-
-//STEP 3: insert component like so: <ProjectCarousel projects={projects} />
+// Displays provider portfolio images supplied by the profile data.
 export default function ProjectCarousel({ projects }) {
   const [currentProject, setCurrentProject] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);

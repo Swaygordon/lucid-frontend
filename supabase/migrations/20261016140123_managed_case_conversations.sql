@@ -1,3 +1,5 @@
+-- HISTORICAL DRAFT: reconcile this migration with docs/backend/BACKEND_WORKFLOW_IMPLEMENTATION_GUIDE.md and the deployed schema before applying.
+-- It predates the final messaging model and is not approved for production application.
 -- Client-to-LUCID case communication. Provider, inspector, and internal
 -- conversations use separate audiences and are intentionally not exposed here.
 

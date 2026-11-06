@@ -1,4 +1,4 @@
--- LUCID managed-service foundation.
+-- LUCID managed-service foundation. Backend handoff draft; review against current Supabase schema first.
 -- This migration is additive: it leaves the existing marketplace bookings,
 -- messages, and provider profiles in place while the new flow is built.
 -- Do not apply to the hosted Supabase project until its current schema and RLS
@@ -7,7 +7,7 @@
 create table if not exists public.lucid_staff_memberships (
   user_id uuid not null references auth.users(id) on delete restrict,
   role text not null check (
-    role in ('hr', 'inspector', 'operations_admin', 'finance_admin', 'super_admin')
+    role in ('admin', 'hr', 'inspector', 'operations_admin', 'finance_admin', 'super_admin')
   ),
   is_active boolean not null default true,
   created_at timestamptz not null default now(),
@@ -38,29 +38,27 @@ create table if not exists public.managed_service_cases (
   preferred_time text,
   alternate_date date,
   alternate_time text,
-  budget_min numeric(12, 2) not null check (budget_min >= 0),
-  budget_max numeric(12, 2) not null check (budget_max >= budget_min),
+  suggested_range_min numeric(12, 2) check (suggested_range_min is null or suggested_range_min >= 0),
+  suggested_range_max numeric(12, 2) check (suggested_range_max is null or suggested_range_max >= 0),
   currency text not null default 'GHS' check (currency ~ '^[A-Z]{3}$'),
   status text not null default 'draft' check (
     status in (
       'draft',
       'submitted',
       'needs_information',
-      'request_confirmed',
+      'admin_review',
       'inspector_assigned',
       'inspection_scheduled',
       'inspection_reported',
-      'scope_and_range_confirmed',
       'provider_offer_pending',
-      'provider_assignment_confirmed',
       'work_in_progress',
-      'work_ready',
-      'final_invoice_pending_validation',
-      'final_invoice_pending_client',
-      'final_invoice_approved',
+      'inspector_bypass_approved',
+      'bill_submitted',
+      'bill_rejected',
+      'bill_accepted',
+      'extra_work_pending',
       'payment_pending',
-      'payment_confirmed',
-      'inspector_final_check',
+      'paid',
       'completed',
       'cancelled',
       'resolved'
@@ -72,10 +70,10 @@ create table if not exists public.managed_service_cases (
 
 comment on table public.managed_service_cases is
   'LUCID-owned service requests. Provider identity is stored in a separate assignment after acceptance.';
-comment on column public.managed_service_cases.budget_min is
-  'Client-entered expected lower range; informational budget, not a final quote.';
-comment on column public.managed_service_cases.budget_max is
-  'Client-entered expected upper range; informational budget, not a final charge cap.';
+comment on column public.managed_service_cases.suggested_range_min is
+  'Optional Client price guidance only; not a quote, commitment or price cap.';
+comment on column public.managed_service_cases.suggested_range_max is
+  'Optional Client price guidance only; not a quote, commitment or price cap.';
 
 create index if not exists managed_service_cases_client_created_idx
   on public.managed_service_cases (client_id, created_at desc);
@@ -95,8 +93,8 @@ grant insert (
   preferred_time,
   alternate_date,
   alternate_time,
-  budget_min,
-  budget_max,
+  suggested_range_min,
+  suggested_range_max,
   currency,
   status
 ) on public.managed_service_cases to authenticated;

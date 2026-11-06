@@ -1,4 +1,5 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { useWorkflowMode, useWorkflowServices } from './WorkflowModeContext.jsx';
 
 // ── Location map images ───────────────────────────────────────────────────────
 // Greater Accra
@@ -283,26 +284,70 @@ export function buildBackgroundStyle(bgValue) {
   };
 }
 
-// Default account location — matches MOCK_CLIENT seed data.
-// In production this is loaded from the authenticated user's profile on mount.
-const ACCOUNT_DEFAULT = { area: 'Achimota', city: 'Accra', region: 'Greater Accra' };
+const EMPTY_LOCATION = { area: '', city: '', region: '' };
+
+export function accountLocationFromProfile(profile = {}) {
+  const savedLocations = profile.serviceLocations || profile.service_locations || [];
+  const preferred = savedLocations.find(location => location.isDefault || location.is_default) || savedLocations[0];
+  const city = preferred?.city || preferred?.homeCity || profile.homeCity || profile.home_city || '';
+  const area = preferred?.area || city;
+  return {
+    area,
+    city,
+    region: preferred?.region || profile.region || '',
+  };
+}
 
 const LocationContext = createContext(null);
 
 export function LocationProvider({ children }) {
-  // defaultLocation mirrors the user's saved account location.
-  // Only changes when the user saves new location info in account settings.
-  const [defaultLocation, setDefaultLocation] = useState(ACCOUNT_DEFAULT);
+  const { user, role } = useWorkflowMode();
+  const services = useWorkflowServices();
+  const userId = user?.id;
+  const [defaultLocation, setDefaultLocation] = useState(EMPTY_LOCATION);
+  const [searchLocation, setSearchLocation] = useState(EMPTY_LOCATION);
 
-  // searchLocation is session-only. Starts as the account default.
-  // Can be changed freely via LocationPicker without touching the account.
-  const [searchLocation, setSearchLocation] = useState(ACCOUNT_DEFAULT);
+  // Called from account setup saves; keep the search default aligned with the
+  // signed-in profile and cache only its non-sensitive area summary.
+  const updateDefaultLocation = useCallback((newLocation) => {
+    const next = { ...EMPTY_LOCATION, ...newLocation };
+    setDefaultLocation(next);
+    setSearchLocation(next);
+    if (userId) {
+      try { localStorage.setItem(`lucid:account-location:${userId}`, JSON.stringify(next)); }
+      catch { /* The in-memory account default still works if storage is unavailable. */ }
+    }
+  }, [userId]);
 
-  // Called from account settings save — updates BOTH default and active search location.
-  function updateDefaultLocation(newLocation) {
-    setDefaultLocation(newLocation);
-    setSearchLocation(newLocation);
-  }
+  useEffect(() => {
+    if (!userId) {
+      setDefaultLocation(EMPTY_LOCATION);
+      setSearchLocation(EMPTY_LOCATION);
+      return;
+    }
+    try {
+      const saved = JSON.parse(localStorage.getItem(`lucid:account-location:${userId}`) || 'null');
+      const next = saved?.area ? { ...EMPTY_LOCATION, ...saved } : EMPTY_LOCATION;
+      setDefaultLocation(next);
+      setSearchLocation(next);
+    } catch {
+      setDefaultLocation(EMPTY_LOCATION);
+      setSearchLocation(EMPTY_LOCATION);
+    }
+  }, [userId]);
+
+  // Refresh the account default from the saved account profile on sign-in.
+  // The user-scoped browser value is only a fast initial cache.
+  useEffect(() => {
+    if (!userId || !role) return undefined;
+    let active = true;
+    services.profiles.getForRole({ role, userId }).then(result => {
+      if (!active || result.error || !result.data) return;
+      const accountLocation = accountLocationFromProfile(result.data);
+      if (accountLocation.area) updateDefaultLocation(accountLocation);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [services, role, userId, updateDefaultLocation]);
 
   // Called by LocationPicker — changes active search location only.
   function changeSearchLocation(area) {
