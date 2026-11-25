@@ -12,12 +12,29 @@ import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowMo
 
 const ROLE_LABELS = { admin: 'LUCID Admin / HR', client: 'Client', provider: 'Service Provider', inspector: 'Inspector' };
 const normalizeRole = role => role === 'service_provider' ? 'provider' : role;
+
 const mapConversation = (item, role) => {
   const currentRole = normalizeRole(role);
   const participants = item.audience.split('-');
   const otherRole = participants.find(value => value !== currentRole);
-  return { ...item, otherUser: { name: ROLE_LABELS[otherRole] || 'LUCID team' }, participantLabel: participants.map(value => ROLE_LABELS[value] || value).join(' · '), lastMessage: { message: item.lastMessage, created_at: item.lastMessageAt }, booking: { service_type: item.serviceName, service_date: 'Managed request' }, workflowThread: true };
+  
+  const isAdmin = currentRole === 'admin';
+  const displayName = isAdmin ? (item.otherUserName || 'User') : 'LUCID Admin / HR';
+  const displayAvatar = isAdmin ? item.otherUserAvatar : null;
+
+  return { 
+    ...item, 
+    otherUser: { 
+      name: displayName, 
+      avatar: displayAvatar 
+    }, 
+    participantLabel: isAdmin ? ROLE_LABELS[item.participantRole] : 'LUCID Admin / HR', 
+    lastMessage: { message: item.lastMessage, created_at: item.lastMessageAt }, 
+    booking: { service_type: item.serviceName, service_date: 'Managed request' }, 
+    workflowThread: true 
+  };
 };
+
 const caseStatusLabel = status => String(status || 'open').replaceAll('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 
 const fadeIn = {
@@ -43,7 +60,6 @@ const Messages = () => {
   const returnTo = searchParams.get('returnTo');
   const safeReturnTo = returnTo && /^\/lucid\/cases\/[A-Za-z0-9-]+$/.test(returnTo) ? returnTo : null;
 
-  // The original inbox layout now reads role-authorized workflow threads.
   useEffect(() => {
     let active = true;
     const init = async () => {
@@ -226,6 +242,5 @@ const Messages = () => {
     </div>
   );
 };
-
 
 export default Messages;

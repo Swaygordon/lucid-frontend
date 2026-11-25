@@ -1,7 +1,7 @@
 // Backend contract: all queues, policy actions, and audit records must be authorized and persisted by Supabase RPC/Edge Functions.
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { ClipboardList, Mail, Phone, Star, UserRound, X } from 'lucide-react';
+import { ClipboardList, Mail, Phone, Star, UserRound, X, FileText, ExternalLink } from 'lucide-react';
 import { useWorkflowActor, useWorkflowServices } from '../../contexts/WorkflowModeContext.jsx';
 import { getCasePresentation } from '../../services/workflow/casePresentation.js';
 import { CREDENTIAL_TYPE_FALLBACK, CREDENTIAL_STATUS_LABELS } from '../../data/catalog/credentialTypes.js';
@@ -12,16 +12,33 @@ const caseCreatedAt = record => {
   const timestamp = new Date(value).getTime();
   return Number.isFinite(timestamp) ? timestamp : 0;
 };
+
 const AdminWorkflowHubPage = () => {
   const actor = useWorkflowActor(); const services = useWorkflowServices(); const [searchParams, setSearchParams] = useSearchParams();
   const [section, setSection] = useState(() => SECTIONS.includes(searchParams.get('section')) ? searchParams.get('section') : 'overview'); const [query, setQuery] = useState(''); const [statusFilter, setStatusFilter] = useState('all'); const [cases, setCases] = useState([]); const [finance, setFinance] = useState([]); const [people, setPeople] = useState([]); const [policies, setPolicies] = useState([]); const [appeals, setAppeals] = useState([]); const [error, setError] = useState(''); const [policy, setPolicy] = useState({ subjectId: '', policyCategory: '', facts: '', policyReference: '', action: 'suspend', notificationChannel: 'email' }); const [assigningProviderId, setAssigningProviderId] = useState(''); const [selectedAccount, setSelectedAccount] = useState(null);
-  const reload = useCallback(async () => { const request = { role: actor.role, userId: actor.userId }; const [caseResult, financeResult, directoryResult, policyResult, appealResult] = await Promise.all([services.cases.listForRole(request), services.finance.listEntries(request), services.operations?.listDirectory ? services.operations.listDirectory(request) : Promise.resolve({ data: [], error: null }), services.operations?.listPolicyActions ? services.operations.listPolicyActions(request) : Promise.resolve({ data: [], error: null }), services.operations?.listAccountAppeals ? services.operations.listAccountAppeals(request) : Promise.resolve({ data: [], error: null })]); const failure = [caseResult, financeResult, directoryResult, policyResult, appealResult].find(result => result?.error); if (failure) setError(failure.error.message); setCases(caseResult.data || []); setFinance(financeResult.data || []); setPeople(directoryResult.data || []); setPolicies(policyResult.data || []); setAppeals(appealResult.data || []); }, [services, actor.role, actor.userId]);
+  
+  const reload = useCallback(async () => { 
+    const request = { role: actor.role, userId: actor.userId }; 
+    const [caseResult, financeResult, directoryResult, policyResult, appealResult] = await Promise.all([
+      services.cases.listForRole(request), 
+      services.finance.listEntries(request), 
+      services.operations?.listDirectory ? services.operations.listDirectory(request) : Promise.resolve({ data: [], error: null }), 
+      services.operations?.listPolicyActions ? services.operations.listPolicyActions(request) : Promise.resolve({ data: [], error: null }), 
+      services.operations?.listAccountAppeals ? services.operations.listAccountAppeals(request) : Promise.resolve({ data: [], error: null })
+    ]); 
+    const failure = [caseResult, financeResult, directoryResult, policyResult, appealResult].find(result => result?.error); 
+    if (failure) setError(failure.error.message); 
+    setCases(caseResult.data || []); setFinance(financeResult.data || []); setPeople(directoryResult.data || []); setPolicies(policyResult.data || []); setAppeals(appealResult.data || []); 
+  }, [services, actor.role, actor.userId]);
+  
   useEffect(() => { reload(); }, [reload]);
   useEffect(() => { const requested = searchParams.get('section'); if (SECTIONS.includes(requested) && requested !== section) setSection(requested); }, [searchParams, section]);
+  
   const selectSection = name => { setSection(name); if (name === 'overview') setSearchParams({}); else setSearchParams({ section: name }); };
-   const filtered = useMemo(() => cases.filter(item => `${item.id} ${item.service} ${item.category} ${item.status} ${item.locationSummary}`.toLowerCase().includes(query.toLowerCase()) && (statusFilter === 'all' || item.status === statusFilter)).sort((a, b) => caseCreatedAt(b) - caseCreatedAt(a)), [cases, query, statusFilter]);
-   const decisionCases = useMemo(() => filtered.filter(item => ['submitted', 'needs_information', 'inspection_reported', 'disputed', 'refund_pending'].includes(item.status)), [filtered]);
+  const filtered = useMemo(() => cases.filter(item => `${item.id} ${item.service} ${item.category} ${item.status} ${item.locationSummary}`.toLowerCase().includes(query.toLowerCase()) && (statusFilter === 'all' || item.status === statusFilter)).sort((a, b) => caseCreatedAt(b) - caseCreatedAt(a)), [cases, query, statusFilter]);
+  const decisionCases = useMemo(() => filtered.filter(item => ['submitted', 'needs_information', 'inspection_reported', 'disputed', 'refund_pending'].includes(item.status)), [filtered]);
   const attention = cases.filter(item => !['completed', 'cancelled', 'not_feasible', 'resolved'].includes(item.status)).length;
+  
   return <main className="min-h-screen bg-gray-50 px-4 py-8 dark:bg-[#0f1117] sm:px-6"><div className="mx-auto max-w-7xl">
     <header className="rounded-2xl bg-white p-4 shadow-sm dark:bg-[#1a1f2e] sm:rounded-3xl sm:p-6"><div className="flex items-center gap-2 text-sm font-semibold text-primary"><span>LUCID Operations</span></div><h1 className="mt-2 text-2xl font-bold text-gray-950 dark:text-slate-100 sm:text-3xl">Admin workbench</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600 dark:text-slate-400 sm:text-base">Review incoming requests, coordinate assignments, inspect account histories, and record policy decisions.</p><nav aria-label="Operations sections" className="mt-4"><label htmlFor="admin-section-select" className="mb-1 block text-xs font-semibold text-gray-500 sm:hidden">Go to section</label><select id="admin-section-select" value={section} onChange={event => selectSection(event.target.value)} className="block w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-semibold capitalize text-gray-900 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-[#394458] dark:bg-[#252b3b] dark:text-slate-100 sm:hidden">{SECTIONS.map(name => <option key={name} value={name}>{name}</option>)}</select><div role="tablist" className="hidden flex-wrap gap-2 sm:flex">{SECTIONS.map(name => <button key={name} type="button" role="tab" aria-selected={section === name} onClick={() => selectSection(name)} className={`rounded-full px-3 py-1.5 text-sm font-medium capitalize ${section === name ? 'bg-primary text-white' : 'bg-gray-100 text-gray-700 dark:bg-[#252b3b] dark:text-slate-200'}`}>{name}</button>)}</div></nav></header>
     {error && <p role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-red-800">{error}</p>}
@@ -29,16 +46,39 @@ const AdminWorkflowHubPage = () => {
     {section === 'requests' && <section className="mt-6 rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e]"><div className="grid gap-3 sm:grid-cols-[1fr_220px]"><label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Search requests<input value={query} onChange={event => setQuery(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]" placeholder="Reference, service, category, area"/></label><label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Status<select value={statusFilter} onChange={event => setStatusFilter(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"><option value="all">All statuses</option>{[...new Set(cases.map(item => item.status))].map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select></label></div><CaseRows items={filtered} /></section>}
     {['accounts', 'workers', 'clients'].includes(section) && <section className="mt-6 rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e]"><h2 className="font-semibold capitalize text-gray-900 dark:text-slate-100">{section === 'clients' ? 'Client records' : section === 'workers' ? 'Inspector and Provider roster' : 'All account records'}</h2><p className="mt-2 text-sm text-gray-600 dark:text-slate-400">Search account profiles and their linked case history.</p><label className="mt-4 block text-sm font-medium text-gray-700 dark:text-slate-300">Search records<input value={query} onChange={event => setQuery(event.target.value)} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]" placeholder="Name, role, location, category" /></label><div className="mt-4 grid gap-3 sm:grid-cols-2">{people.filter(person => (section === 'clients' ? person.role === 'client' : section === 'workers' ? ['inspector', 'provider'].includes(person.role) : true) && `${person.name} ${person.role} ${person.email || ''} ${person.phone || ''} ${person.region} ${person.city} ${(person.categories || []).join(' ')}`.toLowerCase().includes(query.toLowerCase())).map(person => <article key={person.id} className="rounded-xl border border-gray-200 p-4 dark:border-[#394458]"><div className="flex items-start justify-between gap-2"><div><p className="text-xs font-semibold uppercase text-primary">{person.role}</p><h3 className="mt-1 font-semibold text-gray-900 dark:text-slate-100">{person.name}</h3><p className="mt-1 text-sm text-gray-600 dark:text-slate-400">{[person.city, person.region].filter(Boolean).join(', ') || 'Location not set'}</p></div><span className="rounded-full bg-gray-100 px-2 py-1 text-xs dark:bg-[#252b3b]">{person.accountStatus}</span></div>{person.categories?.length > 0 && <p className="mt-2 text-xs text-gray-600 dark:text-slate-400">{person.categories.join('  -  ')}</p>}<p className="mt-3 text-xs text-gray-500 dark:text-slate-400">{person.caseCount} related cases  -  {person.profileComplete ? 'Setup complete' : 'Setup incomplete'}</p><div className="mt-3 flex flex-wrap gap-3">{person.caseIds?.slice(0, 3).map(caseId => <Link key={caseId} to={`/lucid/cases/${caseId}`} className="text-sm font-semibold text-primary">{caseId}</Link>)}{person.role === 'provider' && <button type="button" onClick={() => setAssigningProviderId(assigningProviderId === person.id ? '' : person.id)} className="text-sm font-semibold text-primary">{assigningProviderId === person.id ? 'Close assignment' : 'Assign to request'}</button>}<button type="button" onClick={() => setSelectedAccount(person)} className="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 dark:text-slate-200"><UserRound size={15}/>View profile</button>{person.role !== 'admin' && <button type="button" onClick={() => { setPolicy(current => ({ ...current, subjectId: person.id })); setSection('policy'); }} className="text-sm font-semibold text-rose-700">Review account</button>}</div>{assigningProviderId === person.id && person.role === 'provider' && <AdminProviderAssignmentPanel person={person} cases={cases} services={services} actor={actor} onCancel={() => setAssigningProviderId('')} onComplete={async () => { setAssigningProviderId(''); await reload(); }} />}</article>)}</div>{!people.length && <p className="mt-4 text-sm text-gray-500">No account records were found.</p>}</section>}
     {section === 'workers' && <CredentialReviewQueue people={people} services={services} actor={actor} onReview={async (person, credentialId, decision, reason) => { const result = await services.operations.reviewCredential({ accountId: person.id, profileRole: person.role, credentialId, decision, reason }, { role: actor.role, userId: actor.userId }); if (result.error) setError(result.error.message); else { setPeople(current => current.map(item => item.id === person.id ? { ...item, credentials: item.credentials.map(credential => credential.id === credentialId ? { ...credential, status: decision, verificationStatus: decision } : credential) } : item)); await reload(); } return result; }} />}    {section === 'workers' && <ReviewFlagQueue services={services} actor={actor}/>}    {section === 'policy' && <div className="mt-6 grid gap-5 xl:grid-cols-[1fr_1fr]"><section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e]"><h2 className="font-semibold text-gray-900 dark:text-slate-100">Policy violation review</h2><p className="mt-1 text-sm text-gray-600 dark:text-slate-400">Record the facts and proposed action. Notice delivery attempts and results are recorded for review.</p><form className="mt-4 space-y-3" onSubmit={async event => { event.preventDefault(); const selected = people.find(person => person.id === policy.subjectId); if (!selected) return; if (!window.confirm(`Record ${policy.action} for ${selected.name}? This records a policy action and requests a notice through the configured delivery service.`)) return; const result = await services.operations.applyAccountPolicy({ ...policy, subjectRole: selected.role }, { role: actor.role, userId: actor.userId }); if (result.error) setError(result.error.message); else { setPolicy({ subjectId: '', policyCategory: '', facts: '', policyReference: '', action: 'suspend', notificationChannel: 'email' }); await reload(); } }}><label className="block text-sm">Account<select required value={policy.subjectId} onChange={event => setPolicy({ ...policy, subjectId: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"><option value="">Select account</option>{people.filter(person => person.role !== 'admin').map(person => <option key={person.id} value={person.id}>{person.name}  -  {person.role}</option>)}</select></label><label className="block text-sm">Policy category<select required value={policy.policyCategory} onChange={event => setPolicy({ ...policy, policyCategory: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"><option value="">Select category</option>{['Safety concern', 'Fraud or misrepresentation', 'Harassment or abusive conduct', 'Repeated service failure', 'Privacy or data misuse', 'Other'].map(value => <option key={value}>{value}</option>)}</select></label><label className="block text-sm">Facts and supporting details<textarea required maxLength={3000} rows={4} value={policy.facts} onChange={event => setPolicy({ ...policy, facts: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]" /></label><label className="block text-sm">Policy reference<input required value={policy.policyReference} onChange={event => setPolicy({ ...policy, policyReference: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]" placeholder="Policy section or case reference" /></label><div className="grid gap-3 sm:grid-cols-2"><label className="block text-sm">Proposed action<select value={policy.action} onChange={event => setPolicy({ ...policy, action: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"><option value="suspend">Suspend</option><option value="close">Close account</option></select></label><label className="block text-sm">Notice channel<select value={policy.notificationChannel} onChange={event => setPolicy({ ...policy, notificationChannel: event.target.value })} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"><option value="email">Email</option><option value="sms">SMS</option><option value="both">Email and SMS</option></select></label></div><p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/20 dark:text-amber-100">The server records the action and delivery attempts. Account closure must follow retention policy.</p><button disabled={!policy.subjectId || !policy.policyCategory || !policy.facts.trim() || !policy.policyReference.trim()} className="rounded-lg bg-rose-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">Record policy action</button></form></section><section className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e]"><h2 className="font-semibold text-gray-900 dark:text-slate-100">Policy history</h2><div className="mt-4 space-y-3">{policies.map(item => <article key={item.id} className="rounded-xl border border-gray-200 p-4 dark:border-[#394458]"><div className="flex justify-between gap-2"><strong>{item.subjectName}</strong><span className="text-xs font-semibold uppercase text-rose-700">{item.action}</span></div><p className="mt-1 text-sm">{item.policyCategory}  -  {item.policyReference}</p><p className="mt-2 text-sm text-gray-600 dark:text-slate-400">{item.facts}</p><p className="mt-2 text-xs text-gray-500">{item.notificationChannel} notice  -  {item.notificationStatus}  -  {new Date(item.createdAt).toLocaleString()}</p></article>)}{!policies.length && <p className="text-sm text-gray-500">No policy actions have been recorded.</p>}</div></section></div>}
-        {section === 'appeals' && <AdminAppealsPanel appeals={appeals} services={services} actor={actor} onComplete={reload}/>}
-    {selectedAccount && <AccountProfileDialog person={selectedAccount} cases={cases} policies={policies} onClose={() => setSelectedAccount(null)} onReview={() => { setPolicy(current => ({ ...current, subjectId: selectedAccount.id })); setSelectedAccount(null); setSection('policy'); setSearchParams({ section: 'policy' }); }} />}
+    {section === 'appeals' && <AdminAppealsPanel appeals={appeals} services={services} actor={actor} onComplete={reload}/>}
+    {selectedAccount && <AccountProfileDialog person={selectedAccount} cases={cases} policies={policies} services={services} actor={actor} onClose={() => setSelectedAccount(null)} onReview={() => { setPolicy(current => ({ ...current, subjectId: selectedAccount.id })); setSelectedAccount(null); setSection('policy'); setSearchParams({ section: 'policy' }); }} />}
   </div></main>;
 };
-const AccountProfileDialog = ({ person, cases, policies, onClose, onReview }) => {
+
+const AccountProfileDialog = ({ person, cases, policies, onClose, onReview, services, actor }) => {
   const relatedCases = cases.filter(record => person.caseIds?.includes(record.id));
   const accountPolicies = policies.filter(item => item.subjectId === person.id);
   const phone = String(person.phone || '').replace(/[^\d+]/g, '');
   const payoutStatusLabel = ({ not_started: 'Incomplete', onboarding: 'Onboarding in progress', verification_pending: 'Verification pending', active: 'Complete', failed: 'Needs attention' })[person.payoutStatus] || (person.payoutSetup ? 'Complete' : 'Incomplete');
   const credentialLabel = credential => CREDENTIAL_TYPE_FALLBACK.find(type => type.id === credential.credentialTypeId)?.label || credential.name || 'Other credential';
+  
+  const [loadingEvidenceId, setLoadingEvidenceId] = useState('');
+  const [evidenceError, setEvidenceError] = useState('');
+
+  const handleViewEvidence = async (credential) => {
+    setLoadingEvidenceId(credential.id);
+    setEvidenceError('');
+    
+    const result = await services.credentials.createEvidenceLink(
+      { accountId: person.id, credentialId: credential.id }, 
+      { role: actor.role, userId: actor.userId }
+    );
+
+    setLoadingEvidenceId('');
+    
+    if (result.error) {
+      setEvidenceError(result.error.message);
+    } else if (result.data?.url) {
+      window.open(result.data.url, '_blank', 'noopener,noreferrer');
+    }
+  };
+
   const details = [
     ['Email', person.email || 'Not provided'], ['Phone', person.phone || 'Not provided'],
     ['Location', [person.city, person.region].filter(Boolean).join(', ') || 'Not set'],
@@ -54,7 +94,58 @@ const AccountProfileDialog = ({ person, cases, policies, onClose, onReview }) =>
       ['Payout setup', payoutStatusLabel],
     ] : []),
   ];
-  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/50 p-4" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}><section role="dialog" aria-modal="true" aria-labelledby="account-profile-title" className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-[#1a1f2e]"><header className="flex items-start justify-between border-b border-gray-100 p-5 dark:border-[#303a4c]"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{person.role} account profile</p><h2 id="account-profile-title" className="mt-1 text-2xl font-bold text-gray-950 dark:text-slate-100">{person.name}</h2><p className="mt-1 text-sm text-gray-500">Account status: <span className="font-semibold capitalize text-gray-800 dark:text-slate-200">{person.accountStatus}</span></p></div><button type="button" aria-label="Close profile" onClick={onClose} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b]"><X size={19}/></button></header><div className="space-y-5 p-5"><div className="flex flex-wrap gap-2"><a href={person.email ? `mailto:${person.email}` : undefined} aria-disabled={!person.email} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${person.email ? 'bg-primary text-white' : 'pointer-events-none bg-gray-100 text-gray-400'}`}><Mail size={16}/>Email account</a><a href={phone ? `sms:${phone}` : undefined} aria-disabled={!phone} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${phone ? 'border-gray-300 text-gray-800 dark:border-[#394458] dark:text-slate-100' : 'pointer-events-none border-gray-200 text-gray-400 dark:border-[#394458]'}`}><Phone size={16}/>Text account</a>{person.role !== 'admin' && <button type="button" onClick={onReview} className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:text-rose-300">Policy review</button>}</div><p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-900 dark:bg-blue-950/30 dark:text-blue-100">Contact links open your deviceâ€™s email or SMS app. Contact links open your device?s email or SMS app.</p><section><h3 className="font-semibold text-gray-900 dark:text-slate-100">Profile details</h3><dl className="mt-2 grid gap-3 rounded-xl border border-gray-200 p-4 dark:border-[#394458] sm:grid-cols-2">{details.map(([label, value]) => <div key={label}><dt className="text-xs text-gray-500">{label}</dt><dd className="mt-1 break-words text-sm font-medium text-gray-900 dark:text-slate-100">{value}</dd></div>)}{person.role === 'provider' && <div><dt className="text-xs text-gray-500">Rating</dt><dd className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-slate-100"><Star size={14} className="text-amber-500"/>{Number(person.averageRating || 0).toFixed(1)} ({person.reviewCount || 0} reviews)</dd></div>}</dl></section><section><h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-slate-100"><UserRound size={16}/>Related service history <span className="text-sm font-normal text-gray-500">{relatedCases.length}</span></h3><div className="mt-2 divide-y divide-gray-100 rounded-xl border border-gray-200 px-4 dark:divide-[#303a4c] dark:border-[#394458]">{relatedCases.map(record => <div key={record.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><div><p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{record.service || 'Service request'}</p><p className="mt-1 text-xs text-gray-500">{record.id} Â· {record.status?.replaceAll('_', ' ')} Â· {record.locationSummary || 'Location pending'}</p></div><Link to={`/lucid/cases/${record.id}`} onClick={onClose} className="text-sm font-semibold text-primary">Open case</Link></div>)}{!relatedCases.length && <p className="py-4 text-sm text-gray-500">No related service history.</p>}</div></section>{person.role === 'provider' && <p className="text-sm text-gray-600 dark:text-slate-400"><strong>Admin assignment:</strong> use â€œAssign to requestâ€ on the profile card to match this Provider to an eligible case.</p>}<section><h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-slate-100"><ClipboardList size={16}/>Policy history <span className="text-sm font-normal text-gray-500">{accountPolicies.length}</span></h3>{accountPolicies.length ? <div className="mt-2 space-y-2">{accountPolicies.map(item => <article key={item.id} className="rounded-xl border border-gray-200 p-3 text-sm dark:border-[#394458]"><p className="font-semibold">{item.action} Â· {item.policyCategory}</p><p className="mt-1 text-gray-600 dark:text-slate-400">{item.facts}</p><p className="mt-1 text-xs text-gray-500">{item.policyReference} Â· {item.notificationChannel} notice Â· {item.notificationStatus}</p></article>)}</div> : <p className="mt-2 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-[#394458]">No policy actions recorded.</p>}</section></div></section></div>;
+  
+  return <div className="fixed inset-0 z-[70] flex items-center justify-center bg-gray-950/50 p-4" role="presentation" onMouseDown={event => { if (event.target === event.currentTarget) onClose(); }}><section role="dialog" aria-modal="true" aria-labelledby="account-profile-title" className="max-h-[92vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl dark:bg-[#1a1f2e]"><header className="flex items-start justify-between border-b border-gray-100 p-5 dark:border-[#303a4c]"><div><p className="text-xs font-bold uppercase tracking-wide text-primary">{person.role} account profile</p><h2 id="account-profile-title" className="mt-1 text-2xl font-bold text-gray-950 dark:text-slate-100">{person.name}</h2><p className="mt-1 text-sm text-gray-500">Account status: <span className="font-semibold capitalize text-gray-800 dark:text-slate-200">{person.accountStatus}</span></p></div><button type="button" aria-label="Close profile" onClick={onClose} className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-[#252b3b]"><X size={19}/></button></header><div className="space-y-5 p-5"><div className="flex flex-wrap gap-2"><a href={person.email ? `mailto:${person.email}` : undefined} aria-disabled={!person.email} className={`inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold ${person.email ? 'bg-primary text-white' : 'pointer-events-none bg-gray-100 text-gray-400'}`}><Mail size={16}/>Email account</a><a href={phone ? `sms:${phone}` : undefined} aria-disabled={!phone} className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold ${phone ? 'border-gray-300 text-gray-800 dark:border-[#394458] dark:text-slate-100' : 'pointer-events-none border-gray-200 text-gray-400 dark:border-[#394458]'}`}><Phone size={16}/>Text account</a>{person.role !== 'admin' && <button type="button" onClick={onReview} className="rounded-lg border border-rose-200 px-3 py-2 text-sm font-semibold text-rose-700 dark:border-rose-900/50 dark:text-rose-300">Policy review</button>}</div><p className="rounded-lg bg-blue-50 p-3 text-xs text-blue-900 dark:bg-blue-950/30 dark:text-blue-100">Contact links open your deviceâ€™s email or SMS app. Contact links open your device?s email or SMS app.</p><section><h3 className="font-semibold text-gray-900 dark:text-slate-100">Profile details</h3><dl className="mt-2 grid gap-3 rounded-xl border border-gray-200 p-4 dark:border-[#394458] sm:grid-cols-2">{details.map(([label, value]) => <div key={label}><dt className="text-xs text-gray-500">{label}</dt><dd className="mt-1 break-words text-sm font-medium text-gray-900 dark:text-slate-100">{value}</dd></div>)}{person.role === 'provider' && <div><dt className="text-xs text-gray-500">Rating</dt><dd className="mt-1 inline-flex items-center gap-1 text-sm font-medium text-gray-900 dark:text-slate-100"><Star size={14} className="text-amber-500"/>{Number(person.averageRating || 0).toFixed(1)} ({person.reviewCount || 0} reviews)</dd></div>}</dl></section>
+    
+    {person.role === 'provider' && person.portfolioItems?.length > 0 && (
+      <section>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Work portfolio</h3>
+        <div className="mt-2 grid gap-3 sm:grid-cols-2">
+          {person.portfolioItems.map(item => (
+            <article key={item.id} className="overflow-hidden rounded-xl border border-gray-200 dark:border-[#394458]">
+              <img src={item.imageData} alt={item.title} className="aspect-[4/3] w-full object-cover" />
+              <div className="p-3">
+                <h4 className="font-semibold text-sm text-gray-900 dark:text-slate-100">{item.title}</h4>
+                {item.description && <p className="mt-1 text-xs text-gray-600 dark:text-slate-400">{item.description}</p>}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {(person.role === 'provider' || person.role === 'inspector') && person.credentials?.length > 0 && (
+      <section>
+        <h3 className="font-semibold text-gray-900 dark:text-slate-100">Credential Evidence</h3>
+        {evidenceError && <p className="mt-2 text-sm text-rose-600">{evidenceError}</p>}
+        <div className="mt-2 space-y-2">
+          {person.credentials.map(cred => (
+            <div key={cred.id} className="flex items-center justify-between rounded-xl border border-gray-200 p-3 dark:border-[#394458]">
+              <div>
+                <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{credentialLabel(cred)}</p>
+                <p className="text-xs text-gray-500">{CREDENTIAL_STATUS_LABELS[cred.verificationStatus] || 'Self-declared'}</p>
+              </div>
+              {cred.evidenceObjectKey ? (
+                <button 
+                  type="button"
+                  onClick={() => handleViewEvidence(cred)}
+                  disabled={loadingEvidenceId === cred.id}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                >
+                  <FileText size={14} /> 
+                  {loadingEvidenceId === cred.id ? 'Generating Link...' : 'View Evidence'} 
+                  <ExternalLink size={12} />
+                </button>
+              ) : (
+                <span className="text-xs text-gray-400">No file</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+    )}
+
+    <section><h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-slate-100"><UserRound size={16}/>Related service history <span className="text-sm font-normal text-gray-500">{relatedCases.length}</span></h3><div className="mt-2 divide-y divide-gray-100 rounded-xl border border-gray-200 px-4 dark:divide-[#303a4c] dark:border-[#394458]">{relatedCases.map(record => <div key={record.id} className="flex flex-wrap items-center justify-between gap-2 py-3"><div><p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{record.service || 'Service request'}</p><p className="mt-1 text-xs text-gray-500">{record.id} Â· {record.status?.replaceAll('_', ' ')} Â· {record.locationSummary || 'Location pending'}</p></div><Link to={`/lucid/cases/${record.id}`} onClick={onClose} className="text-sm font-semibold text-primary">Open case</Link></div>)}{!relatedCases.length && <p className="py-4 text-sm text-gray-500">No related service history.</p>}</div></section>{person.role === 'provider' && <p className="text-sm text-gray-600 dark:text-slate-400"><strong>Admin assignment:</strong> use â€œAssign to requestâ€ on the profile card to match this Provider to an eligible case.</p>}<section><h3 className="flex items-center gap-2 font-semibold text-gray-900 dark:text-slate-100"><ClipboardList size={16}/>Policy history <span className="text-sm font-normal text-gray-500">{accountPolicies.length}</span></h3>{accountPolicies.length ? <div className="mt-2 space-y-2">{accountPolicies.map(item => <article key={item.id} className="rounded-xl border border-gray-200 p-3 text-sm dark:border-[#394458]"><p className="font-semibold">{item.action} Â· {item.policyCategory}</p><p className="mt-1 text-gray-600 dark:text-slate-400">{item.facts}</p><p className="mt-1 text-xs text-gray-500">{item.policyReference} Â· {item.notificationChannel} notice Â· {item.notificationStatus}</p></article>)}</div> : <p className="mt-2 rounded-xl border border-dashed border-gray-300 p-4 text-sm text-gray-500 dark:border-[#394458]">No policy actions recorded.</p>}</section></div></section></div>;
 };
 
 const Kpi = ({ label, value }) => <section className="min-h-[96px] rounded-2xl bg-white p-3 shadow-sm dark:bg-[#1a1f2e] sm:min-h-0 sm:p-5"><p className="min-h-9 text-xs leading-4 text-gray-500 sm:min-h-0 sm:text-sm">{label}</p><p className="mt-1 text-2xl font-bold text-gray-950 dark:text-slate-100 sm:mt-2 sm:text-3xl">{value}</p></section>;
@@ -96,52 +187,118 @@ const AdminAppealsPanel = ({ appeals, services, actor, onComplete }) => {
   };
   return <section className="mt-6 space-y-4"><header className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e]"><h2 className="font-semibold text-gray-900 dark:text-slate-100">Account appeals</h2><p className="mt-1 text-sm text-gray-600 dark:text-slate-400">Review the account holder's explanation. Reinstatement is recorded as an audited account status change.</p></header>{appeals.map(appeal => <article key={appeal.id} className="rounded-2xl bg-white p-5 shadow-sm dark:bg-[#1a1f2e]"><div className="flex flex-wrap justify-between gap-2"><div><h3 className="font-semibold text-gray-900 dark:text-slate-100">{appeal.subjectName} Â· {appeal.subjectRole}</h3><p className="mt-1 text-xs text-gray-500">Submitted {new Date(appeal.submittedAt).toLocaleString()} Â· {appeal.status}</p></div><Link to="/lucid/admin/workflow" className="text-sm font-semibold text-primary">Admin workbench</Link></div><p className="mt-3 rounded-xl bg-gray-50 p-3 text-sm text-gray-800 dark:bg-[#252b3b] dark:text-slate-200">{appeal.reason}</p>{appeal.status === 'pending' ? <div className="mt-4 space-y-3"><label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Decision explanation<textarea rows={3} maxLength={2000} value={reasons[appeal.id] || ''} onChange={event => setReasons(current => ({ ...current, [appeal.id]: event.target.value }))} className="mt-1 w-full rounded-xl border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]"/></label>{errors[appeal.id] && <p role="alert" className="text-sm text-red-700">{errors[appeal.id]}</p>}<div className="flex flex-wrap gap-2"><button type="button" disabled={busyId === appeal.id || (reasons[appeal.id] || '').trim().length < 10} onClick={() => decide(appeal, 'reinstate')} className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Reinstate account</button><button type="button" disabled={busyId === appeal.id || (reasons[appeal.id] || '').trim().length < 10} onClick={() => decide(appeal, 'uphold')} className="rounded-lg bg-gray-800 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">Uphold restriction</button></div></div> : <p className="mt-3 text-sm text-gray-600 dark:text-slate-400">Decision: {appeal.decisionReason}</p>}</article>)}{!appeals.length && <p className="rounded-2xl bg-white p-5 text-sm text-gray-500 dark:bg-[#1a1f2e]">No appeals have been submitted.</p>}</section>;
 };
+
 const AdminProviderAssignmentPanel = ({ person, cases, services, actor, onCancel, onComplete }) => {
   const [candidateCases, setCandidateCases] = useState([]);
   const [caseId, setCaseId] = useState('');
-  const [showOutsideRadius, setShowOutsideRadius] = useState(false);
-  const [overrideReason, setOverrideReason] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
   useEffect(() => {
     let active = true;
-    const categories = person.categories?.length ? person.categories : [];
-    const ready = cases.filter(record => ['scope_confirmed', 'provider_declined', 'inspector_bypass_approved'].includes(record.status) && categories.some(category => category.toLowerCase() === String(record.category || '').toLowerCase()));
-    Promise.all(ready.map(async record => {
-      const result = await services.assignments.searchProviderCandidates({ caseId: record.id, role: actor.role, userId: actor.userId });
-      if (result.error) return [];
-      return (result.data || []).filter(candidate => candidate.id === person.id).map(candidate => ({ record, candidate }));
-    })).then(groups => { if (active) { setCandidateCases(groups.flat()); setLoading(false); } });
+    
+    const pendingRequests = cases.filter(record => 
+      ['submitted', 'pending', 'new', 'scope_confirmed', 'provider_declined', 'inspector_bypass_approved'].includes(record.status)
+    );
+
+    const providerCategories = (person.categories || []).map(c => c.toLowerCase());
+    
+    const sortedRequests = pendingRequests.map(record => {
+      const requestService = String(record.service_name || record.category || '').toLowerCase();
+      const isMatch = providerCategories.length > 0 && providerCategories.some(cat => requestService.includes(cat) || cat.includes(requestService));
+      return { record, isMatch };
+    }).sort((a, b) => {
+      if (a.isMatch && !b.isMatch) return -1;
+      if (!a.isMatch && b.isMatch) return 1;
+      return caseCreatedAt(b.record) - caseCreatedAt(a.record);
+    });
+
+    setCandidateCases(sortedRequests);
+    setLoading(false);
     return () => { active = false; };
-  }, [cases, person.id, person.categories, services, actor.role, actor.userId]);
+  }, [cases, person.categories]);
+
   const selected = candidateCases.find(item => item.record.id === caseId);
-  const needsOverride = Boolean(selected && !selected.candidate.withinDefaultRadius);
-  const submit = async event => {
-    event.preventDefault();
+
+  const confirmAssignment = async () => {
     if (!selected) return;
-    const scopeNotice = selected.record.inspectorWaived
-      ? 'The Provider will receive the Client-approved request and assess site conditions after accepting; no further Client form is needed.'
-      : 'The Provider will receive the approved work scope.';
-    if (!window.confirm(`Send a Provider offer to ${person.name} for ${selected.record.id}? ${scopeNotice} This action is recorded in the account audit history.`)) return;
     setBusy(true);
     setError('');
-    const result = await services.cases.apply(selected.record.id, { role: actor.role, userId: actor.userId, action: 'offer_provider', payload: { providerId: person.id, distanceKm: selected.candidate.distanceKm, overrideReason } });
+    const result = await services.cases.apply(selected.record.id, { role: actor.role, userId: actor.userId, action: 'offer_provider', payload: { providerId: person.id, distanceKm: 10, overrideReason: '' } });
     setBusy(false);
-    if (result.error) { setError(result.error.message); return; }
+    
+    if (result.error) { 
+      setError(result.error.message); 
+      setShowConfirm(false);
+      return; 
+    }
     await onComplete();
   };
+
   return <section className="mt-4 w-full rounded-xl border border-blue-200 bg-blue-50/60 p-4 dark:border-blue-900/50 dark:bg-blue-950/20" aria-label={`Assign ${person.name} to a request`}>
-    <div className="flex items-start justify-between gap-3"><div><h4 className="font-semibold text-gray-900 dark:text-slate-100">Assign {person.name}</h4><p className="mt-1 text-xs text-gray-600 dark:text-slate-400">Choose a category-matched request with confirmed scope or Client-approved consent to proceed without an Inspector.</p></div><button type="button" onClick={onCancel} className="text-sm font-semibold text-gray-600 hover:underline dark:text-slate-300">Close</button></div>
-    {loading ? <p role="status" className="mt-3 text-sm text-gray-600 dark:text-slate-300">Finding ready requests...</p> : candidateCases.length === 0 ? <p className="mt-3 rounded-lg bg-white p-3 text-sm text-gray-700 dark:bg-[#252b3b] dark:text-slate-200">No category-matched request is ready. Confirm its inspection scope or obtain Client approval to proceed without an Inspector first.</p> : <form onSubmit={submit} className="mt-4 space-y-3">
-      <fieldset className="space-y-2"><legend className="mb-2 text-sm font-medium text-gray-800 dark:text-slate-200">Choose a request</legend>{candidateCases.filter(item => showOutsideRadius || item.candidate.withinDefaultRadius).map(({ record, candidate }) => <label key={record.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 bg-white p-3 dark:border-[#394458] dark:bg-[#252b3b]"><input type="radio" name={`provider-case-${person.id}`} checked={caseId === record.id} onChange={() => { setCaseId(record.id); setOverrideReason(''); }} className="mt-1 accent-blue-600" /><span className="min-w-0 flex-1"><span className="flex flex-wrap justify-between gap-2 font-medium text-gray-900 dark:text-slate-100"><span>{record.service} - {record.id}</span><span className="text-xs text-gray-500">~{candidate.distanceKm} km Â· {candidate.assignmentCapacity} capacity</span></span><span className="mt-1 block text-xs text-gray-600 dark:text-slate-400">{record.category} - {record.locationSummary} - {candidate.averageRating ? `${candidate.averageRating}/5` : 'No ratings'} - {candidate.availability}{record.inspectorWaived ? ' - no preliminary Inspector' : ''}</span></span></label>)}</fieldset>
-      {candidateCases.some(item => !item.candidate.withinDefaultRadius) && <button type="button" onClick={() => setShowOutsideRadius(value => !value)} className="text-sm font-semibold text-primary hover:underline">{showOutsideRadius ? 'Hide Providers outside 25 km' : 'Expand search beyond 25 km'}</button>}
-      {needsOverride && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300">Reason for assigning outside 25 km<textarea required maxLength={1000} value={overrideReason} onChange={event => setOverrideReason(event.target.value)} rows={2} className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 dark:border-[#394458] dark:bg-[#252b3b]" /></label>}
-      {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
-      <button type="submit" disabled={busy || !selected || (needsOverride && !overrideReason.trim())} className="min-h-10 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? 'Sending offer...' : 'Assign Provider and send offer'}</button>
-    </form>}
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <h4 className="font-semibold text-gray-900 dark:text-slate-100">Assign {person.name}</h4>
+        <p className="mt-1 text-xs text-gray-600 dark:text-slate-400">Choose a request. Matches based on the Provider's category are shown first.</p>
+      </div>
+      <button type="button" onClick={onCancel} className="text-sm font-semibold text-gray-600 hover:underline dark:text-slate-300">Close</button>
+    </div>
+
+    {loading ? (
+      <p role="status" className="mt-3 text-sm text-gray-600 dark:text-slate-300">Finding requests...</p>
+    ) : candidateCases.length === 0 ? (
+      <p className="mt-3 rounded-lg bg-white p-3 text-sm text-gray-700 dark:bg-[#252b3b] dark:text-slate-200">No active requests found. Ensure a request is in 'submitted' status.</p>
+    ) : (
+      <form onSubmit={e => { e.preventDefault(); setShowConfirm(true); }} className="mt-4 space-y-3">
+        <fieldset className="space-y-2 max-h-[300px] overflow-y-auto pr-2" disabled={showConfirm}>
+          <legend className="mb-2 text-sm font-medium text-gray-800 dark:text-slate-200">Select a request</legend>
+          
+          {candidateCases.map(({ record, isMatch }) => (
+            <label key={record.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors ${caseId === record.id ? 'border-primary bg-blue-50 dark:bg-blue-900/30 dark:border-blue-500' : 'border-gray-200 bg-white hover:bg-gray-50 dark:border-[#394458] dark:bg-[#252b3b] dark:hover:bg-[#303a4c]'}`}>
+              <input type="radio" name={`provider-case-${person.id}`} checked={caseId === record.id} onChange={() => { setCaseId(record.id); setShowConfirm(false); }} className="mt-1 accent-blue-600" />
+              <span className="min-w-0 flex-1">
+                <span className="flex flex-wrap justify-between gap-2 font-medium text-gray-900 dark:text-slate-100">
+                  <span className="flex items-center gap-2">
+                    {record.service_name || 'Service'} - {record.id.slice(-6)}
+                    {isMatch && <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">Match</span>}
+                  </span>
+                  <span className="text-xs text-gray-500">{new Date(record.created_at).toLocaleDateString()}</span>
+                </span>
+                <span className="mt-1 block text-xs text-gray-600 dark:text-slate-400 line-clamp-2">{record.description}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
+
+        {error && <p role="alert" className="text-sm text-red-700 dark:text-red-300">{error}</p>}
+        
+        <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-blue-200 dark:border-blue-900/50">
+          <p className="w-full text-xs font-semibold text-gray-700 dark:text-slate-300">Or reach out manually first:</p>
+          <a href={`tel:${person.phone || ''}`} className={`inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold dark:border-[#394458] ${!person.phone ? 'pointer-events-none opacity-50' : 'hover:bg-gray-50 dark:hover:bg-[#252b3b] text-gray-800 dark:text-slate-200'}`}><Phone size={14} /> Call Provider</a>
+          <a href={`mailto:${person.email || ''}`} className={`inline-flex items-center gap-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-semibold dark:border-[#394458] ${!person.email ? 'pointer-events-none opacity-50' : 'hover:bg-gray-50 dark:hover:bg-[#252b3b] text-gray-800 dark:text-slate-200'}`}><Mail size={14} /> Email Provider</a>
+        </div>
+        
+        {showConfirm ? (
+          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <p className="text-sm font-medium text-amber-900 dark:text-amber-100">Send a Provider offer to {person.name} for this request?</p>
+            <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">This action is recorded in the audit history and an automated message will be sent to the Provider.</p>
+            <div className="mt-3 flex gap-2">
+              <button type="button" onClick={confirmAssignment} disabled={busy} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? 'Sending...' : 'Yes, Assign Provider'}</button>
+              <button type="button" onClick={() => setShowConfirm(false)} disabled={busy} className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-700 dark:border-[#394458] dark:bg-[#252b3b] dark:text-slate-200">Cancel</button>
+            </div>
+          </div>
+        ) : (
+          <button type="submit" disabled={!selected} className="min-h-10 mt-2 w-full sm:w-auto rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            Assign Provider & Send Details
+          </button>
+        )}
+      </form>
+    )}
   </section>;
 };
+
 export default AdminWorkflowHubPage;
 
 

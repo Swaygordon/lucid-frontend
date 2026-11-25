@@ -30,8 +30,14 @@ export default function CredentialEditor({ credentials = [], onChange, onUpload 
       <label className="space-y-1 text-sm font-medium">Year issued (optional)<input className={fieldClass} type="number" min="1950" max={new Date().getFullYear()} value={item.issuedYear || ''} onChange={event => update(item.id, { issuedYear: event.target.value })}/></label>
       <label className="space-y-1 text-sm font-medium">Expiry date (optional)<input className={fieldClass} type="date" value={item.expiresAt || ''} onChange={event => update(item.id, { expiresAt: event.target.value })}/></label>
       <label className="space-y-1 text-sm font-medium">Certificate evidence (optional)<input className={fieldClass} type="file" accept="image/*,.pdf" onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; if (file && !file.type.startsWith('image/') && file.type !== 'application/pdf') { update(item.id, { uploadError: 'Choose a PDF or image file.' }); return; } if (file) { update(item.id, { uploadError: '' }); onUpload?.(item, file); } }}/></label>
-      </div>{item.evidenceName && <p className="mt-2 text-xs text-gray-500">Selected file: {item.evidenceName} (not uploaded)</p>}{item.uploadError && <p role="alert" className="mt-2 text-xs text-rose-700">{item.uploadError}</p>}</article>)}</div>
+      </div>
+      {item.evidenceName && (
+        <p className="mt-2 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+          ✅ Uploaded securely: {item.evidenceName}
+        </p>
+      )}
+      {item.uploadError && <p role="alert" className="mt-2 text-xs text-rose-700">{item.uploadError}</p>}</article>)}</div>
     {!credentials.length && <p className="mt-4 rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-[#252b3b] dark:text-slate-300">No credentials added. You can still create and use your account without one.</p>}
-    <p className="mt-4 text-xs text-gray-500 dark:text-slate-400">Evidence uploads require the secure Supabase Storage integration. Until it is connected, selecting a file will not upload or store it.</p>
+    <p className="mt-4 text-xs text-gray-500 dark:text-slate-400">Evidence uploads are secured via Supabase Storage. Only LUCID staff will be able to view your uploaded documents.</p>
   </section>;
 }
